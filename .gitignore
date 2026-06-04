@@ -1,0 +1,25 @@
+# Runtime state — never committed (see MASTER_ACTION_PLAN_V3.md #21 / §5b)
+*.db
+*-wal
+*-shm
+exports/
+downloads/
+.browser_profile/
+.env
+*.nosync
+
+# Secrets stay out (templates like .env.example are fine and kept)
+# (no bids/ entry — staging lives under $BIDPLUS_RUNTIME_DIR, outside the tree)
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# OS / editor cruft
+.DS_Store
+
+# Local scratch
+_oldFiles/

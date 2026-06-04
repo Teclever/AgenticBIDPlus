@@ -1,0 +1,112 @@
+# AGENTS.md — Teclever Bid Portal (backend)
+
+## What this is
+A parent orchestrator that runs three existing portal scrapers (HAL, ISRO, GeM)
+sequentially, merges their SQLite data into a parent SQLite (one table per portal),
+Pass-1-scores every bid against a unified rubric, and for every bid scoring >= 4 fetches
+its documents into a per-bid dir and SAVES THEM LOCALLY (every score). A single
+score-agnostic summarization MODULE (extract text -> send text + non-text files to Sonnet
+4.6 -> validate with Pydantic -> store) is the only path to Sonnet. It is TRIGGERED by
+score: 5 -> run overnight; 4 -> cheap regex preview now, module DEFERRED to a "Fetch more"
+click; 3 -> on demand; 2/1/0 -> only if the user forces it. There is NO vector database and
+NO local OCR. Downloaded files are staged, not hoarded — a strict nightly 7-day sweep deletes
+them. The web app is a later, separate effort.
+
+## The samples are known-good
+`gem_portal/`, `hal_portal/src/`, `isro_portal/` are FULLY FUNCTIONAL. Reuse and adapt
+their scrape / download / Pass-1 / DB-write logic. Do NOT rewrite portal transport.
+
+## Golden rules (do not break)
+- Touch portals only through `PortalAdapter`. Never re-implement `fetcher.py`,
+  HAL `session.py`, or GeM `csrf_handler.py`.
+- Scraping is STRICTLY SEQUENTIAL (HAL -> ISRO -> GeM). One heavy op at a time.
+- Parent merge is ALWAYS upsert. NEVER overwrite ANY overlay column — AI-derived
+  (docs_summarized, summary_json/model/at, summary_coverage, local_extracted,
+  local_extract_json, has_restrictive_eligibility) or human (user_state, disposed_by,
+  disposed_at). The merge
+  mirrors tool-owned fields only. EXTENDED updates just bid_status/extension_count/closing_date
+  and does NOT re-summarize or reset overlay — a bid is summarized at most once.
+- NO vector store, NO embeddings, NO local OCR. Sonnet reads docs (incl. scans/images)
+  natively. Do not reintroduce ChromaDB or an embedding model.
+- Documents are SAVED LOCALLY for every fetched bid (score 5 included) and text-extracted
+  BEFORE anything goes to Sonnet.
+- ONE PATH TO SONNET: all summarization goes through the single §8b module (extract text ->
+  text + non-text files -> Sonnet -> Pydantic-validate -> store). Never store an
+  unvalidated/malformed result. Validation retry is BOUNDED (default 3 attempts); on
+  exhaustion set summary_status='failed', log it, flag for manual review, and do NOT
+  auto-re-queue the bid — never an open loop. No other code path calls Sonnet for documents.
+- Score tiering is TRIGGER-ONLY (same module for all scores): SCORE 5 IS THE ONLY AUTOMATIC
+  Sonnet call. SCORES 4 AND BELOW must NOT be sent to Sonnet without EXPLICIT USER
+  CONFIRMATION — score 4 shows a regex preview + runs the module on a "Fetch more" click;
+  score 3/2/1/0 run the module on demand.
+- Documents are STAGED, NOT HOARDED. Files (any format: PDF, scanned/image, Word, Excel)
+  download into $BIDPLUS_RUNTIME_DIR/<portal>/bids/<source_pk>/. Native-text files: extract
+  text, store it, DISCARD the source file. Scanned/image files: KEEP them for Sonnet. A
+  nightly 7-day sweep is the deletion mechanism (NOT per-bid immediate delete). The DB
+  (local extraction + Sonnet summary) is the durable artifact.
+- Document acquisition is per-portal: HAL/ISRO enumerate all docs from the document-view;
+  GeM downloads ONE primary PDF and parses it for links to supporting docs, then fetches
+  those. The adapter owns this difference.
+- The summary prompt DISCARDS non-English text and generic boilerplate but KEEPS
+  project-specific T&C, and ALWAYS surfaces restrictive participation clauses (mandated
+  hardware, named tools, vendor-tied licenses) in their own field + has_restrictive_eligibility.
+- Summarize via Sonnet once per bid (idempotent on docs_summarized=1). NO automatic
+  re-summarize — EXTENDED only updates flag + closing date; re-running the module is a no-op.
+- CLOSED is terminal — NEVER fetch documents, run local extraction, or summarize a CLOSED
+  bid (gate skips it; a later "Fetch more" click on a CLOSED bid does nothing).
+- A failed/partial nightly cycle raises a STICKY `system_alerts` row (cleared only by a human
+  in the web app, never auto-cleared by a later success). No email anywhere.
+- ONE ANTHROPIC_API_KEY, from env only (orchestrator injects it for all adapters). Do NOT
+  create per-tool .env files.
+- Build slices S0..S6 IN ORDER. Do not start a slice until the prior DONE-WHEN passes.
+- Always expose a dry-run/explain view (input fields -> prompt -> parsed result).
+- Runtime state lives OUTSIDE the source tree, under $BIDPLUS_RUNTIME_DIR (venv, parent.db,
+  .env, and per-portal <portal>/ dirs holding each tool's bids.db, the bids/<source_pk>/
+  document staging, exports, .browser_profile). On the Mac this MUST be outside iCloud
+  (~/Documents, ~/Desktop); on the Ubuntu deploy box there is no iCloud so any path outside
+  the repo is fine. This INCLUDES the tool bids.db files — make each tool config.py
+  env-overridable so its data resolves under $BIDPLUS_RUNTIME_DIR/<portal>/ (falls back to
+  in-tree default only when unset). A live SQLite syncing mid-write WILL corrupt it.
+- config.py must FAIL LOUD if $BIDPLUS_RUNTIME_DIR is inside ~/Documents, ~/Desktop, or
+  Mobile Documents (Mac guard; no-op on Ubuntu). No writable path is hardcoded in source.
+- Git root is BidAnalysisPortal/ (bidplus/ + the three tool folders). .gitignore excludes
+  *.db, *-wal, *-shm, exports/, downloads/, .browser_profile/, .env, *.nosync. (No bids/
+  entry: the bids/<pk>/ staging lives under $BIDPLUS_RUNTIME_DIR, outside the tree.)
+
+## Unified rubric + summary
+All portals use the one detailed `capability_reference.md` for Pass 1. ISRO re-scores
+under it; its Pass-1 parser must accept the full output shape (MATCHING TECH,
+RECOMMENDATION). The Sonnet summary uses a SEPARATE structured-extraction prompt (the
+"second rubric") — see summary_json shape in the plan.
+
+## Overnight budget
+The cycle starts ~3am and must finish by ~9am. Log per-stage durations to scrape_runs.
+Expected >=4 (docs-bearing) volume is tens/night (~30-40), not hundreds.
+
+## Pins
+Python 3.12 · one venv · Pass-1 model claude-haiku-4-5-20251001 ·
+Summary model claude-sonnet-4-6 (output Pydantic-validated) · SQLite WAL · systemd timer.
+
+## How to run a tool manually
+Each tool still runs standalone from its own folder (see its README). FIRST export
+BIDPLUS_RUNTIME_DIR so its bids.db lands outside iCloud; otherwise it falls back to the
+in-tree default (which is iCloud-synced — avoid). The next merge reconciles new rows.
+
+## Environments
+Develop on the Mac: git root ~/Documents/Projects/AI/BidAnalysisPortal/ (new code under
+bidplus/), iCloud-backed. Deploy on the Ubuntu server congo@tecleverbidplus: git pull to
+/home/congo/BidAnalysisPortal/. Set BIDPLUS_RUNTIME_DIR per machine: Mac ~/bidplus-runtime,
+Ubuntu /home/congo/bidplus-runtime. Runtime structure is identical on both; only the root
+differs. Deploy-box provisioning, the git-pull redeploy, and the SSH verification procedure
+are specified standalone in `DEPLOY_WORKFLOW.md` — the deploy box is a deploy-phase
+dependency, not needed to build/validate S0–S6 on the Mac.
+
+## Validation
+Per-slice MANUAL validation: run it, eyeball the dry-run view, and for the merge,
+compare the tool's bids.db against the parent table. Automated tests are deferred.
+
+## Reference docs
+- `MASTER_ACTION_PLAN_V3.md` — the full design + the S0–S6 slices with DONE-WHEN gates.
+  Consult the relevant slice before building it. This AGENTS.md is the always-on rules
+  digest; the plan is the per-slice detail.
+- `DEPLOY_WORKFLOW.md` — deploy-box provisioning + redeploy + verification (deploy phase).

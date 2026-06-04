@@ -1,0 +1,4656 @@
+API - https://eproc.isro.gov.in/home.html
+Response
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>E-PROCUREMENT PORTAL</title>
+<!-- Tell the browser to be responsive to screen width -->
+<meta
+	content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+	name="viewport">
+<!-- Bootstrap 5.3.5 -->
+<link rel="stylesheet"
+	href="/static/bootstrap-5.3.5-dist/css/bootstrap.min.css"></link>
+<link rel="stylesheet"
+	href="/static/jquery-ui-1.14.1/jquery-ui.min.css"></link>
+<link rel="stylesheet"
+	href="/static/AdminLTE/plugins/datatables-bs4/css/dataTables.bootstrap4.css"></link>
+<link rel="stylesheet"
+	  href="/static/AdminLTE/plugins/fontawesome-free/css/all.min.css"></link>
+<link rel="stylesheet"
+	href="/static/AdminLTE/bootstrap/css/ionicons.min.css"></link>
+<link rel="stylesheet"
+	href="/static/AdminLTE/css/adminlte.min.css"></link>
+<script src="/static/js/jquery-3.7.1.min.js"></script>
+<script
+	src="/static/jquery-ui-1.14.1/jquery-ui.min.js"></script>
+<script
+	src="/static/bootstrap-5.3.5-dist/js/bootstrap.min.js"></script>
+<script
+	src="/static/bootstrap-5.3.5-dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/AdminLTE/js/adminlte.min.js"></script>
+
+<style>
+.equal {
+	display: flex;
+	display: -webkit-flex;
+	flex-wrap: wrap;
+}
+
+.eprocheader {
+	background-color: #043458;
+	background-image: url("static/images/star1.gif");
+	color: #FFFFFE;
+}
+
+.instn {
+	
+}
+</style>
+</head>
+<body class="hold-transition" onload="getServerTime();">
+	<div class="container-fluid">
+		<div class="row eprocheader">
+			<div class="col-md-2 ">
+				<div class="media">
+					<img alt="" src="/static/images/ashok.png"
+						width="40px" height="60px" class="float-left">
+				</div>
+			</div>
+			<div class="col-sm-6 text-center ">
+				<br>
+				<h4>
+					Department of Space <br>Indian Space Research Organisation<br>
+					E-PROCUREMENT PORTAL
+				</h4>
+			</div>
+			<div class="col-sm-4">
+				<div class="media" style="float: right; margin: 15px 0 0 0;">
+					<img alt="" src="/static/images/isro.png"
+						style="float: right;">
+					<div class="media" style="float: right; margin: 5px 15px 5px 0;">
+					</div>
+				</div>
+			</div>
+		</div>
+		<div class="row align-items-center mb-3"
+			style="background-color: #205d8c; color: #FFFFFE;">
+			<div class="col-sm-8 mt-2">
+				<h4>
+					<a class="text-white" href="https://www.isro.gov.in">ISRO HOME</a>
+				</h4>
+			</div>
+			<div class="col-sm-4 d-flex justify-content-end align-items-center">
+				<h4 class="mb-0">
+					<a href="#" class="serverTimeDisplay text-white"></a> IST
+				</h4>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-md-9">
+				<div class="card  mb-3">
+					<div class="card-header">
+						<div class="card-title">
+							<h4>Welcome to ISRO e-Procurement System</h4>
+						</div>
+					</div>
+				</div>
+				<div class="card card-lightblue">
+					<div class="card-header">
+
+						<div class="row">
+							<div class="col-md-8">
+								<h4>Public Tenders</h4>
+							</div>
+						</div>
+					</div>
+					<div class="card-body">
+						<table id="tenderListTable"
+							class="table table-striped table-hover">
+							<thead class="thead-light">
+								<tr>
+									<th>Tender No</th>
+									<th>Centre Name</th>
+									<th>Tender Description</th>
+									<th>Bid Closing Date (IST)</th>
+									<th>Bid Opening Date (IST)</th>
+									<th>Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								
+									<tr>
+										<td>IU202600196501</td>
+										<td>IISU</td>
+										<td>ID65 x OD100 mm precision angular contact ball bearings as per specification document BSPEC-65/100-2025</td>
+										<td>12-June-2026 14:20</td>
+										<td>12-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IU202600196501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IU202600196501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LB202600010801</td>
+										<td>LPSC</td>
+										<td>CCTV Surveillance system for MPTTF, Tumakuru</td>
+										<td>25-June-2026 14:00</td>
+										<td>25-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LB202600010801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LB202600010801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>NR202600015001</td>
+										<td>NRSC</td>
+										<td>PCB Design & Fabrication, Soldering & Assembly Rate contract work order</td>
+										<td>19-June-2026 15:30</td>
+										<td>19-June-2026 15:40</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=NR202600015001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=NR202600015001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600090601</td>
+										<td>SAC</td>
+										<td>Electronic Components for Automation</td>
+										<td>30-June-2026 11:00</td>
+										<td>30-June-2026 11:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600090601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600090601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600030701</td>
+										<td>URSC</td>
+										<td>BLDC Motor (50, 25 & 300 mNm) with redundant winding & redundant Hall sensors</td>
+										<td>17-June-2026 14:00</td>
+										<td>17-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600030701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600030701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LP202600045501</td>
+										<td>LPSC</td>
+										<td>SUPPLY AND INSTALLATION OF LAPTOPS </td>
+										<td>09-June-2026 14:30</td>
+										<td>09-June-2026 14:35</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LP202600045501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LP202600045501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202500163801</td>
+										<td>URSC</td>
+										<td>10W Ka-band Solid State Power Amplifiers (SSPAs)</td>
+										<td>24-June-2026 14:00</td>
+										<td>24-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202500163801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202500163801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>HS202500019401</td>
+										<td>HSFC</td>
+										<td>Human Rated Vibration Shaker </td>
+										<td>07-July-2026 14:00</td>
+										<td>07-July-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=HS202500019401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=HS202500019401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202600183101</td>
+										<td>VSSC</td>
+										<td>THYRATRON - 5949A  </td>
+										<td>25-June-2026 15:30</td>
+										<td>25-June-2026 15:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202600183101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202600183101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500214001</td>
+										<td>SAC</td>
+										<td>Space Grade CWR Series Capacitors</td>
+										<td>23-June-2026 16:30</td>
+										<td>24-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500214001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500214001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600067501</td>
+										<td>SAC</td>
+										<td>Need-based supply of SS Screens</td>
+										<td>23-June-2026 16:30</td>
+										<td>24-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600067501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600067501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600065201</td>
+										<td>SAC</td>
+										<td>Spares for Vibration shaker systems</td>
+										<td>23-June-2026 16:30</td>
+										<td>24-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600065201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600065201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600080101</td>
+										<td>SAC</td>
+										<td>Single Crystal 36° Y-X Quartz wafers for SAW filter</td>
+										<td>23-June-2026 16:30</td>
+										<td>24-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600080101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600080101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600016801</td>
+										<td>SAC</td>
+										<td>PXI Test System with Software and Firmware development for Digital Control and Processing Electronics (DCPE)</td>
+										<td>29-June-2026 15:00</td>
+										<td>29-June-2026 15:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600016801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600016801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202600018101</td>
+										<td>LEOS</td>
+										<td>Supply of lightweighted, figured and coated mirror for space application</td>
+										<td>27-July-2026 17:00</td>
+										<td>28-July-2026 10:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202600018101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202600018101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600035801</td>
+										<td>SDSC SHA</td>
+										<td>Supply of High Pressure and Low pressure (400 bar & 100 bar) Smooth Bore PTFE Flexible Hoses</td>
+										<td>16-June-2026 14:00</td>
+										<td>16-June-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600035801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600035801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600021101</td>
+										<td>URSC</td>
+										<td>Fabrication, Testing and Screening of  316SS Hybrid Microcircuits</td>
+										<td>16-June-2026 14:00</td>
+										<td>16-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600021101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600021101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>HS202500021901</td>
+										<td>HSFC</td>
+										<td>Procurement of Thermal Vacuum Chambers </td>
+										<td>29-June-2026 14:00</td>
+										<td>29-June-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=HS202500021901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=HS202500021901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600010801</td>
+										<td>SAC</td>
+										<td>Ti6Al4V Grade 5 screw, washer, spring washer and nut</td>
+										<td>25-June-2026 14:00</td>
+										<td>25-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600010801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600010801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600072201</td>
+										<td>SDSC SHA</td>
+										<td>Fabrication, Painting and Supply of SS1 Segment Horizontal Handling Tackle and SS1 Nozzle Tilting & Handling systems.</td>
+										<td>23-June-2026 16:00</td>
+										<td>24-June-2026 11:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600072201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600072201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600118301</td>
+										<td>SAC</td>
+										<td>Varactor Diodes</td>
+										<td>25-June-2026 14:00</td>
+										<td>25-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600118301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600118301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600115101</td>
+										<td>SAC</td>
+										<td>X-Band High Power RF Circulator</td>
+										<td>24-June-2026 14:00</td>
+										<td>24-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600115101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600115101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IU202600141501</td>
+										<td>IISU</td>
+										<td>POWER OPAMP</td>
+										<td>25-June-2026 14:25</td>
+										<td>25-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IU202600141501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IU202600141501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600060501</td>
+										<td>SDSC SHA</td>
+										<td>REFURBISHMENT OF CLADDING SHEETS AND CHEQUERED PLATES AT UT/SLP</td>
+										<td>25-June-2026 16:35</td>
+										<td>25-June-2026 16:40</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600060501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600060501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600076501</td>
+										<td>SDSC SHA</td>
+										<td>Supply of Peristaltic Pump</td>
+										<td>15-June-2026 17:30</td>
+										<td>16-June-2026 10:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600076501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600076501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600067701</td>
+										<td>SAC</td>
+										<td>Need based supply of SS Stencils</td>
+										<td>19-June-2026 16:30</td>
+										<td>22-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600067701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600067701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600056401</td>
+										<td>SAC</td>
+										<td>TOOLS STORAGE TROLLEY</td>
+										<td>19-June-2026 15:19</td>
+										<td>19-June-2026 16:20</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600056401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600056401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600033101</td>
+										<td>URSC</td>
+										<td>BONDING AND TESTING OF STRAIN GAUGES ON LOAD CAPS</td>
+										<td>15-June-2026 14:30</td>
+										<td>15-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600033101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600033101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202600015801</td>
+										<td>ISTRAC</td>
+										<td>SUPPLY, INSTALLATION AND COMMISSIONING of 4-AXES CNC HORIZONTAL TURNMILL CENTER  ALONG WITH ACCESSORIES, ATTACHMENTS AS DETAILED IN THE ANNEXURE 1</td>
+										<td>22-June-2026 14:00</td>
+										<td>22-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202600015801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202600015801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202600010301</td>
+										<td>ISTRAC</td>
+										<td>PORTBLAIR COMMUNICATION LINKS</td>
+										<td>19-June-2026 14:00</td>
+										<td>19-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202600010301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202600010301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600079101</td>
+										<td>SDSC SHA</td>
+										<td>supply of oil free compressors for Breathing Air Application</td>
+										<td>11-June-2026 16:30</td>
+										<td>12-June-2026 11:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600079101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600079101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600061401</td>
+										<td>SAC</td>
+										<td>2.4MM TVAC COMPATIBLE BULKHEAD ADAPTER</td>
+										<td>18-June-2026 16:45</td>
+										<td>19-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600061401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600061401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600060801</td>
+										<td>SAC</td>
+										<td>Microwave Coaxial Attenuators 20W & 5W CW rating</td>
+										<td>18-June-2026 15:30</td>
+										<td>19-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600060801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600060801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202600017101</td>
+										<td>LEOS</td>
+										<td>14 pin high power fiber coupled seed module</td>
+										<td>10-June-2026 17:00</td>
+										<td>11-June-2026 10:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202600017101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202600017101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600018101</td>
+										<td>SDSC SHA</td>
+										<td>BODY FABRICATION FOR MULTIPURPOSE FIRE TENDER</td>
+										<td>11-June-2026 16:00</td>
+										<td>11-June-2026 16:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600018101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600018101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202600002401</td>
+										<td>ISTRAC</td>
+										<td>X-band CRYO LNA system</td>
+										<td>22-June-2026 14:00</td>
+										<td>22-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202600002401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202600002401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600049001</td>
+										<td>URSC</td>
+										<td>Power cables for 29T Shaker System</td>
+										<td>11-June-2026 14:00</td>
+										<td>11-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600049001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600049001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600069601</td>
+										<td>SAC</td>
+										<td>Rate Contract for Curing of Composites </td>
+										<td>12-June-2026 10:33</td>
+										<td>12-June-2026 11:33</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600069601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600069601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600083201</td>
+										<td>SAC</td>
+										<td>Beacon Tester for 406 MHz and 121.5 MHz for COSPAS-SARSAT system</td>
+										<td>10-June-2026 14:00</td>
+										<td>10-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600083201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600083201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600047501</td>
+										<td>SAC</td>
+										<td>S band Power Amplifier</td>
+										<td>19-June-2026 10:40</td>
+										<td>19-June-2026 11:40</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600047501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600047501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600074001</td>
+										<td>SAC</td>
+										<td>Single Crystal 42.75° Y-X Quartz wafers for SAW filter</td>
+										<td>18-June-2026 15:21</td>
+										<td>19-June-2026 11:21</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600074001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600074001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202600068701</td>
+										<td>VSSC</td>
+										<td>Fabrication, Assembly & Supply of Composite Thrust Frame </td>
+										<td>30-June-2026 14:00</td>
+										<td>30-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202600068701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202600068701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202600128701</td>
+										<td>VSSC</td>
+										<td>SiC Infiltration by CVI process</td>
+										<td>30-June-2026 14:00</td>
+										<td>30-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202600128701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202600128701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202500745201</td>
+										<td>VSSC</td>
+										<td>Fabrication and Assembly of Equipment Bay Shroud </td>
+										<td>30-June-2026 14:00</td>
+										<td>30-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202500745201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202500745201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202600175401</td>
+										<td>VSSC</td>
+										<td>Fabrication and supply of PSO-XL Nozzle Assembly</td>
+										<td>30-June-2026 14:00</td>
+										<td>30-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202600175401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202600175401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500286001</td>
+										<td>SAC</td>
+										<td>Tuning Element Hirel</td>
+										<td>18-June-2026 16:30</td>
+										<td>19-June-2026 11:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500286001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500286001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500257201</td>
+										<td>SAC</td>
+										<td>IRIMS FILTER ASSEMBLIES FABRICATION, ASSEMBLY AND THERMAL TESTING </td>
+										<td>17-June-2026 15:38</td>
+										<td>18-June-2026 16:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500257201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500257201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500292301</td>
+										<td>SAC</td>
+										<td>Space qualified PCMU and EPC</td>
+										<td>17-June-2026 15:30</td>
+										<td>18-June-2026 15:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500292301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500292301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600039601</td>
+										<td>SAC</td>
+										<td>RF Adapter 2.4mm Female to 2.4mm Female</td>
+										<td>17-June-2026 15:30</td>
+										<td>18-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600039601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600039601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600109201</td>
+										<td>SAC</td>
+										<td>SMPM Connectors for Ka-band applications</td>
+										<td>18-June-2026 11:00</td>
+										<td>18-June-2026 11:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600109201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600109201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LB202600017801</td>
+										<td>LPSC</td>
+										<td>SUPPLY, INSTALLATION AND COMMISSIONING OF POWER HACK SAW FOR CUTTING</td>
+										<td>03-June-2026 14:00</td>
+										<td>03-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LB202600017801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LB202600017801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IU202600080301</td>
+										<td>IISU</td>
+										<td>Motion Capture System</td>
+										<td>18-June-2026 14:00</td>
+										<td>18-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IU202600080301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IU202600080301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LP202600029201</td>
+										<td>LPSC</td>
+										<td>Supply and installation of High speed Intensifier unit with relay optics and accessories</td>
+										<td>15-June-2026 12:00</td>
+										<td>15-June-2026 12:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LP202600029201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LP202600029201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500148801</td>
+										<td>SAC</td>
+										<td>Space grade Ku band Power Amplifier MMIC</td>
+										<td>17-June-2026 15:30</td>
+										<td>18-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500148801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500148801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LP202600052901</td>
+										<td>LPSC</td>
+										<td>Non-Comprehensive AMC including servicing and calibration of Weighing Machines.</td>
+										<td>01-June-2026 14:30</td>
+										<td>01-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LP202600052901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LP202600052901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600104301</td>
+										<td>SAC</td>
+										<td>INFRARED EMITTERS (4 TYPES)</td>
+										<td>16-June-2026 15:00</td>
+										<td>16-June-2026 15:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600104301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600104301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600080001</td>
+										<td>SAC</td>
+										<td>HERMETIC SMA (FEMALE-FEMALE) BULKHEAD ADAPTOR </td>
+										<td>16-June-2026 14:00</td>
+										<td>16-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600080001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600080001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600012101</td>
+										<td>SAC</td>
+										<td>Waveguide Adapters</td>
+										<td>18-June-2026 14:00</td>
+										<td>18-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600012101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600012101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500173701</td>
+										<td>SAC</td>
+										<td>Waveguide Calkit WR-90</td>
+										<td>18-June-2026 14:00</td>
+										<td>18-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500173701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500173701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202500173701">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LP202600043401</td>
+										<td>LPSC</td>
+										<td>RF coaxial DIN 7-16 vacuum feedthrough</td>
+										<td>01-June-2026 12:00</td>
+										<td>01-June-2026 12:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LP202600043401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LP202600043401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600075801</td>
+										<td>SAC</td>
+										<td>Waveguide Calibration kit WR-28</td>
+										<td>17-June-2026 14:00</td>
+										<td>17-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600075801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600075801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202600075801">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600108201</td>
+										<td>SAC</td>
+										<td>AMC FOR CLEANING & OILING OF ICATR REFLECTOR.</td>
+										<td>10-June-2026 11:00</td>
+										<td>10-June-2026 11:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600108201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600108201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500160801</td>
+										<td>SAC</td>
+										<td>USB Power Sensor</td>
+										<td>10-June-2026 11:00</td>
+										<td>10-June-2026 11:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500160801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500160801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202500117501</td>
+										<td>SDSC SHA</td>
+										<td>Supply of Seamless Stainless Pipes to SDSC SHAR as per the specifications, terms and conditions given in the tender document</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202500117501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202500117501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500161901</td>
+										<td>SAC</td>
+										<td>Broadband Amplifier for Test and Measurement</td>
+										<td>16-June-2026 14:00</td>
+										<td>16-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500161901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500161901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500263201</td>
+										<td>SAC</td>
+										<td>Space Grade CKS Ceramic Capacitors</td>
+										<td>08-June-2026 13:00</td>
+										<td>08-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500263201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500263201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500263301</td>
+										<td>SAC</td>
+										<td>Space Grade CWR29 Tantalum Capacitor</td>
+										<td>08-June-2026 13:00</td>
+										<td>08-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500263301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500263301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500272501</td>
+										<td>SAC</td>
+										<td>Mil grade 100 Pin MicroD connectors</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500272501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500272501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500272001</td>
+										<td>SAC</td>
+										<td>Space Grade TES Tantalum and Poly Tantalum Capacitor</td>
+										<td>08-June-2026 13:00</td>
+										<td>08-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500272001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500272001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600100101</td>
+										<td>SAC</td>
+										<td>RADIOMETRICALLY STABILISED SOURCE-QTH (7 Types)</td>
+										<td>15-June-2026 12:00</td>
+										<td>15-June-2026 12:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600100101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600100101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600070401</td>
+										<td>SDSC SHA</td>
+										<td>pH sensor interfacing cables</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600070401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600070401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600022601</td>
+										<td>SAC</td>
+										<td>Empanelment of new vendors for Rate Contract of HI-REL PCB wiring and assembly for onboard projects</td>
+										<td>15-June-2026 15:30</td>
+										<td>16-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600022601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600022601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IU202600127501</td>
+										<td>IISU</td>
+										<td>SUPPLY,DEMONSTRATION & TRAINING OF CAPACITIVE BASED NON-CONTACT DISPLACEMENT TRANSDUCER WITH CONTROLLER AND ACCESSORIES</td>
+										<td>11-June-2026 14:00</td>
+										<td>11-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IU202600127501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IU202600127501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202500169601</td>
+										<td>URSC</td>
+										<td>Rigid Optical Solar Reflector</td>
+										<td>05-June-2026 15:00</td>
+										<td>05-June-2026 15:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202500169601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202500169601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202600017201</td>
+										<td>LEOS</td>
+										<td>NON-COMPREHENSIVE AMSC FOR TEMPERATURE TEST CHAMBERS, HUMIDITY CHAMBERS AND  THERMAL SHOCK CHAMBERS</td>
+										<td>03-June-2026 16:00</td>
+										<td>04-June-2026 11:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202600017201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202600017201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600057301</td>
+										<td>URSC</td>
+										<td>Broadband Collimated Light Source</td>
+										<td>03-June-2026 16:00</td>
+										<td>03-June-2026 16:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600057301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600057301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600038101</td>
+										<td>SDSC SHA</td>
+										<td>Refilling of Clean Agent Gas Cylinders</td>
+										<td>05-June-2026 14:00</td>
+										<td>05-June-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600038101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600038101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600010601</td>
+										<td>SAC</td>
+										<td>Development and Delivery of space qualified DC-DC Converter HMC for Digital Applications</td>
+										<td>11-June-2026 16:00</td>
+										<td>12-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600010601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600010601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202500062001</td>
+										<td>LEOS</td>
+										<td>Standard Magnetometer System</td>
+										<td>04-June-2026 17:00</td>
+										<td>05-June-2026 10:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202500062001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202500062001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600099801</td>
+										<td>SAC</td>
+										<td>RF components</td>
+										<td>11-June-2026 14:00</td>
+										<td>11-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600099801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600099801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600104801</td>
+										<td>SAC</td>
+										<td>2 Way Coaxial RF Power Divider</td>
+										<td>11-June-2026 14:00</td>
+										<td>11-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600104801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600104801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202600141301</td>
+										<td>VSSC</td>
+										<td>Fabrication and supply of S200 Nozzle FSTP hardware</td>
+										<td>09-June-2026 14:00</td>
+										<td>09-June-2026 14:01</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202600141301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202600141301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600041601</td>
+										<td>SAC</td>
+										<td>RF Saver 2.4mm Male to 2.4mm Female</td>
+										<td>11-June-2026 15:34</td>
+										<td>12-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600041601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600041601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600046001</td>
+										<td>URSC</td>
+										<td>ESD TABLE FOR CLEAN ROOM</td>
+										<td>04-June-2026 14:00</td>
+										<td>04-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600046001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600046001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600062001</td>
+										<td>SAC</td>
+										<td>RF Barrel 2.4mm Male to 2.4mm Male</td>
+										<td>11-June-2026 15:40</td>
+										<td>12-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600062001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600062001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600011601</td>
+										<td>SAC</td>
+										<td>SUB HARMONIC MIXER</td>
+										<td>11-June-2026 14:04</td>
+										<td>11-June-2026 15:04</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600011601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600011601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600048401</td>
+										<td>SAC</td>
+										<td>Fabrication, Assembly and testing of Flight Model Ka-band Central elecronics</td>
+										<td>15-June-2026 14:00</td>
+										<td>15-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600048401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600048401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500297601</td>
+										<td>SAC</td>
+										<td>RF Coaxial Adapters for Ground use</td>
+										<td>11-June-2026 15:30</td>
+										<td>12-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500297601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500297601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500272301</td>
+										<td>SAC</td>
+										<td>Space Qualified WR75 DPDT Switches</td>
+										<td>12-June-2026 14:00</td>
+										<td>12-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500272301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500272301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600058201</td>
+										<td>SDSC SHA</td>
+										<td>Supply of Pneumatic Test Console (PTC) for TCX-2</td>
+										<td>04-June-2026 16:30</td>
+										<td>05-June-2026 10:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600058201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600058201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600047001</td>
+										<td>URSC</td>
+										<td>IEPE Type Shock Accelerometers</td>
+										<td>03-June-2026 14:00</td>
+										<td>03-June-2026 17:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600047001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600047001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600047801</td>
+										<td>SAC</td>
+										<td>Development of DVM of S Band Transmit Receive (TR) Beamformer Module </td>
+										<td>12-June-2026 10:00</td>
+										<td>12-June-2026 11:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600047801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600047801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202600047801">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500219501</td>
+										<td>SAC</td>
+										<td>DWDM based Quad Channel Integrated Analog Photoreceiver  </td>
+										<td>02-June-2026 15:00</td>
+										<td>02-June-2026 16:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500219501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500219501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202600085801</td>
+										<td>VSSC</td>
+										<td>Roller screws for launch vehicle actuation system</td>
+										<td>10-June-2026 14:00</td>
+										<td>10-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202600085801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202600085801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202600022201</td>
+										<td>LEOS</td>
+										<td>Fiber Optic Collimator Automated Test and Alignment Facility</td>
+										<td>01-June-2026 17:00</td>
+										<td>02-June-2026 10:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202600022201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202600022201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600043201</td>
+										<td>URSC</td>
+										<td>Duplex Insulated T-Type Thermocouple cable</td>
+										<td>03-June-2026 14:30</td>
+										<td>03-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600043201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600043201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202500165901</td>
+										<td>URSC</td>
+										<td>MLCC Capcitors</td>
+										<td>10-June-2026 14:00</td>
+										<td>10-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202500165901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202500165901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600097101</td>
+										<td>SAC</td>
+										<td>Customized Power Distribution Card</td>
+										<td>01-June-2026 12:00</td>
+										<td>01-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600097101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600097101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600041601</td>
+										<td>URSC</td>
+										<td>Non-Comprehensive AMC for CCTV system of AIT-1 and AIT-2 cleanroom, ISITE</td>
+										<td>03-June-2026 14:30</td>
+										<td>03-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600041601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600041601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600042601</td>
+										<td>URSC</td>
+										<td>PORTABLE AIRBORNE PARTICLE COUNTER FOR CLEANROOMS (WITH AMC)</td>
+										<td>02-June-2026 14:30</td>
+										<td>02-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600042601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600042601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600037901</td>
+										<td>URSC</td>
+										<td>3-Phase 0.8 Nm Actuator with redundant winding and hall sensors</td>
+										<td>02-June-2026 14:30</td>
+										<td>02-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600037901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600037901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600069501</td>
+										<td>SAC</td>
+										<td>Design, Development and Delivery of Space-Qualified RF Power Dividers</td>
+										<td>15-June-2026 14:00</td>
+										<td>15-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600069501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600069501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600059001</td>
+										<td>SDSC SHA</td>
+										<td>Fabrication works of SS, MS & Cu-Ni </td>
+										<td>10-June-2026 16:00</td>
+										<td>11-June-2026 16:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600059001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600059001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600027201</td>
+										<td>SAC</td>
+										<td>CT0404ALN1WB1 : Upto Ka Band(42 GHz) wire bondable 50 Ohm Termination</td>
+										<td>09-June-2026 14:00</td>
+										<td>09-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600027201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600027201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600039801</td>
+										<td>SAC</td>
+										<td>Isolator: Ka Band (37GHz-38.6GHz) Microstrip interface </td>
+										<td>09-June-2026 14:00</td>
+										<td>09-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600039801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600039801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600049501</td>
+										<td>URSC</td>
+										<td>SGIHLP Series or Equivalent Inductors</td>
+										<td>03-June-2026 14:30</td>
+										<td>03-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600049501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600049501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500260301</td>
+										<td>SAC</td>
+										<td>Space Grade BME Ceramic Capacitors</td>
+										<td>02-June-2026 14:00</td>
+										<td>02-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500260301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500260301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500263501</td>
+										<td>SAC</td>
+										<td>Space grade MIL-STD-1553 Transceiver/Transformer</td>
+										<td>01-June-2026 12:00</td>
+										<td>01-June-2026 13:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500263501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500263501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500162001</td>
+										<td>SAC</td>
+										<td>Programmable Pulsed DC Supply</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500162001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500162001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600066201</td>
+										<td>SAC</td>
+										<td>Cable Ties Non-Releasable </td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600066201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600066201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600048901</td>
+										<td>URSC</td>
+										<td>TCXO -20.000 MHz</td>
+										<td>05-June-2026 14:00</td>
+										<td>05-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600048901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600048901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600022901</td>
+										<td>URSC</td>
+										<td>MOSFET Dice - 2N7546</td>
+										<td>05-June-2026 14:00</td>
+										<td>05-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600022901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600022901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600089701</td>
+										<td>SAC</td>
+										<td>Space Grade Low-Dropout Voltage Regulator </td>
+										<td>05-June-2026 14:00</td>
+										<td>05-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600089701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600089701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600051801</td>
+										<td>SDSC SHA</td>
+										<td>Procurement, Manufacture, Supply, Erection, Testing & Commissioning of SS2 & SS3 Moduling Towers for UAF Buildings of SLC Project </td>
+										<td>01-June-2026 14:30</td>
+										<td>01-June-2026 16:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600051801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600051801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>MC202600001301</td>
+										<td>MCF</td>
+										<td>IF Switch Matrix (32x32)</td>
+										<td>03-June-2026 16:30</td>
+										<td>04-June-2026 10:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=MC202600001301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=MC202600001301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600079501</td>
+										<td>SAC</td>
+										<td>Workstation GPU card</td>
+										<td>05-June-2026 15:00</td>
+										<td>05-June-2026 15:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600079501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600079501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600040901</td>
+										<td>SDSC SHA</td>
+										<td>Fabrication, Supply, Erection and Commissioning of Assembly Tower and Tilting Fixtures at SHSB-II</td>
+										<td>29-May-2026 14:30</td>
+										<td>29-May-2026 16:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600040901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600040901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202600011701</td>
+										<td>ISTRAC</td>
+										<td>Integrated Cryo-Receiver Sub-array Development</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202600011701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202600011701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202500026801</td>
+										<td>ISTRAC</td>
+										<td>Ka-Band ultra cryogenic cooled Low Noise Amplifier</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202500026801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202500026801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202500686501</td>
+										<td>VSSC</td>
+										<td>Development, Qualification and Supply of hermetically sealed feedthrough electrical connectors for Cryogenic application in Launch Vehicle</td>
+										<td>30-June-2026 14:30</td>
+										<td>30-June-2026 15:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202500686501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202500686501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=VS202500686501">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600019001</td>
+										<td>SAC</td>
+										<td>Space Grade CDR12 Capacitors </td>
+										<td>05-June-2026 14:00</td>
+										<td>05-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600019001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600019001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202500153901</td>
+										<td>SDSC SHA</td>
+										<td>CONSTRUCTION SUPERVISION AND INSPECTION SERVICES for MAJOR CIVIL WORKS</td>
+										<td>11-June-2026 23:59</td>
+										<td>12-June-2026 09:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202500153901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202500153901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SH202500153901">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600067001</td>
+										<td>SDSC SHA</td>
+										<td>Supply, Installation and Commissioning of Sensor Simulator</td>
+										<td>01-June-2026 16:00</td>
+										<td>02-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600067001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600067001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600048501</td>
+										<td>URSC</td>
+										<td>INDUCTORS</td>
+										<td>03-June-2026 14:00</td>
+										<td>03-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600048501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600048501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600028501</td>
+										<td>URSC</td>
+										<td>Ka band Connector & Glass bead</td>
+										<td>03-June-2026 14:00</td>
+										<td>03-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600028501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600028501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IU202600160801</td>
+										<td>IISU</td>
+										<td>Procurement of Radhard Components, fabrication and screening of Radhard HMC DC-DC Converters - Type-1 and Type-2 variants</td>
+										<td>04-June-2026 14:00</td>
+										<td>04-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IU202600160801"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IU202600160801">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600048701</td>
+										<td>SAC</td>
+										<td>Fabrication, Assembly and testing of Ka Band Transmit Receive Modules - Flight Model (FM) Units</td>
+										<td>05-June-2026 14:00</td>
+										<td>05-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600048701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600048701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600078601</td>
+										<td>SAC</td>
+										<td> USRP SDR Kit</td>
+										<td>03-June-2026 14:00</td>
+										<td>03-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600078601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600078601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600088301</td>
+										<td>SAC</td>
+										<td>Cable Tie Mounts</td>
+										<td>02-June-2026 14:00</td>
+										<td>02-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600088301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600088301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>MC202600003501</td>
+										<td>MCF</td>
+										<td>SITC for 3.8mtr Ext-  C-band antenna terminal for VSAT connectivity at MCF Hassan</td>
+										<td>02-June-2026 16:30</td>
+										<td>08-June-2026 10:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=MC202600003501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=MC202600003501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600021301</td>
+										<td>URSC</td>
+										<td>THIN FILM RESISTORS-2</td>
+										<td>01-June-2026 14:00</td>
+										<td>01-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600021301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600021301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202600040001</td>
+										<td>URSC</td>
+										<td>PRT 1K?</td>
+										<td>29-May-2026 14:00</td>
+										<td>29-May-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202600040001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202600040001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202600108001</td>
+										<td>VSSC</td>
+										<td>IN-CIRCUIT FUNCTION TESTER</td>
+										<td>07-June-2026 14:00</td>
+										<td>07-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202600108001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202600108001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600094401</td>
+										<td>SAC</td>
+										<td>Precision Linear Motion components</td>
+										<td>29-May-2026 14:00</td>
+										<td>29-May-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600094401"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600094401">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202600012901</td>
+										<td>LEOS</td>
+										<td>Test-Tower Fold Mirror With Mount</td>
+										<td>04-June-2026 17:00</td>
+										<td>05-June-2026 10:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202600012901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202600012901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=LE202600012901">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600055701</td>
+										<td>SAC</td>
+										<td>Design, Development and Delivery of Space-Qualified Hybrid Switch Assembly (HSA)</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600055701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600055701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202600055701">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>HS202600001301</td>
+										<td>HSFC</td>
+										<td>Aluminium AA2014 & AA6061 plates for ground use</td>
+										<td>29-May-2026 14:00</td>
+										<td>29-May-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=HS202600001301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=HS202600001301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>HS202500019301</td>
+										<td>HSFC</td>
+										<td>Gravity Offset System </td>
+										<td>30-May-2026 14:00</td>
+										<td>30-May-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=HS202500019301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=HS202500019301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=HS202500019301">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IS202500128101</td>
+										<td>URSC</td>
+										<td>PLANAR COVER GLASS INTEGRATED BLOCKING DIODE ASSEMBLIES  AND  ALLIED MATERIALS</td>
+										<td>09-June-2026 14:30</td>
+										<td>09-June-2026 15:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IS202500128101"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IS202500128101">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=IS202500128101">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202600010201</td>
+										<td>LEOS</td>
+										<td>CGH for Aspheric Mirror Testing</td>
+										<td>08-June-2026 17:00</td>
+										<td>09-June-2026 10:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202600010201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202600010201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=LE202600010201">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>LE202600009701</td>
+										<td>LEOS</td>
+										<td>Transmission Sphere for Optical Testing</td>
+										<td>03-June-2026 17:00</td>
+										<td>04-June-2026 10:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=LE202600009701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=LE202600009701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=LE202600009701">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202600032701</td>
+										<td>SAC</td>
+										<td>SWIR IDCA</td>
+										<td>31-May-2026 17:30</td>
+										<td>01-June-2026 10:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202600032701"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202600032701">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202600032701">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202600012201</td>
+										<td>ISTRAC</td>
+										<td>GERMANY SHAR LINK</td>
+										<td>01-June-2026 14:00</td>
+										<td>01-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202600012201"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202600012201">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=TR202600012201">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202500022601</td>
+										<td>ISTRAC</td>
+										<td>IRNSS DOMESTIC COMMUNICATION NETWORK</td>
+										<td>08-June-2026 14:00</td>
+										<td>08-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202500022601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202500022601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=TR202500022601">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>VS202400665001</td>
+										<td>VSSC</td>
+										<td>Realization of Titanium alloy(Ti6Al4V) high pressure  gas bottles and COPV liners</td>
+										<td>15-June-2026 14:00</td>
+										<td>15-June-2026 14:01</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=VS202400665001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=VS202400665001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=VS202400665001">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500289001</td>
+										<td>SAC</td>
+										<td>Work Order for Silver Plating and Other Processes on Aluminium Alloy 6061</td>
+										<td>30-May-2026 17:00</td>
+										<td>01-June-2026 14:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500289001"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500289001">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202500289001">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SH202600028901</td>
+										<td>SDSC SHA</td>
+										<td>Fabrication & Supply of Catalyst Basket</td>
+										<td>29-May-2026 14:00</td>
+										<td>29-May-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SH202600028901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SH202600028901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SH202600028901">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500295601</td>
+										<td>SAC</td>
+										<td> EMCCD image sensor chip</td>
+										<td>30-June-2026 12:00</td>
+										<td>30-June-2026 12:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500295601"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500295601">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202500295601">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>IP202600013501</td>
+										<td>IPRC</td>
+										<td>Establishment of Fluids Servicing System at SIET for testing LOX-Methane Engines of NGLV</td>
+										<td>15-June-2026 14:00</td>
+										<td>15-June-2026 14:05</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=IP202600013501"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=IP202600013501">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=IP202600013501">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>TR202500038901</td>
+										<td>ISTRAC</td>
+										<td>CAMC for SANFS Solution at ISSDC</td>
+										<td>12-June-2026 14:00</td>
+										<td>12-June-2026 14:30</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=TR202500038901"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=TR202500038901">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=TR202500038901">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+									<tr>
+										<td>SA202500029301</td>
+										<td>SAC</td>
+										<td>Clock and Data Recovery  IC up to 10 Gbps</td>
+										<td>22-June-2026 11:00</td>
+										<td>22-June-2026 12:00</td>
+										<td>
+											
+											<div
+												class="d-flex flex-wrap gap-2 justify-content-left align-items-left">
+												<a class="link"
+													href="/viewDocumentPT?tenderId=SA202500029301"
+													target="_blank"> <img alt=""
+													src="/static/images/pdf.png" width="30px"
+													height="30px"> Tender Document
+												</a> <a class="link" data-bs-toggle="modal"
+													data-bs-target="#myModal"
+													title="Click here to view Tender details"
+													data-url="/homeTenderView?tenderId=SA202500029301">
+													<img alt="" src="/static/images/view.png"
+													width="30px" height="30px"> View
+												</a>
+												
+													<a class="link" data-bs-toggle="modal"
+														data-bs-target="#myModal"
+														title="Click here to view Corrigendum"
+														data-url="/viewCorrigendum?tenderId=SA202500029301">
+														<img alt="" src="/static/images/cor.png"
+														width="30px" height="30px"> Corrigendum
+													</a>
+
+												
+											</div>
+									</tr>
+								
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-3">
+				<div class="card card-lightblue mb-4">
+					<div class="card-header">
+						<h4>Vendor Login</h4>
+					</div>
+					<div class="card-body">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item"> 
+								<form name='f' action="perform_login" method='POST'
+									id="loginform" autocomplete="off">
+									<div class="input-group mb-3">
+										<div class="input-group-prepend">
+											<span class="input-group-text"> <i class="fa fa-user"></i></span>
+										</div>
+										<input type="text" name="username" class="form-control"
+											placeholder="User ID">
+									</div>
+									<div class="input-group mb-3">
+										<div class="input-group-prepend">
+											<span class="input-group-text"><i class="fa fa-lock"></i></span>
+										</div>
+										<input type="password" name="password" class="form-control"
+											placeholder="Password">
+									</div>
+									<div class="row">
+										<div class="col-sm-6">
+											<a href="/forgotPassword">Forgot
+												password?</a>
+										</div>
+										<div class="col-sm-6 ">
+											<button type="submit" name="submit"
+												class="btn bg-lightblue btn-raised btn-block btn-flat">Login</button>
+										</div>
+										<!-- /.col -->
+									</div>
+									<input type="hidden" name="_csrf" value="c098878f-9f04-4b83-8b81-3a6b20f182bf" />
+								</form></li>
+							<li class="list-group-item"><a
+								href="/vendorRegistration?vendorSecretCode=NA">New
+									Vendor Registration</a></li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="card card-lightblue mb-4">
+					<div class="card-header">
+						<h4>
+							<i class="fa fa-info-circle"></i> Vendor information
+						</h4>
+					</div>
+					<div class="card-body">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item"><span class="fa fa-list"></span>
+								<a
+								href="/static/docs/indian-vendor-registration.pdf">Vendor
+									Registration Process</a></li>
+							<li class="list-group-item"><i class="fas fa-edit"></i> <a
+								href="/static/docs/pre-requisites.pdf">Pre-requisites
+									for Vendor Registration</a></li>
+							<li class="list-group-item"><i class="fas fa-edit"></i> <a
+								href="/static/docs/Prerequisites_Bidding.pdf">Pre-requisites
+									for Bidding</a></li>
+							<li class="list-group-item"><span class="fa fa-list"></span>
+								<a
+								href="https://eproc.isro.gov.in/EProcDownloads/files/ItemEmpanelmentUserManual.pdf">How
+									to get empaneled for LT/ST </a></li>
+							<!-- 	Added on 29-09-2025	 -->
+							<li id="blinkLink" class="list-group-item"><img alt=""
+								src="/static/images/MAKEinINDIAs.png"
+								width="20px" height="20px"> <a
+								href="/static/docs/ISRO Procurement Live Register.pdf">Procurement
+									Live Register</a></li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="card card-lightblue mb-4">
+					<div class="card-header">
+						<h4>
+							<span class="fa fa-tag"></span> Useful links 
+						</h4>
+					</div>
+					<div class="card-body">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item"><i class="far fa-file-alt mr-1"></i>
+								<a
+								href="/static/docs/Procedure-vendor-profile-update.pdf">User
+									Manual</a></li>
+							<li class="list-group-item"><i class="fa fa-download"></i> <a
+								href="https://eproc.isro.gov.in/EProcDownloads/files/ISRO_EProcClient.zip">Client
+									Software</a></li>
+							<li class="list-group-item"><span class="fas fa-download"></span>
+								<a
+								href="https://eproc.isro.gov.in/EProcDownloads/files/ISRO_eProc_client_install_manual.pdf">Client
+									Installation Manual</a></li>
+							<!-- 	Added on 09-01-2026	 -->
+							<li class="list-group-item"><img alt=""
+								src="/static/images/MAKEinINDIAs.png"
+								width="20px" height="20px"> <a
+								href="https://apps.ursc.gov.in/liveregister">Procurement
+									Live Register</a></li>
+						</ul>
+					</div>
+				</div>
+				<div class="card card-lightblue mb-3">
+					<div class="card-header">
+						<h4>
+							<span class="fa fa-question-circle"></span> Helpdesk (6AM to 8PM
+							x 7days)
+						</h4>
+					</div>
+					<div class="card-body">
+						<ul class="list-group list-group-flush">
+							<li class="list-group-item"><i class="fas fa-envelope"></i>
+								<a href="">eproc@vssc.gov.in</a></li>
+							<li class="list-group-item"><i
+								class="fas fa-phone fa-flip-horizontal"></i> <a href="">+914712565454
+									/ 4162 </a></li>
+						</ul>
+					</div>
+				</div>
+			</div>
+		</div>
+		   
+	</div>
+	   
+	</div>
+	<footer class="h6 text-center text-muted">
+		<div class="d-flex justify-content-center align-items-center">
+			<img alt="STQC Logo"
+				src="/static/images/stqc_logo.png" width="40px"
+				height="40px" class="mr-2"> <span>This application is
+				certified by STQC.</span>
+		</div>
+		<div>
+			Copyright &copy; 2018-2025, Indian Space Research Organisation,
+			Department of Space. All rights reserved. <i>Version 5.0.3</i>
+		</div>
+	</footer>
+
+	<div class="modal fade" id="myModal">
+		<div class="modal-dialog modal-xl">
+			<div class="modal-content">
+				<div class="modal-body">
+					<p>Loading...</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-danger"
+						data-bs-dismiss="modal">Close</button>
+				</div>
+			</div>
+		</div>
+
+	</div>
+	</div>
+
+	<script type="text/javascript">
+		$("a[data-bs-target='#myModal']")
+				.on(
+						"click",
+						function(e) {
+							e.preventDefault(); // Prevent default anchor action
+							var url = $(this).data("url"); // Get the URL from data-url attribute
+							// Load the content dynamically
+							$("#myModal .modal-body").html("<p>Loading...</p>");
+							$("#myModal").modal("show");
+							$
+									.ajax({
+										url : url,
+										type : "GET",
+										success : function(response) {
+											$("#myModal .modal-body").html(
+													response);
+										},
+										error : function() {
+											$("#myModal .modal-body")
+													.html(
+															"<p class='text-danger'>Failed to load content.</p>");
+										}
+									});
+						});
+
+		$(document).on('hidden.bs.modal', function(e) {
+			$(e.target).removeData('bs.modal');
+		});
+	</script>
+	<script src="/static/js/common.js"></script>
+	<!-- DataTables Both are required-->
+	<script
+		src="/static/AdminLTE/plugins/datatables/jquery.dataTables.min.js"></script>
+	<script
+		src="/static/AdminLTE/plugins/datatables-bs4/js/dataTables.bootstrap4.js"></script>
+
+	<script type="text/javascript">
+		$(document).ready(function() {
+			if ($.fn.DataTable.isDataTable('#tenderListTable')) {
+				$('#tenderListTable').DataTable().destroy(); // Destroy existing instance
+			}
+			if ($.fn.DataTable) { // Check if DataTable is loaded
+				$('#tenderListTable').DataTable({
+					"pageLength" : 50,
+					"ordering" : true,
+					"responsive" : true,
+					"autoWidth" : true, // Set to false for better column sizing
+					"lengthChange" : true
+				});
+			} else {
+				console.error("DataTables library is not loaded!");
+			}
+		});
+	</script>
+
+	<script>
+		var link = document.getElementById('blinkLink');
+		setInterval(function() {
+			if (link.style.visibility === 'hidden') {
+				link.style.visibility = 'visible';
+			} else {
+				link.style.visibility = 'hidden';
+			}
+		}, 800); // Blink every 0.5 seconds
+	</script>
+
+</body>
+
+</html>
+
+Tender Document Download API https://eproc.isro.gov.in/viewDocumentPT?tenderId=IU202600196501
+View Tender API https://eproc.isro.gov.in/homeTenderView?tenderId=HS202500019301
+Response
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<title>EProcurement</title>
+<!-- Tell the browser to be responsive to screen width -->
+<meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+	name="viewport">
+<style>
+.modal-content .modal-header {
+	padding-top: 6px;
+}
+</style>
+</head>
+<body class="hold-transition skin-blue sidebar-mini">
+		<div class="card card-lightblue mb-3">
+				<div class="card-header">
+					<h4 class="card-title float-left">
+						<a class="accordion-toggle" data-toggle="collapse"
+							data-parent="#accordion"  href="#collapseFour">Tender Details </a>
+					</h4>
+				</div>
+				<div class="card-body">
+					
+
+
+
+
+<div class="form-group col-md-12">
+	<label class="col-sm-3 control-label"> Tender No : </label> <label
+		class="col-sm-6 control-label"> HSFC/Group-D/HS202500021901 </label>
+</div>
+<div class="form-group col-md-12">
+	<label class="col-sm-3 control-label"> Tender Description : </label> <label
+		class="col-sm-6 control-label"> Procurement of Thermal Vacuum Chambers  </label>
+</div>
+<div class="form-group col-md-12">
+	<label class="col-sm-3 control-label"> Indent Classification :
+	</label> <label class="col-sm-6 control-label">
+		GOODS </label>
+</div>
+
+
+
+<div class="form-group col-md-12">
+	<label class="col-sm-3 control-label"> Centre : </label> <label
+		class="col-sm-6 control-label"> HUMAN SPACE FLIGHT CENTRE,
+		BENGALURU                     </label>
+</div>
+<div class="form-group col-md-12">
+	<div class="card card-lightblue">
+		<div class="card-header ">
+			<h4 class="card-title">
+				<a class="accordion-toggle " data-toggle="collapse"
+					data-parent="#accordion" href="#collapseFour"> Item Details </a>
+			</h4>
+		</div>
+		<div id="collapseFour">
+			<div class="card-body">
+				
+				
+					<table id="viewtableItem" class="table table-striped table-hover">
+						<thead class="thead-light">
+							<tr>
+								<th>Sl.No</th>
+								<th>Item Name</th>
+								<th>Quantity</th>
+							</tr>
+						</thead>
+						<tbody>
+							
+								<tr>
+									<td>1</td>
+									<td>Engineering Procurement and Construction of Thermal Vacuum chamber 200L & 5L with Turbo-pumps  </td>
+
+									<td> 
+											1Nos.
+													</td>
+								</tr>
+							
+						</tbody>
+					</table>
+				
+			</div>
+		</div>
+
+	</div>
+
+</div>
+<script type="text/javascript">
+	$(document).ready(function() {
+		$('#viewtableItem').DataTable({
+
+		});
+	});
+</script>
+
+	<div class="form-group col-md-12">
+
+		<div class="card card-lightblue">
+			<div class="card-header">
+				<h4 class="card-title ">
+					<a class="accordion-toggle" data-toggle="collapse"
+						data-parent="#accordion" href="#collapse3"> Documents</a>
+				</h4>
+			</div>
+			<div id="collapse3" >
+				<div class="card-body">
+					<ul class="list-group list-group-flush">
+						
+							
+								
+									<li class="list-group-item"><a
+										href="/common/viewDocumentInTender?tenderId=HS202500021901&id=ff8081819c07ab37019c6f33b1c723ec"
+										target="_blank"><span class="glyphicon glyphicon-document"></span>
+											Engineering Procurement and Construction - Detailed Specification sheet 
+									</a></li>
+								
+							
+						
+
+						
+							<li class="list-group-item"><a
+								href="/common/viewDocumentInTender?tenderId=HS202500021901&id=ff8081819c07ab37019c6f33d75923ed"><span
+									class="glyphicon glyphicon-document"></span> Terms and Conditions  </a></li>
+						
+
+
+					</ul>
+
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+
+<div class="form-group col-md-12">
+	<div class="card card-lightblue">
+		<div class="card-header">
+			<h4 class="card-title">
+				<a class="accordion-toggle " data-toggle="collapse"
+					data-parent="#accordion" href="#collapseTwo">Tender Schedule </a>
+			</h4>
+		</div>
+		<div id="collapseTwo" >
+			<div class="card-body">
+				<div class="form-group col-md-12">
+					<label class="col-sm-3 control-label">Published Date : </label> <label
+						class="col-sm-6 control-label">
+						26-05-2026 15:00 IST</label>
+				</div>
+				<div class="form-group col-md-12">
+					<label class="col-sm-3 control-label">Bid Submission Start	Date : </label><label class="col-sm-6 control-label">26-05-2026 15:00 IST</label>
+				</div>
+				<div class="form-group col-md-12">
+					<label class="col-sm-3 control-label">Bid Submission End
+						Date : </label> <label class="col-sm-6 control-label">
+						29-06-2026 14:00 IST</label>
+				</div>
+				<div class="form-group col-md-12">
+					<label class="col-sm-3 control-label"> Clarification End
+						Date : </label> <label class="col-sm-6 control-label">
+						08-06-2026 10:00 IST</label>
+				</div>
+
+				<div class="form-group col-md-12">
+					<label class="col-sm-3 control-label">Bid Opening Date: </label> <label
+						class="col-sm-6 control-label">
+						29-06-2026 14:05 IST</label>
+				</div>
+
+			</div>
+		</div>
+	</div>
+</div>
+
+				</div>
+		</div>
+	<script src="/static/jquery-ui-1.14.1/jquery-ui.min.js"></script>
+</body>
+</html>

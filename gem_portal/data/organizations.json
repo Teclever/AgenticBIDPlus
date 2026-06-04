@@ -1,0 +1,47 @@
+{
+    "Ministry of Defence": [
+        "Advanced Weapons and Equipment India Limited",
+        "AERONAUTICAL DEVELOPMENT AGENCY",
+        "Bharat Dynamics Limited",
+        "Bharat Earth Movers Limited (BEML)",
+        "Bharat Electronics Limited (BEL)",
+        "Defence Research and Development Organisation (DRDO)",
+        "Directorate General of Quality Assurance ( DGQA)",
+        "Hindustan Aeronautics Limited (HAL)",
+        "India Optel Limited",
+        "Indian Air Force",
+        "Indian Army",
+        "Indian Coast Guard",
+        "Indian Navy",
+        "Office of DG (Aero)",
+        "Office of DG (ECS)",
+        "The Directorate General of Aeronautical Quality Assurance"
+    ],
+    "Department of Space": [
+        "indian space research organization"
+    ],
+    "Ministry of Electronics and Information Technology": [
+        "Centre for Development of Advanced Computing (C-DAC)",
+        "National Informatics Centre (NIC)",
+        "National Informatics Centre Services Incorporated (NICSI)",
+        "Semiconductor Laboratory",
+        "Society for Applied Microwave Electronic Engineering and Research (SAMEER)"
+    ],
+    "Ministry of Heavy Industries and Public Enterprises": [
+        "Central Manufacturing Technology Institute"
+    ],
+
+    "_disabled_not_on_gem": {
+        "reason": "These orgs returned 404 on the GeM portal — not registered or not active",
+        "Ministry of Defence": [
+            "BEL OPTRONIC DEVICES LIMITED",
+            "BELTHALES SYSTEMS Limited",
+            "DEFENCE INNOVATION ORGANISATION",
+            "Naini Aerospace Limited"
+        ],
+        "Ministry of Electronics and Information Technology": [
+            "National E-Governance Division (NeGD)",
+            "SEMICONDUCTOR LABORATORY"
+        ]
+    }
+}

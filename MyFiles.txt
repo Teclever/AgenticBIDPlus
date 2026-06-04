@@ -1,0 +1,149 @@
+total 24
+drwxr-xr-x   7 kartrama  staff    224  2 Jun 17:50 .
+drwxr-xr-x  15 kartrama  staff    480  2 Jun 17:24 ..
+-rw-r--r--@  1 kartrama  staff  10244  2 Jun 16:07 .DS_Store
+drwxr-xr-x   8 kartrama  staff    256  2 Jun 13:49 gem_portal
+drwxr-xr-x   9 kartrama  staff    288  2 Jun 14:00 hal_portal
+drwxr-xr-x@ 16 kartrama  staff    512  2 Jun 16:07 isro_portal
+-rw-r--r--   1 kartrama  staff      0  2 Jun 17:50 MyFiles
+
+./gem_portal:
+total 64
+drwxr-xr-x  8 kartrama  staff    256  2 Jun 13:49 .
+drwxr-xr-x  7 kartrama  staff    224  2 Jun 17:50 ..
+-rw-r--r--@ 1 kartrama  staff    627  2 Jun 12:05 config.py
+drwxr-xr-x  6 kartrama  staff    192  2 Jun 12:05 data
+-rw-r--r--@ 1 kartrama  staff  11879  2 Jun 12:05 gem_tool.py
+drwxr-xr-x  9 kartrama  staff    288  2 Jun 12:05 modules
+-rw-r--r--  1 kartrama  staff  10947  2 Jun 12:06 README.md
+-rw-r--r--  1 kartrama  staff     84  2 Jun 12:05 requirements.txt
+
+./gem_portal/data:
+total 25888
+drwxr-xr-x  6 kartrama  staff       192  2 Jun 12:05 .
+drwxr-xr-x  8 kartrama  staff       256  2 Jun 13:49 ..
+-rw-r--r--@ 1 kartrama  staff  13234176  2 Jun 12:05 bids.db
+-rw-r--r--@ 1 kartrama  staff     12019  2 Jun 12:05 capability_reference.md
+-rw-r--r--@ 1 kartrama  staff      1780  2 Jun 12:05 organizations.json
+-rw-r--r--@ 1 kartrama  staff      1771  2 Jun 12:05 state.json
+
+./gem_portal/modules:
+total 128
+-rw-r--r--  1 kartrama  staff      0  2 Jun 12:05 __init__.py
+drwxr-xr-x  9 kartrama  staff    288  2 Jun 12:05 .
+drwxr-xr-x  8 kartrama  staff    256  2 Jun 13:49 ..
+-rw-r--r--  1 kartrama  staff   1164  2 Jun 12:05 csrf_handler.py
+-rw-r--r--  1 kartrama  staff  22593  2 Jun 12:05 db.py
+-rw-r--r--@ 1 kartrama  staff   2343  2 Jun 12:05 feedback.py
+-rw-r--r--  1 kartrama  staff   3607  2 Jun 12:05 fetcher.py
+-rw-r--r--@ 1 kartrama  staff  10676  2 Jun 12:05 scorer_pass1.py
+-rw-r--r--@ 1 kartrama  staff  15790  2 Jun 12:05 scorer_pass2.py
+
+./hal_portal:
+total 72
+drwxr-xr-x   9 kartrama  staff    288  2 Jun 14:00 .
+drwxr-xr-x   7 kartrama  staff    224  2 Jun 17:50 ..
+-rw-r--r--@  1 kartrama  staff   6148  2 Jun 16:07 .DS_Store
+-rw-r--r--   1 kartrama  staff  12135  2 Jun 13:54 ARCHITECTURE_FRONTEND.md
+drwxr-xr-x   7 kartrama  staff    224  2 Jun 13:54 context
+drwxr-xr-x   4 kartrama  staff    128  2 Jun 13:54 data
+-rw-r--r--@  1 kartrama  staff   5092  2 Jun 13:54 README.md
+drwxr-xr-x  10 kartrama  staff    320  2 Jun 13:59 src
+-rw-r--r--   1 kartrama  staff   4835  2 Jun 13:59 START_HERE.md
+
+./hal_portal/context:
+total 96
+drwxr-xr-x  7 kartrama  staff    224  2 Jun 13:54 .
+drwxr-xr-x  9 kartrama  staff    288  2 Jun 14:00 ..
+-rw-r--r--@ 1 kartrama  staff   3184  2 Jun 13:54 01_project_context.md
+-rw-r--r--@ 1 kartrama  staff  12262  2 Jun 13:54 02_portal_mechanics.md
+-rw-r--r--@ 1 kartrama  staff  12317  2 Jun 13:54 03_schema_and_pipeline.md
+-rw-r--r--@ 1 kartrama  staff   9656  2 Jun 13:54 04_gem_implementation_patterns.md
+-rw-r--r--@ 1 kartrama  staff   1541  2 Jun 13:54 CONTEXT_INDEX.md
+
+./hal_portal/data:
+total 320
+drwxr-xr-x  4 kartrama  staff     128  2 Jun 13:54 .
+drwxr-xr-x  9 kartrama  staff     288  2 Jun 14:00 ..
+-rw-r--r--@ 1 kartrama  staff  151552  2 Jun 13:54 bids.db
+-rw-r--r--@ 1 kartrama  staff   12019  2 Jun 13:54 capability_reference.md
+
+./hal_portal/src:
+total 72
+drwxr-xr-x  10 kartrama  staff    320  2 Jun 13:59 .
+drwxr-xr-x   9 kartrama  staff    288  2 Jun 14:00 ..
+-rw-r--r--   1 kartrama  staff     19  2 Jun 13:59 .env.example
+-rw-r--r--@  1 kartrama  staff   3248  2 Jun 13:56 config.py
+-rw-r--r--@  1 kartrama  staff  11276  2 Jun 13:56 hal_tool.py
+drwxr-xr-x  11 kartrama  staff    352  2 Jun 13:57 modules
+-rw-r--r--@  1 kartrama  staff    108  2 Jun 13:56 requirements.txt
+-rwxr-xr-x   1 kartrama  staff   5689  2 Jun 13:56 run_hal.sh
+-rwxr-xr-x   1 kartrama  staff    329  2 Jun 13:56 start.sh
+drwxr-xr-x   3 kartrama  staff     96  2 Jun 13:57 tests
+
+./hal_portal/src/modules:
+total 224
+-rw-r--r--   1 kartrama  staff      0  2 Jun 13:56 __init__.py
+drwxr-xr-x  11 kartrama  staff    352  2 Jun 13:57 .
+drwxr-xr-x  10 kartrama  staff    320  2 Jun 13:59 ..
+-rw-r--r--   1 kartrama  staff  16468  2 Jun 13:57 db.py
+-rw-r--r--   1 kartrama  staff  19223  2 Jun 13:57 excel_export.py
+-rw-r--r--   1 kartrama  staff   3940  2 Jun 13:57 excel_ingest.py
+-rw-r--r--   1 kartrama  staff   1234  2 Jun 13:57 feedback.py
+-rw-r--r--@  1 kartrama  staff  17911  2 Jun 13:57 fetcher.py
+-rw-r--r--@  1 kartrama  staff  11702  2 Jun 13:57 scorer_pass1.py
+-rw-r--r--@  1 kartrama  staff  20921  2 Jun 13:57 scorer_pass2.py
+-rw-r--r--   1 kartrama  staff   7873  2 Jun 13:57 session.py
+
+./hal_portal/src/tests:
+total 48
+drwxr-xr-x   3 kartrama  staff     96  2 Jun 13:57 .
+drwxr-xr-x  10 kartrama  staff    320  2 Jun 13:59 ..
+-rw-r--r--   1 kartrama  staff  22841  2 Jun 13:57 test_live.py
+
+./isro_portal:
+total 480
+drwxr-xr-x@ 16 kartrama  staff     512  2 Jun 16:07 .
+drwxr-xr-x   7 kartrama  staff     224  2 Jun 17:50 ..
+-rw-r--r--@  1 kartrama  staff      30  2 Jun 15:58 .env.example
+-rw-r--r--@  1 kartrama  staff      95  2 Jun 15:58 .gitignore
+-rw-r--r--@  1 kartrama  staff    3650  2 Jun 15:58 AGENTS.md
+-rw-r--r--@  1 kartrama  staff    1142  2 Jun 15:58 config.py
+drwxr-xr-x@  4 kartrama  staff     128  2 Jun 15:58 data
+drwxr-xr-x@  5 kartrama  staff     160  2 Jun 15:58 exports
+-rw-r--r--@  1 kartrama  staff    9085  2 Jun 15:59 INTEGRATION.md
+-rw-r--r--@  1 kartrama  staff  172836  2 Jun 15:58 ISRO E Procurement.txt
+-rw-r--r--@  1 kartrama  staff    9654  2 Jun 15:58 isro_tool.py
+drwxr-xr-x@ 10 kartrama  staff     320  2 Jun 15:58 modules
+-rw-r--r--@  1 kartrama  staff   12333  2 Jun 15:58 README.md
+-rw-r--r--@  1 kartrama  staff      95  2 Jun 15:58 requirements.txt
+-rwxr-xr-x@  1 kartrama  staff    1523  2 Jun 15:58 run_isro.sh
+-rwxr-xr-x@  1 kartrama  staff    1555  2 Jun 15:58 run.sh
+
+./isro_portal/data:
+total 1080
+drwxr-xr-x@  4 kartrama  staff     128  2 Jun 15:58 .
+drwxr-xr-x@ 16 kartrama  staff     512  2 Jun 16:07 ..
+-rw-r--r--@  1 kartrama  staff  548864  2 Jun 15:58 bids.db
+-rw-r--r--@  1 kartrama  staff     669  2 Jun 15:58 capability_reference.md
+
+./isro_portal/exports:
+total 208
+drwxr-xr-x@  5 kartrama  staff    160  2 Jun 15:58 .
+drwxr-xr-x@ 16 kartrama  staff    512  2 Jun 16:07 ..
+-rw-r--r--@  1 kartrama  staff  45623  2 Jun 15:58 bids_2026-06-02.xlsx
+-rw-r--r--@  1 kartrama  staff  34067  2 Jun 15:58 pass1_2026-06-02.xlsx
+-rw-r--r--@  1 kartrama  staff  16606  2 Jun 15:58 pass2_2026-06-02.xlsx
+
+./isro_portal/modules:
+total 120
+-rw-r--r--@  1 kartrama  staff     36  2 Jun 15:58 __init__.py
+drwxr-xr-x@ 10 kartrama  staff    320  2 Jun 15:58 .
+drwxr-xr-x@ 16 kartrama  staff    512  2 Jun 16:07 ..
+-rw-r--r--@  1 kartrama  staff  11559  2 Jun 15:58 db.py
+-rw-r--r--@  1 kartrama  staff  12072  2 Jun 15:58 excel_export.py
+-rw-r--r--@  1 kartrama  staff   3567  2 Jun 15:58 excel_ingest.py
+-rw-r--r--@  1 kartrama  staff   5204  2 Jun 15:58 fetcher.py
+-rw-r--r--@  1 kartrama  staff   1254  2 Jun 15:58 logutil.py
+-rw-r--r--@  1 kartrama  staff   7350  2 Jun 15:58 scorer_pass1.py
+-rw-r--r--@  1 kartrama  staff   6935  2 Jun 15:58 scorer_pass2.py
