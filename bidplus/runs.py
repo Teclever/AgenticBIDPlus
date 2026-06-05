@@ -42,19 +42,23 @@ def start_cycle(parent: sqlite3.Connection) -> int:
 
 def record_portal(parent: sqlite3.Connection, result: RunResult,
                   started_at: str, finished_at: str,
-                  timings: dict[str, float] | None = None) -> None:
-    """INSERT one finalized per-tool row. Counts come from the portal's RunResult;
-    ``local_extracted``/``summarized``/``summary_failed`` are 0 until S6 populates them."""
+                  timings: dict[str, float] | None = None,
+                  pass2: dict[str, int] | None = None) -> None:
+    """INSERT one finalized per-tool row. Counts come from the portal's RunResult; the S6
+    Pass-2 counts (``local_extracted``/``summarized``/``summary_failed``) come from ``pass2``
+    (``{}`` / failed portals leave them 0)."""
     merged = dict(result.stage_timings or {})
     if timings:
         merged.update(timings)
+    p2 = pass2 or {}
     parent.execute(
         "INSERT INTO scrape_runs (started_at, finished_at, tool, status, new_count, "
         "updated_count, closed_count, scored_count, local_extracted_count, "
         "summarized_count, summary_failed_count, error_summary, stage_timings_json) "
-        "VALUES (?,?,?,?,?,?,?,?,0,0,0,?,?)",
+        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (started_at, finished_at, result.portal, result.status, result.new_count,
          result.updated_count, result.closed_count, result.scored_count,
+         p2.get("local_extracted", 0), p2.get("summarized", 0), p2.get("summary_failed", 0),
          result.error_summary, json.dumps(merged)),
     )
     parent.commit()
@@ -62,10 +66,12 @@ def record_portal(parent: sqlite3.Connection, result: RunResult,
 
 def finalize_cycle(parent: sqlite3.Connection, overall_id: int,
                    results: list[RunResult], started_at: str,
-                   timings: dict[str, float] | None = None) -> str:
+                   timings: dict[str, float] | None = None,
+                   pass2_totals: dict[str, int] | None = None) -> str:
     """Finalize the overall row, then raise a sticky alert on partial/failed.
 
-    Returns the overall status ('success' | 'partial' | 'failed').
+    ``pass2_totals`` carries the cycle-wide S6 counts (local_extracted/summarized/
+    summary_failed) aggregated across portals. Returns the overall status.
     """
     statuses = [r.status for r in results]
     if statuses and all(s == "success" for s in statuses):
@@ -79,14 +85,17 @@ def finalize_cycle(parent: sqlite3.Connection, overall_id: int,
             if r.status != "success" and r.error_summary]
     error_summary = "; ".join(errs) or None
 
+    p2 = pass2_totals or {}
     parent.execute(
         "UPDATE scrape_runs SET finished_at=?, status=?, new_count=?, updated_count=?, "
-        "closed_count=?, scored_count=?, error_summary=?, stage_timings_json=? WHERE id=?",
+        "closed_count=?, scored_count=?, local_extracted_count=?, summarized_count=?, "
+        "summary_failed_count=?, error_summary=?, stage_timings_json=? WHERE id=?",
         (_now(), status,
          sum(r.new_count for r in results),
          sum(r.updated_count for r in results),
          sum(r.closed_count for r in results),
          sum(r.scored_count for r in results),
+         p2.get("local_extracted", 0), p2.get("summarized", 0), p2.get("summary_failed", 0),
          error_summary, json.dumps(timings or {}), overall_id),
     )
     parent.commit()

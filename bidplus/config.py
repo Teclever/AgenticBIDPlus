@@ -50,6 +50,12 @@ SUMMARY_TOKEN_BUDGET = int(os.environ.get("SUMMARY_TOKEN_BUDGET", "150000"))
 # --- File retention (S6 nightly sweep) ------------------------------------------------
 RETENTION_DAYS = int(os.environ.get("BIDPLUS_RETENTION_DAYS", "7"))
 
+# --- Our identity (single-vendor / single-tender favourability, S6 Channel 2) ---------
+# A single-vendor tender restricted to US is a pursue; restricted to anyone else is dead.
+# Detected LOCALLY (no Sonnet). Comma-separated aliases, matched case-insensitively.
+OUR_VENDOR_ALIASES = [a.strip().lower() for a in
+                      os.environ.get("OUR_VENDOR_ALIASES", "teclever").split(",") if a.strip()]
+
 # Strict sequential scrape order (HAL -> ISRO -> GeM). One heavy op at a time.
 PORTALS = ("hal", "isro", "gem")
 

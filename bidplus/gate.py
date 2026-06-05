@@ -81,6 +81,25 @@ def gate_portal(conn: sqlite3.Connection, portal: str) -> dict:
     }
 
 
+def work_pks(conn: sqlite3.Connection, portal: str) -> dict:
+    """The FULL (unsampled) auto_summarize (score 5) + local_extract (score 4) work queues
+    for one portal — what the nightly Pass-2 phase actually iterates. Mirrors the gate_portal
+    predicates exactly so reporting and execution can never diverge."""
+    table = f"{portal}_bids"
+    auto_where = (
+        f"pass1_score = {config.SCORE_AUTO_SUMMARIZE} AND docs_summarized = 0 "
+        f"AND summary_status IS NULL AND {_NOT_EXCLUDED}"
+    )
+    local_where = (
+        f"pass1_score = {config.SCORE_LOCAL_EXTRACT} AND local_extracted = 0 "
+        f"AND {_NOT_EXCLUDED}"
+    )
+    return {
+        "auto_summarize": _sample_pks(conn, portal, table, auto_where, limit=-1),
+        "local_extract": _sample_pks(conn, portal, table, local_where, limit=-1),
+    }
+
+
 def tiered_gate(conn: sqlite3.Connection,
                 portals: tuple[str, ...] | None = None) -> dict:
     """Bucket all portals. Returns ``{per_portal: {...}, totals: {...}}``."""

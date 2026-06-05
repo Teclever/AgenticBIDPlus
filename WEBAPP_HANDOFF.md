@@ -69,6 +69,19 @@ depends on the score:
 
 All Pass-2 work goes through the single summarization module behind a global lock.
 
+**Unreadable (legacy/binary) documents — surface, don't hide.** We deliberately do **not** run
+LibreOffice, so legacy `.doc/.xls/.ppt` (and unknown binary) attachments can't be parsed and are
+**not sent to the AI**. This is reported **inside the existing summary surface** — no new screen:
+- Score-5 / on-demand summaries carry **`summary_json.unparsed_documents`** — a list of the
+  filenames that could not be read. When non-empty, show a prominent **"⚠ Some documents could
+  not be read"** notice with the filenames, alongside the (possibly partial) summary. The
+  `render_markdown()` helper already emits this block at the top.
+- Score-4 previews carry the same list at **`local_extract_json.unparsed_documents`**.
+- If a bid had **only** unreadable docs, there is still a `summary_json` (a short "documents could
+  not be read" record, `summary_model='local:unreadable-docs'`) — render it like any summary; the
+  notice is the substance. These are the cases the operator tallies to decide whether legacy-format
+  support is worth adding later.
+
 ## 5. Promote → ledger → governance feedback loop
 
 The promote action in §3 is not just a UI re-rank — it drives the eliminator's self-correction
@@ -111,3 +124,6 @@ start appearing. Build the "filtered" badge + override path from day one regardl
   until a human clears it in the app (never auto-cleared by a later success). The app renders
   the banner + a user-attributed "clear" action.
 - **Restrictive eligibility**: `has_restrictive_eligibility` bids get a prominent go/no-go flag.
+- **Unreadable documents**: when `summary_json.unparsed_documents` (or, for score-4,
+  `local_extract_json.unparsed_documents`) is non-empty, show a "could not read N document(s)"
+  notice with the filenames so the user knows the summary may be incomplete (see §4).

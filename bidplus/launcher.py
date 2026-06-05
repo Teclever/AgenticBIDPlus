@@ -64,6 +64,34 @@ def _print_gate(g: dict) -> None:
     print(f"  excluded keyword    : {t['excluded_keyword']}")
 
 
+def _run_pass2(summarize_mod, gate_mod, parent, portal: str) -> dict:
+    """S6 Pass 2 for ONE portal: summarize the score-5 auto queue (the single Sonnet path) and
+    locally extract the score-4 queue (NO Sonnet). Per-bid isolation — one bad bid logs and is
+    skipped, never aborting the phase; a billing/usage ``SystemExit`` DOES propagate to abort
+    the cycle. Idempotent via the gate predicates (already-done bids are not in the queue)."""
+    q = gate_mod.work_pks(parent, portal)
+    counts = {"summarized": 0, "summary_failed": 0, "local_extracted": 0}
+    for pk in q["auto_summarize"]:
+        try:
+            r = summarize_mod.summarize_bid(portal, pk, parent, fetch=True)
+        except SystemExit:
+            raise
+        except Exception as e:
+            counts["summary_failed"] += 1
+            print(f"  [pass2] {portal} {pk} summarize error: {type(e).__name__}: {e}")
+            continue
+        counts["summary_failed" if r.get("status") == "failed" else "summarized"] += 1
+    for pk in q["local_extract"]:
+        try:
+            summarize_mod.local_extract_bid(portal, pk, parent, fetch=True)
+            counts["local_extracted"] += 1
+        except SystemExit:
+            raise
+        except Exception as e:
+            print(f"  [pass2] {portal} {pk} local-extract error: {type(e).__name__}: {e}")
+    return counts
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Run the full nightly cycle STRICTLY SEQUENTIALLY (HAL -> ISRO -> GeM).
 
@@ -83,6 +111,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     from bidplus import merge as merge_mod
     from bidplus import runs
     from bidplus import scoring
+    from bidplus import summarize as summarize_mod
 
     mode = "shadow" if args.shadow else "hard"
     print(f"[launcher] Sequential run order: {' -> '.join(config.PORTALS)}  (eliminator={mode})", flush=True)
@@ -100,6 +129,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     results: list[RunResult] = []
     timings: dict[str, float] = {}
+    pass2_totals = {"local_extracted": 0, "summarized": 0, "summary_failed": 0}
     for portal in config.PORTALS:
         print(f"\n[launcher] Running '{portal}' pipeline…", flush=True)
         adapter = _ADAPTERS[portal]()
@@ -120,7 +150,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 
         merge_counts: dict | None = None
         score_info: dict | None = None
-        score_elapsed = merge_elapsed = 0.0
+        pass2: dict | None = None
+        score_elapsed = merge_elapsed = pass2_elapsed = 0.0
         if result.status != "failed":
             s0 = time.monotonic()
             try:
@@ -141,20 +172,33 @@ def cmd_run(args: argparse.Namespace) -> int:
                 merge_counts = {"error": f"{type(e).__name__}: {e}"}
             merge_elapsed = time.monotonic() - m0
 
+            # S6 Pass 2 (one heavy op at a time, right after this portal's merge): summarize
+            # the score-5 queue via Sonnet + locally extract the score-4 queue (no Sonnet).
+            q0 = time.monotonic()
+            pass2 = _run_pass2(summarize_mod, gate_mod, parent, portal)
+            pass2_elapsed = time.monotonic() - q0
+            for k in pass2_totals:
+                pass2_totals[k] += pass2[k]
+
         timings[portal] = round(time.monotonic() - t0, 3)
         runs.record_portal(parent, result, p_start, runs._now(),
-                           {"score": round(score_elapsed, 3), "merge": round(merge_elapsed, 3)})
+                           {"score": round(score_elapsed, 3), "merge": round(merge_elapsed, 3),
+                            "summarize": round(pass2_elapsed, 3)}, pass2=pass2)
         _print_result(result, merge_counts)
         if score_info is not None:
             print(f"  score         : {score_info}")
+        if pass2 is not None:
+            print(f"  pass2 (S6)    : {pass2}")
         results.append(result)
 
     g0 = time.monotonic()
     g = gate_mod.tiered_gate(parent)
     timings["gate"] = round(time.monotonic() - g0, 3)
 
-    status = runs.finalize_cycle(parent, overall_id, results, cycle_start, timings)
+    status = runs.finalize_cycle(parent, overall_id, results, cycle_start, timings,
+                                 pass2_totals=pass2_totals)
     _print_gate(g)
+    print(f"[launcher] Pass 2 (S6) totals: {pass2_totals}")
     print(f"\n[launcher] Cycle {overall_id} finalized: status={status}")
     if status in ("partial", "failed"):
         print("[launcher] Sticky system_alerts row raised (clear it in the web app).")
@@ -163,6 +207,32 @@ def cmd_run(args: argparse.Namespace) -> int:
               "proposals for Excel review (list_review/pending/).")
     parent.close()
     return 0 if status == "success" else 1
+
+
+def cmd_summarize(args: argparse.Namespace) -> int:
+    """On-demand S6 Pass 2 for specific bids (the web app's "Retrieve information" trigger).
+
+    Default runs the §8b Sonnet module (real API spend). ``--local-only`` runs the score-4
+    local extraction instead (no Sonnet). ``--no-fetch`` uses the already-staged files without
+    re-fetching (the score-4 "sim click" case: summarize from stored docs). Each ``bid_id`` is a
+    '|'-joined source PK (HAL: tender|line; ISRO/GeM: the single id)."""
+    from bidplus import merge as merge_mod
+    from bidplus import summarize as summarize_mod
+
+    parent = merge_mod.connect_parent()
+    rc = 0
+    try:
+        for pk in args.bid_id:
+            if args.local_only:
+                r = summarize_mod.local_extract_bid(args.portal, pk, parent, fetch=not args.no_fetch)
+            else:
+                r = summarize_mod.summarize_bid(args.portal, pk, parent, fetch=not args.no_fetch)
+                if r.get("status") == "failed":
+                    rc = 1
+            print(f"[summarize] {r}")
+    finally:
+        parent.close()
+    return rc
 
 
 def cmd_gate(_args: argparse.Namespace) -> int:
@@ -421,6 +491,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="After merging, compare each parent table against its tool DB.",
     )
     p_merge.set_defaults(func=cmd_merge)
+
+    p_summarize = sub.add_parser(
+        "summarize", help="On-demand S6 Pass 2 for specific bids (§8b module). Real API spend."
+    )
+    p_summarize.add_argument("portal", choices=sorted(_ADAPTERS))
+    p_summarize.add_argument("bid_id", nargs="+", help="'|'-joined PK (HAL: tender|line).")
+    p_summarize.add_argument("--no-fetch", action="store_true",
+                             help="Use already-staged files; do not re-fetch (sim 'Retrieve' click).")
+    p_summarize.add_argument("--local-only", action="store_true",
+                             help="Run score-4 local extraction only (NO Sonnet).")
+    p_summarize.set_defaults(func=cmd_summarize)
 
     p_gate = sub.add_parser(
         "gate", help="Print the tiered-gate buckets over parent.db (no scrape, no Sonnet)."

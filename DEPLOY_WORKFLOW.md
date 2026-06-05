@@ -110,11 +110,21 @@ and records the result. Order matters where noted.
       `requirements.txt`** (plan §5) so a later `pip install` won't silently upgrade it and
       wipe this append — but if you ever *do* bump `certifi`, **re-run this append**. (§4 of
       the plan.)
+- [ ] **Document extraction (S6) — LibreOffice is intentionally NOT installed.** Channel-2
+      extraction reads PDF/`.docx`/`.xlsx`/`.pptx`/images natively (libs are in
+      `requirements.txt`). **Legacy `.doc/.xls/.ppt`** would need `soffice`; we deliberately do
+      **not** provision it. Such files are flagged **unreadable** and surfaced to the operator
+      via the bid summary (`unparsed_documents`), never sent to the AI. **No action needed.**
+      *Decision is occurrence-driven:* if the operator's tally of unreadable bids becomes
+      material, revisit by `sudo apt install libreoffice` (no code change — the converter path
+      auto-activates once `soffice` is on `PATH`). Until then, legacy docs stay flagged.
 - [ ] **Install systemd units** — copy `deploy/systemd/bidplus.service` + `bidplus.timer`
       (shipped in the repo, ~3am) to `/etc/systemd/system/`, `systemctl daemon-reload`, then
       `systemctl enable --now bidplus.timer`. Confirm `systemctl list-timers` shows the next
       fire. The service runs `python -m bidplus.launcher run` (the full sequential cycle:
-      scrape → Pass 1 → merge → tiered gate, writing `scrape_runs` + sticky `system_alerts`).
+      scrape → Pass 1 → merge → **Pass 2 (score-5 Sonnet summaries + score-4 local extraction)**
+      → tiered gate, writing `scrape_runs` — incl. `summarized_count`/`local_extracted_count`/
+      `summary_failed_count` — + sticky `system_alerts`).
 - [ ] **Seed the eliminator lists (FIRST DEPLOY ONLY)** — load the mined seeds shipped in
       `bidplus/data/` into the `eliminator_terms` table: `eliminator_keywords.json` (689
       negative) + `inscope_signals.json` (237 positive), all `source='mined'`. This is a

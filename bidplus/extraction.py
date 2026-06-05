@@ -97,6 +97,60 @@ _DATE_LABELS = {
     "delivery": re.compile(r"(?:delivery|completion|implementation)\s+(?:period|schedule|date|time)", re.I),
 }
 
+# Score-4 restrictive-eligibility pre-flag (decision #28): a CHEAP keyword sniff over the raw
+# text — NOT a judgement (Sonnet does that on a "Retrieve information" click). It exists only to
+# surface "this bid likely gates who can bid" in the immediate local preview. False positives are
+# acceptable here; the value is drawing the operator's eye, not deciding.
+_ELIGIBILITY_PREFLAG_RE = re.compile(
+    r"(?:min(?:imum)?\s+(?:average\s+)?(?:annual\s+)?turnover|average\s+annual\s+turnover|"
+    r"similar\s+(?:work|nature|services|supply|items?)|years?\s+of\s+experience|"
+    r"prior\s+experience|past\s+experience|empanel|pre[\s-]?qualif|"
+    r"oem\s+authoriz|authoriz(?:ed|ation)\s+(?:dealer|distributor|partner|reseller)|"
+    r"class[\s-]?i\s+local\s+supplier|registered\s+(?:vendor|supplier|with\b))",
+    re.IGNORECASE)
+
+
+def eligibility_preflag(raw: str) -> bool:
+    """True if the raw text trips a restrictive-eligibility keyword (score-4 preview only)."""
+    return bool(_ELIGIBILITY_PREFLAG_RE.search(raw or ""))
+
+# Single-vendor / single-tender / sole-source detection — HIGH PRECISION (a false positive
+# wrongly skips Sonnet, so we only fire on unambiguous signals; misses fall through to Sonnet,
+# which can still flag it). The GeM "Single Tender Applicable: Yes" + named-seller line is the
+# canonical signal (the legacy GeM Pass-2 detected exactly this and skipped the LLM).
+# Precise, affirmative single-tender declarations about THIS tender. The trustworthy GeM
+# signal is the structured "Single Tender Applicable: Yes" field. Loose prose terms (PAC,
+# "sole/single source") are deliberately EXCLUDED: they recur in GeM GTC boilerplate — e.g.
+# the disclaimer "...mandating procurement ... except in case of Single Bid / Proprietary
+# Article Certificate (PAC) Buying" appears on essentially every GeM bid and is NOT a claim
+# that this tender is single-source. See detect_single_vendor for the name-required guard.
+_SINGLE_TENDER_SIGNALS = tuple(re.compile(p, re.I) for p in (
+    r"single\s+tender\s+applicable\s*[:\-]?\s*yes",
+    r"\bsingle\s+tender\s+enquiry\b",
+    r"\bon\s+nomination\s+basis\b",
+))
+_SINGLE_VENDOR_NAME_RES = (
+    re.compile(r"(?:List of Seller )?[Oo]rganization for participation\s+(.+?)(?:\n|$)"),
+    re.compile(r"restricted\s+to[:\s]+(.+?)(?:\n|$)", re.I),
+)
+
+
+def detect_single_vendor(text: str) -> tuple[bool, str]:
+    """Local (no-LLM) single-vendor detection. Returns (is_single_vendor, vendor_name).
+
+    Routes a bid AROUND Sonnet only when BOTH a precise single-tender signal fires AND a seller
+    name parses (decision #6: GeM "Single Tender Applicable: Yes" + named seller). A signal with
+    NO parseable name is too weak to dead-end a bid locally — it falls through to Sonnet, whose
+    structured summary carries a single_vendor backstop. (A nameless local kill would silently
+    drop legitimate bids on a boilerplate match.)"""
+    if not text or not any(p.search(text) for p in _SINGLE_TENDER_SIGNALS):
+        return (False, "")
+    for vr in _SINGLE_VENDOR_NAME_RES:
+        m = vr.search(text)
+        if m and m.group(1).strip():
+            return (True, m.group(1).strip()[:160])
+    return (False, "")
+
 
 @dataclass
 class ExtractedDoc:
@@ -115,6 +169,8 @@ class ExtractionResult:
     combined_text: str = ""              # all cleaned text, for Sonnet
     media_paths: list[str] = field(default_factory=list)  # scans/images → Sonnet whole
     local_fields: dict = field(default_factory=dict)      # score-4 regex preview
+    single_vendor: bool = False          # detected locally (no LLM) — routes around Sonnet
+    single_vendor_name: str = ""         # the named seller, if parseable
 
     @property
     def text_docs(self) -> list[ExtractedDoc]:
@@ -319,6 +375,7 @@ def local_fields(raw: str) -> dict:
         "pbg_value": _amount_near(raw, _PBG_KEYWORD_RE),
         "total_value": _amount_near(raw, _VALUE_KEYWORD_RE),
         "key_dates": _key_dates(raw),
+        "eligibility_preflag": eligibility_preflag(raw),
     }
 
 
@@ -377,6 +434,8 @@ def extract_dir(portal: str, source_pk: str, write_sidecars: bool = True) -> Ext
             except Exception:
                 pass
 
+    raw_all = "\n\n".join(raw_parts)
     res.combined_text = "\n\n".join(clean_parts)
-    res.local_fields = local_fields("\n\n".join(raw_parts))
+    res.local_fields = local_fields(raw_all)
+    res.single_vendor, res.single_vendor_name = detect_single_vendor(raw_all)
     return res
