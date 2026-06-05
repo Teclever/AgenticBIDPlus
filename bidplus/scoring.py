@@ -219,17 +219,18 @@ def ensure_scoring_columns(conn: sqlite3.Connection, table: str) -> None:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
 
-def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "shadow",
+def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
                  limit: int | None = None, rescore: bool = False,
                  call_fn=None) -> dict:
     """Run the eliminator gate + Haiku Pass-1 for one portal, writing scores to its tool DB.
 
-    mode='shadow': would-eliminate bids are logged but STILL sent to Haiku (no keyword
-    writes). mode='hard': eliminated bids get score 0 + pass1_method='keyword' and skip
-    Haiku. Survivors are model-scored (pass1_method='model'). Only NULL-score bids are
-    picked up unless rescore=True.
+    mode='hard' (default, post-cutover): eliminated bids get score 0 + pass1_method='keyword'
+    and skip Haiku. mode='shadow': would-eliminate bids are logged but STILL sent to Haiku
+    (no keyword writes). Survivors are model-scored (pass1_method='model'). A human-PROMOTED
+    bid bypasses the eliminator (always Haiku) — a confirmed in-scope bid is never re-eliminated.
+    Only NULL-score bids are picked up unless rescore=True.
     """
-    from bidplus import eliminator, runtime
+    from bidplus import eliminator, governance, runtime
     from bidplus.adapters.gem import GeMAdapter
     from bidplus.adapters.hal import HALAdapter
     from bidplus.adapters.isro import ISROAdapter
@@ -238,6 +239,7 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "shadow",
     spec = adapter._SCORING
     table, pk = spec["table"], spec["pk"]
     terms = eliminator.load_terms(parent)
+    promoted = governance.promoted_bid_ids(parent, portal)
     cap_ref = runtime.capability_reference_path().read_text()
 
     where = "1=1" if rescore else "pass1_score IS NULL"
@@ -247,6 +249,9 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "shadow",
 
     survivors, eliminated, would = [], [], 0
     for r in records:
+        if r.bid_id in promoted:          # human-confirmed in-scope → always Haiku
+            survivors.append(r)
+            continue
         matched = eliminator.eliminate(r.text, terms)
         if matched is not None:
             would += 1

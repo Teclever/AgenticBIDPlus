@@ -26,6 +26,16 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 # --- Model pins (AGENTS.md / plan §5) -------------------------------------------------
 PASS1_MODEL = "claude-haiku-4-5-20251001"   # batch Pass-1 scoring
 SUMMARY_MODEL = "claude-sonnet-4-6"         # one structured call per bid (vision-capable)
+GOVERNANCE_MODEL = "claude-sonnet-4-6"      # periodic eliminator-list AI delta (reasoning-heavy, low volume)
+
+# --- Eliminator governance (ELIMINATOR_DESIGN.md §7–§9) -------------------------------
+# A negative term correct on hundreds of junk bids but wrong on one exception is
+# insufficient-alone, not bad: at/above HIGH_SUPPORT a false positive marks it
+# 'under_review' (fixed by a POSITIVE add), never auto-quarantined.
+ELIM_HIGH_SUPPORT = int(os.environ.get("ELIM_HIGH_SUPPORT", "50"))
+# The AI delta fires when this many new promotion-reasons accrue OR a week passes.
+ELIM_DELTA_PROMOTION_THRESHOLD = int(os.environ.get("ELIM_DELTA_PROMOTION_THRESHOLD", "35"))
+ELIM_DELTA_WEEKLY_DAYS = int(os.environ.get("ELIM_DELTA_WEEKLY_DAYS", "7"))
 
 # --- Score gate (TRIGGER ONLY; same summarization module for every score) -------------
 # Score 5 is the ONLY automatic Sonnet call (overnight). Score 4 gets a cheap regex

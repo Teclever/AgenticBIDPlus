@@ -205,10 +205,13 @@ def cmd_run() -> None:
 
 
 def cmd_scrape_score() -> None:
-    """Orchestrator pipeline: scrape -> CLOSED sweep -> Pass 1. No Excel ingest/export, no Pass 2.
+    """Orchestrator pipeline: scrape -> CLOSED sweep. SCRAPE-ONLY (thin tool).
 
-    This is the entry point the bidplus PortalAdapter shells out to. Pass 2 is
-    intentionally absent — it is replaced by the S5 Sonnet summarization module.
+    This is the entry point the bidplus PortalAdapter shells out to. Pass 1 is no
+    longer scored in-tool — it is centralized in the shared scoring module
+    (bidplus.scoring: two-pass eliminator + Haiku, S5), which the orchestrator runs
+    after the merge. Pass 2 is the S5 Sonnet summarization module. The tool's job is
+    just fetch + store + CLOSED sweep.
     """
     print("=== Phase 1: Scraping HAL portal ===")
     total = _scrape_tenders()
@@ -218,11 +221,7 @@ def cmd_scrape_score() -> None:
     closed_count = sweep_closed_tenders()
     print(f"  {closed_count} tender(s) transitioned to CLOSED.")
 
-    print("\n=== Phase 3: Pass 1 scoring ===")
-    scored_count, skipped = _score_pending_tenders()
-    print(f"  Skipped (rejected/closed): {skipped}")
-
-    print("\nDone (scrape-score).")
+    print("\nDone (scrape-only; Pass-1 centralized in bidplus.scoring).")
 
 
 def cmd_explain(tn: str | None, ln: str | None) -> None:

@@ -119,9 +119,11 @@ def cmd_run() -> None:
 
 
 def cmd_scrape_score() -> None:
-    """Orchestrator pipeline: scrape -> CLOSED sweep -> Pass 1. No Excel ingest/export, no Pass 2.
+    """Orchestrator pipeline: scrape -> CLOSED sweep. SCRAPE-ONLY (thin tool).
 
-    This is the entry point the bidplus PortalAdapter shells out to.
+    This is the entry point the bidplus PortalAdapter shells out to. Pass 1 is no
+    longer scored in-tool — it is centralized in bidplus.scoring (two-pass eliminator
+    + Haiku, S5), run by the orchestrator after the merge.
     """
     log_banner("scrape-score (orchestrator)")
     _check_api_key()
@@ -149,13 +151,10 @@ def cmd_scrape_score() -> None:
     closed = sweep_closed_bids()
     log_ok(f"{closed} tender(s) marked CLOSED.")
 
-    log_phase(3, "Pass 1 scoring (Anthropic)")
-    scored = _run_pass1()
-
     elapsed = int(time.time() - t0)
     log_done(
-        f"scrape-score: inserted={inserted}, updated={updated}, closed={closed}, "
-        f"Pass1 scored={scored} | elapsed {elapsed}s"
+        f"scrape-score (scrape-only): inserted={inserted}, updated={updated}, "
+        f"closed={closed} | elapsed {elapsed}s | Pass-1 centralized in bidplus.scoring"
     )
 
 

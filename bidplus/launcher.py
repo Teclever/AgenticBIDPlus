@@ -64,23 +64,35 @@ def _print_gate(g: dict) -> None:
     print(f"  excluded keyword    : {t['excluded_keyword']}")
 
 
-def cmd_run(_args: argparse.Namespace) -> int:
+def cmd_run(args: argparse.Namespace) -> int:
     """Run the full nightly cycle STRICTLY SEQUENTIALLY (HAL -> ISRO -> GeM).
 
-    Per portal: scrape -> Pass 1 (subprocess) -> merge into parent.db -> record a
-    scrape_runs row. The cycle opens with an in-progress overall scrape_runs row
-    (finished_at NULL) and finalizes it at the end; a failed portal does NOT abort the
-    others, and a partial/failed cycle raises a sticky system_alerts row. Finally the
-    tiered gate buckets the merged bids for S6. Exit code is non-zero unless every
+    At cycle start the orchestrator applies any operator-approved eliminator list changes
+    from list_review/ready/ (governance), then per portal: scrape (thin tool, no in-tool
+    Pass 1) -> centralized Pass 1 (two-pass eliminator HARD + Haiku, bidplus.scoring) ->
+    merge into parent.db -> record a scrape_runs row. The cycle opens with an in-progress
+    overall scrape_runs row and finalizes it; a failed portal does NOT abort the others, and
+    a partial/failed cycle raises a sticky system_alerts row. Finally the tiered gate buckets
+    the merged bids for S6, and a due AI delta is flagged. --shadow keeps the eliminator
+    non-destructive (logs would-eliminate, still scores via Haiku). Exit non-zero unless every
     portal succeeded.
     """
+    from bidplus import eliminator
     from bidplus import gate as gate_mod
+    from bidplus import governance
     from bidplus import merge as merge_mod
     from bidplus import runs
+    from bidplus import scoring
 
-    print(f"[launcher] Sequential run order: {' -> '.join(config.PORTALS)}", flush=True)
+    mode = "shadow" if args.shadow else "hard"
+    print(f"[launcher] Sequential run order: {' -> '.join(config.PORTALS)}  (eliminator={mode})", flush=True)
     parent = merge_mod.connect_parent()
     merge_mod.ensure_shared(parent)
+    eliminator.seed_terms(parent)  # idempotent first-deploy seed; no-op once populated
+
+    ing = governance.ingest_ready(parent)
+    print(f"[launcher] governance ingest (list_review/ready/): files={ing['files']} "
+          f"applied={ing['applied']} rejected={ing['rejected']}")
 
     cycle_start = runs._now()
     overall_id = runs.start_cycle(parent)
@@ -94,7 +106,7 @@ def cmd_run(_args: argparse.Namespace) -> int:
         p_start = runs._now()
         t0 = time.monotonic()
         try:
-            result = adapter.run_pipeline()
+            result = adapter.run_pipeline()  # scrape-only now
         except Exception as e:  # isolation: one portal's crash must not abort the cycle
             result = RunResult(
                 portal=portal, status="failed",
@@ -107,8 +119,21 @@ def cmd_run(_args: argparse.Namespace) -> int:
         )
 
         merge_counts: dict | None = None
-        merge_elapsed = 0.0
+        score_info: dict | None = None
+        score_elapsed = merge_elapsed = 0.0
         if result.status != "failed":
+            s0 = time.monotonic()
+            try:
+                score_info = scoring.score_portal(portal, parent, mode=mode)
+                result.scored_count = (score_info.get("model_scored", 0)
+                                       + score_info.get("keyword_eliminated", 0))
+            except SystemExit:
+                raise  # billing/usage limit — abort the whole cycle
+            except Exception as e:
+                score_info = {"error": f"{type(e).__name__}: {e}"}
+                result.status = "partial"
+            score_elapsed = time.monotonic() - s0
+
             m0 = time.monotonic()
             try:
                 merge_counts = merge_mod.merge_portal(portal, parent=parent)
@@ -118,8 +143,10 @@ def cmd_run(_args: argparse.Namespace) -> int:
 
         timings[portal] = round(time.monotonic() - t0, 3)
         runs.record_portal(parent, result, p_start, runs._now(),
-                           {"merge": round(merge_elapsed, 3)})
+                           {"score": round(score_elapsed, 3), "merge": round(merge_elapsed, 3)})
         _print_result(result, merge_counts)
+        if score_info is not None:
+            print(f"  score         : {score_info}")
         results.append(result)
 
     g0 = time.monotonic()
@@ -131,6 +158,9 @@ def cmd_run(_args: argparse.Namespace) -> int:
     print(f"\n[launcher] Cycle {overall_id} finalized: status={status}")
     if status in ("partial", "failed"):
         print("[launcher] Sticky system_alerts row raised (clear it in the web app).")
+    if governance.should_run_delta(parent):
+        print("[launcher] Eliminator AI delta is DUE — run `governance-delta` to stage "
+              "proposals for Excel review (list_review/pending/).")
     parent.close()
     return 0 if status == "success" else 1
 
@@ -277,6 +307,77 @@ def cmd_score(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_promote(args: argparse.Namespace) -> int:
+    """Human PROMOTE of a soft-flagged bid (confirmed false-elimination): records
+    false_positives on its matched terms, marks it promoted, and requeues it for Pass 1.
+    A high-support term is NEVER auto-quarantined (fix via a positive add)."""
+    from bidplus import governance
+    from bidplus import merge as merge_mod
+
+    parent = merge_mod.connect_parent()
+    try:
+        for bid_id in args.bid_id:
+            r = governance.promote(parent, args.portal, bid_id, args.reason)
+            print(f"[promote] {args.portal} {bid_id}: false_positives++ for {r['false_positives_for']} "
+                  f"-> statuses={r['statuses']} (requeued for Pass 1)")
+    finally:
+        parent.close()
+    return 0
+
+
+def cmd_accept(args: argparse.Namespace) -> int:
+    """ACCEPT / CLEAR-TABLE: confirm undisposed auto-rejected bids as correct rejections
+    (confirmed_rejections++). With no bid_id, clears the whole portal table."""
+    from bidplus import governance
+    from bidplus import merge as merge_mod
+
+    parent = merge_mod.connect_parent()
+    try:
+        r = governance.accept(parent, args.portal, args.bid_id or None)
+    finally:
+        parent.close()
+    print(f"[accept] {r['portal']}: confirmed {r['accepted']} rejection(s)")
+    return 0
+
+
+def cmd_governance_delta(args: argparse.Namespace) -> int:
+    """Run the periodic AI delta: emit ADD/REMOVE/REFINE proposals from accumulated
+    promotion reasons, keep-guard them, stage to list_change_proposals, and export a
+    risk-coded Excel to list_review/pending/. Real API spend (Sonnet)."""
+    from bidplus import governance
+    from bidplus import merge as merge_mod
+
+    parent = merge_mod.connect_parent()
+    try:
+        if not args.force and not governance.should_run_delta(parent):
+            print("[governance-delta] not due (no new promotions, or under threshold/week). "
+                  "Use --force to run anyway.")
+            return 0
+        r = governance.generate_delta(parent)
+    finally:
+        parent.close()
+    print(f"[governance-delta] batch={r['batch_id']} proposed={r['proposed']} kept={r['kept']} "
+          f"blocked_by_guard={r['blocked_by_guard']} promotions_used={r['promotions_used']}")
+    if r["excel"]:
+        print(f"[governance-delta] review Excel: {r['excel']}  (edit, then move to list_review/ready/)")
+    return 0
+
+
+def cmd_governance_apply(args: argparse.Namespace) -> int:
+    """Ingest operator-approved list changes from list_review/ready/ and apply them to
+    eliminator_terms transactionally (also run automatically at the start of `run`)."""
+    from bidplus import governance
+    from bidplus import merge as merge_mod
+
+    parent = merge_mod.connect_parent()
+    try:
+        r = governance.ingest_ready(parent)
+    finally:
+        parent.close()
+    print(f"[governance-apply] files={r['files']} applied={r['applied']} rejected={r['rejected']}")
+    return 0
+
+
 def cmd_explain(args: argparse.Namespace) -> int:
     adapter_cls = _ADAPTERS.get(args.portal)
     if adapter_cls is None:
@@ -299,7 +400,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_run = sub.add_parser(
-        "run", help="Run scrape -> CLOSED sweep -> Pass 1 for all portals, sequentially."
+        "run", help="Full cycle: governance ingest -> per portal scrape -> centralized Pass 1 "
+                    "(eliminator hard + Haiku) -> merge -> gate, sequentially."
+    )
+    p_run.add_argument(
+        "--shadow", action="store_true",
+        help="Keep the eliminator non-destructive (log would-eliminate, still Haiku-score).",
     )
     p_run.set_defaults(func=cmd_run)
 
@@ -339,12 +445,38 @@ def build_parser() -> argparse.ArgumentParser:
         "score", help="Centralized Pass-1 (eliminator gate + Haiku) for one portal. API spend."
     )
     p_score.add_argument("portal", choices=sorted(_ADAPTERS), help="Portal to score.")
-    p_score.add_argument("--mode", choices=("shadow", "hard"), default="shadow",
-                         help="shadow = log would-eliminate but still score; hard = keyword-eliminate.")
+    p_score.add_argument("--mode", choices=("shadow", "hard"), default="hard",
+                         help="hard (default) = keyword-eliminate; shadow = log only, still score.")
     p_score.add_argument("--limit", type=int, default=None, help="Cap candidates (smoke test).")
     p_score.add_argument("--rescore", action="store_true",
                          help="Re-score all rows, not just pass1_score IS NULL.")
     p_score.set_defaults(func=cmd_score)
+
+    p_promote = sub.add_parser(
+        "promote", help="Promote a soft-flagged bid (false-elimination): ledger + requeue."
+    )
+    p_promote.add_argument("portal", choices=sorted(_ADAPTERS))
+    p_promote.add_argument("bid_id", nargs="+", help="'|'-joined PK (HAL: tender|line).")
+    p_promote.add_argument("--reason", required=True, help="Why this bid is in-scope (feeds the AI delta).")
+    p_promote.set_defaults(func=cmd_promote)
+
+    p_accept = sub.add_parser(
+        "accept", help="Confirm auto-rejected bids as correct (clear-table if no bid_id)."
+    )
+    p_accept.add_argument("portal", choices=sorted(_ADAPTERS))
+    p_accept.add_argument("bid_id", nargs="*", help="Specific bids; omit to clear the whole table.")
+    p_accept.set_defaults(func=cmd_accept)
+
+    p_gdelta = sub.add_parser(
+        "governance-delta", help="Generate the AI list-change delta + Excel review file. API spend."
+    )
+    p_gdelta.add_argument("--force", action="store_true", help="Run even if not due.")
+    p_gdelta.set_defaults(func=cmd_governance_delta)
+
+    p_gapply = sub.add_parser(
+        "governance-apply", help="Apply approved list changes from list_review/ready/."
+    )
+    p_gapply.set_defaults(func=cmd_governance_apply)
 
     p_explain = sub.add_parser(
         "explain", help="Print the dry-run view for one bid (no API call)."

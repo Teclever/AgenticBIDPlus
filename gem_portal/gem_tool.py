@@ -179,10 +179,12 @@ def run_pipeline2() -> list[str]:
 
 
 def cmd_scrape_score() -> None:
-    """Orchestrator pipeline: fetch all orgs -> CLOSED sweep -> Pass 1. No Excel, no Pass 2.
+    """Orchestrator pipeline: fetch all orgs -> CLOSED sweep. SCRAPE-ONLY (thin tool).
 
-    This is the entry point the bidplus PortalAdapter shells out to. The scorer and
-    schema are unchanged — GeM already uses the unified rubric byte-for-byte.
+    This is the entry point the bidplus PortalAdapter shells out to. Pass 1 (and the
+    legacy GeM exclusion pre-filter that ran inside scoring) is gone from this path —
+    scoring is centralized in bidplus.scoring (two-pass eliminator + Haiku, S5), which
+    the orchestrator runs after the merge. The eliminator supersedes the exclusion rules.
     """
     print("=== Phase 1: Full fetch — all active bids ===")
     total_fetched, extended_bid_numbers = fetch_all_orgs()
@@ -191,13 +193,9 @@ def cmd_scrape_score() -> None:
     closed_count = sweep_closed_bids()
     print(f"  {closed_count} bid(s) transitioned to CLOSED.")
 
-    print("\n=== Phase 3: Score pending bids ===")
-    delta_bid_numbers, skipped = score_pending_bids()
-    print(f"  Skipped (rejected/closed): {skipped}")
-
-    print(f"\nDone (scrape-score). fetched={total_fetched}, "
-          f"extended={len(extended_bid_numbers)}, closed={closed_count}, "
-          f"scored={len(delta_bid_numbers)}")
+    print(f"\nDone (scrape-only). fetched={total_fetched}, "
+          f"extended={len(extended_bid_numbers)}, closed={closed_count} "
+          f"| Pass-1 centralized in bidplus.scoring")
 
 
 def cmd_explain(bid_number: str | None) -> None:
