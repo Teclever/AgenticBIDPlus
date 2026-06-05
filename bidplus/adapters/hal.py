@@ -44,6 +44,21 @@ class HALAdapter:
         """HAL's own bids.db under $BIDPLUS_RUNTIME_DIR/hal/ (never in the source tree)."""
         return str(config.portal_dir("hal") / "bids.db")
 
+    # normalized scoring record (Decision #9-A): tool row -> common shape. The shared
+    # scorer (S5) is portal-agnostic; this field map is the only per-portal scoring code.
+    _SCORING = {
+        "table": "tenders",
+        "pk": ("tender_number", "line_number"),
+        "text": "tender_description",  # same column the miner used — gram set must match
+        "fields": {"buyer": "buyer", "value": "estimated_cost",
+                   "closing_date": "closing_date", "description": "qualification_criteria"},
+    }
+
+    def scoring_records(self, where: str = "1=1"):
+        """Tool rows as portal-agnostic NormalizedRecords (the S5 scorer's input)."""
+        from bidplus.scoring import read_records
+        return read_records(self.portal, self.tool_db_path(), self._SCORING, where)
+
     def _subprocess_env(self) -> dict[str, str]:
         env = {**os.environ}
         env["BIDPLUS_RUNTIME_DIR"] = str(config.RUNTIME_DIR)

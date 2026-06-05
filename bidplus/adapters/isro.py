@@ -44,6 +44,20 @@ class ISROAdapter:
         """ISRO's own bids.db under $BIDPLUS_RUNTIME_DIR/isro/ (never in the source tree)."""
         return str(config.portal_dir("isro") / "bids.db")
 
+    # normalized scoring record (Decision #9-A): tool row -> common shape.
+    _SCORING = {
+        "table": "bids",
+        "pk": ("tender_id",),
+        "text": "tender_description",  # same column the miner used
+        "fields": {"buyer": "center_name", "closing_date": "bid_closing_date",
+                   "description": "detail_text"},
+    }
+
+    def scoring_records(self, where: str = "1=1"):
+        """Tool rows as portal-agnostic NormalizedRecords (the S5 scorer's input)."""
+        from bidplus.scoring import read_records
+        return read_records(self.portal, self.tool_db_path(), self._SCORING, where)
+
     def _subprocess_env(self) -> dict[str, str]:
         env = {**os.environ}
         env["BIDPLUS_RUNTIME_DIR"] = str(config.RUNTIME_DIR)

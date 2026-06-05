@@ -44,6 +44,20 @@ class GeMAdapter:
         """GeM's own bids.db under $BIDPLUS_RUNTIME_DIR/gem/ (never in the source tree)."""
         return str(config.portal_dir("gem") / "bids.db")
 
+    # normalized scoring record (Decision #9-A): tool row -> common shape.
+    _SCORING = {
+        "table": "bids",
+        "pk": ("bid_number",),
+        "text": "items",  # same column the miner used
+        "fields": {"buyer": "organization", "closing_date": "end_date",
+                   "description": "department"},
+    }
+
+    def scoring_records(self, where: str = "1=1"):
+        """Tool rows as portal-agnostic NormalizedRecords (the S5 scorer's input)."""
+        from bidplus.scoring import read_records
+        return read_records(self.portal, self.tool_db_path(), self._SCORING, where)
+
     def _subprocess_env(self) -> dict[str, str]:
         env = {**os.environ}
         env["BIDPLUS_RUNTIME_DIR"] = str(config.RUNTIME_DIR)

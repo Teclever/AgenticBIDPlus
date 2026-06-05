@@ -215,6 +215,68 @@ def cmd_merge(args: argparse.Namespace) -> int:
     return rc
 
 
+def cmd_eliminate(args: argparse.Namespace) -> int:
+    """SHADOW analysis of the two-pass eliminator gate (no writes, no model calls).
+
+    Seeds eliminator_terms from the mined JSON if empty (idempotent), then runs the gate
+    over each portal's bids and reports would-eliminate counts, positive-veto saves, and
+    the CUTOVER GATE: zero eliminations of any bid that historically scored >=3.
+    """
+    from bidplus import eliminator
+    from bidplus import merge as merge_mod
+
+    parent = merge_mod.connect_parent()
+    try:
+        seeded = eliminator.seed_terms(parent)
+        t = eliminator.load_terms(parent)
+        print(f"[eliminate] seed: {seeded}")
+        print(f"[eliminate] terms: neg_phrases={len(t.neg_phrases)} neg_words={len(t.neg_words)} "
+              f"guarded={len(t.guarded)} pos_phrases={len(t.pos_phrases)} "
+              f"pos_tokens={len(t.pos_tokens)} stop={len(t.stop)}")
+
+        portals = args.portals or list(config.PORTALS)
+        grand = {"total": 0, "would_eliminate": 0, "score_ge3_collisions": 0, "pos_vetoed": 0}
+        for portal in portals:
+            recs = _ADAPTERS[portal]().scoring_records()
+            rep = eliminator.shadow_report(recs, t)
+            for k in grand:
+                grand[k] += rep[k]
+            pct = 100 * rep["would_eliminate"] / max(rep["total"], 1)
+            print(f"[shadow] {portal:5} bids={rep['total']:6} "
+                  f"would_eliminate={rep['would_eliminate']:6} ({pct:4.1f}%) "
+                  f"pos_vetoed={rep['pos_vetoed']:5} score>=3_collisions={rep['score_ge3_collisions']}")
+
+        pct = 100 * grand["would_eliminate"] / max(grand["total"], 1)
+        print(f"[shadow] TOTAL bids={grand['total']} would_eliminate={grand['would_eliminate']} "
+              f"({pct:.1f}%) pos_vetoed={grand['pos_vetoed']} "
+              f"score>=3_collisions={grand['score_ge3_collisions']}")
+        ok = grand["score_ge3_collisions"] == 0
+        print(f"[shadow] CUTOVER GATE: {'PASS (zero score>=3 eliminated)' if ok else 'FAIL'}")
+    finally:
+        parent.close()
+    return 0 if ok else 1
+
+
+def cmd_score(args: argparse.Namespace) -> int:
+    """Centralized Pass-1: eliminator gate + Haiku scoring for ONE portal (writes to its
+    tool DB). --mode shadow keeps the eliminator non-destructive; --limit caps the batch
+    (use a small number for a live smoke test). Real API spend.
+    """
+    from bidplus import merge as merge_mod
+    from bidplus import scoring
+
+    parent = merge_mod.connect_parent()
+    try:
+        r = scoring.score_portal(args.portal, parent, mode=args.mode,
+                                 limit=args.limit, rescore=args.rescore)
+    finally:
+        parent.close()
+    print(f"[score] {r['portal']} mode={r['mode']} candidates={r['candidates']} "
+          f"would_eliminate={r['would_eliminate']} model_scored={r['model_scored']} "
+          f"keyword_eliminated={r['keyword_eliminated']} unscored_left={r['unscored_left']}")
+    return 0
+
+
 def cmd_explain(args: argparse.Namespace) -> int:
     adapter_cls = _ADAPTERS.get(args.portal)
     if adapter_cls is None:
@@ -263,6 +325,26 @@ def build_parser() -> argparse.ArgumentParser:
         "run-status", help="Report in-progress cycle (finished_at IS NULL) + sticky alerts."
     )
     p_status.set_defaults(func=cmd_run_status)
+
+    p_elim = sub.add_parser(
+        "eliminate", help="SHADOW analysis of the two-pass eliminator gate (no writes)."
+    )
+    p_elim.add_argument(
+        "portals", nargs="*", choices=sorted(_ADAPTERS),
+        help="Portals to analyse (default: all).",
+    )
+    p_elim.set_defaults(func=cmd_eliminate)
+
+    p_score = sub.add_parser(
+        "score", help="Centralized Pass-1 (eliminator gate + Haiku) for one portal. API spend."
+    )
+    p_score.add_argument("portal", choices=sorted(_ADAPTERS), help="Portal to score.")
+    p_score.add_argument("--mode", choices=("shadow", "hard"), default="shadow",
+                         help="shadow = log would-eliminate but still score; hard = keyword-eliminate.")
+    p_score.add_argument("--limit", type=int, default=None, help="Cap candidates (smoke test).")
+    p_score.add_argument("--rescore", action="store_true",
+                         help="Re-score all rows, not just pass1_score IS NULL.")
+    p_score.set_defaults(func=cmd_score)
 
     p_explain = sub.add_parser(
         "explain", help="Print the dry-run view for one bid (no API call)."

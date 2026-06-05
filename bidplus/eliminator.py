@@ -1,0 +1,225 @@
+"""Pre-Pass-1 two-pass eliminator gate + governance schema/seed (S5).
+
+`eliminate = neg_hit AND NOT pos_hit`. The negative match is byte-for-byte faithful to
+``bidplus/scripts/mine_eliminators.py`` (``grams`` + ``_eliminates``); the positive list
+is a high-precision veto that rescues a tripped bid to Haiku.
+
+The live lists are **DB rows** in ``eliminator_terms`` (parent.db), read fresh each run.
+The mined JSON artifacts seed that table once at first deploy; thereafter governance owns
+it (ledger + AI delta + Excel review — see ``ELIMINATOR_DESIGN.md``). This module covers
+the schema, the idempotent seed, the gate, and shadow analysis. The Haiku scoring engine
+and the AI-delta governance loop are separate (scoring chunk 2 / governance chunk 3).
+"""
+
+from __future__ import annotations
+
+import datetime
+import json
+import re
+import sqlite3
+from dataclasses import dataclass, field
+from pathlib import Path
+
+_DATA = Path(__file__).resolve().parent / "data"
+_NEG_SEED = _DATA / "eliminator_keywords.json"
+_POS_SEED = _DATA / "inscope_signals.json"
+
+# Negative tokeniser — MUST match the miner exactly. Positive tokeniser per the seed
+# (_meta.matching): tokens are word-boundary [a-z0-9-]{2,}; phrases are substring.
+_TOK = re.compile(r"[a-z]{3,}")
+_POS_TOK_RE = re.compile(r"[a-z0-9\-]{2,}")
+
+# Ordinary English the capability doc happens to contain — these guarded candidates are
+# DROPPED at seed (the miner's `excluded_generic_unigrams`): they neither fire directly
+# nor count toward the two-signal rule. The remaining guarded candidates become the active
+# two-signal guards. MUST match mine_eliminators.GUARDED_NOISE.
+_GUARDED_NOISE = set("not use general field section cross medium auto hard customized".split())
+
+
+def _now() -> str:
+    return datetime.datetime.now().isoformat(timespec="seconds")
+
+
+# ── schema ───────────────────────────────────────────────────────────────────────
+
+def ensure_schema(parent: sqlite3.Connection) -> None:
+    """Create the three governance tables (idempotent). Live in parent.db."""
+    parent.execute(
+        "CREATE TABLE IF NOT EXISTS eliminator_terms ("
+        " id INTEGER PRIMARY KEY, list_type TEXT NOT NULL, kind TEXT NOT NULL,"
+        " term TEXT NOT NULL, is_guarded INTEGER DEFAULT 0, active INTEGER DEFAULT 1,"
+        " source TEXT, rationale TEXT, created_at TEXT, UNIQUE(list_type, kind, term))"
+    )
+    parent.execute(
+        "CREATE TABLE IF NOT EXISTS eliminator_keyword_stats ("
+        " term TEXT PRIMARY KEY, confirmed_rejections INTEGER DEFAULT 0,"
+        " false_positives INTEGER DEFAULT 0, status TEXT DEFAULT 'active')"
+    )
+    parent.execute(
+        "CREATE TABLE IF NOT EXISTS list_change_proposals ("
+        " id INTEGER PRIMARY KEY, batch_id TEXT NOT NULL, list_type TEXT NOT NULL,"
+        " term TEXT NOT NULL, kind TEXT, change_type TEXT NOT NULL, refine_to TEXT,"
+        " risk TEXT, ai_rationale TEXT, source_reasons TEXT,"
+        " status TEXT DEFAULT 'proposed', created_at TEXT, decided_at TEXT)"
+    )
+    parent.commit()
+
+
+def seed_terms(parent: sqlite3.Connection, force: bool = False) -> dict:
+    """Seed ``eliminator_terms`` from the mined JSON. IDEMPOTENT — a no-op if the table
+    is already populated (so it never clobbers governance-applied changes), unless
+    ``force=True``. The active guarded set is ``guarded_unigrams_two_signal`` ∩ ``words``
+    (the noise unigrams were already dropped from ``words`` at mine time)."""
+    ensure_schema(parent)
+    existing = parent.execute("SELECT COUNT(*) FROM eliminator_terms").fetchone()[0]
+    if existing and not force:
+        return {"seeded": 0, "existing": existing}
+    if force:
+        parent.execute("DELETE FROM eliminator_terms")
+
+    neg = json.loads(_NEG_SEED.read_text())
+    pos = json.loads(_POS_SEED.read_text())
+    meta = neg.get("_meta", {})
+    stop = set(meta.get("stopwords", []))
+    # The JSON keeps RAW candidates: `words` still includes the noise unigrams and
+    # guarded_unigrams_two_signal is the full candidate set. Apply the miner's trim:
+    candidates = set(meta.get("guarded_unigrams_two_signal", []))
+    guarded = candidates - _GUARDED_NOISE      # active two-signal guards (e.g. 9)
+    now = _now()
+
+    def ins(list_type, kind, term, is_guarded=0, active=1) -> None:
+        parent.execute(
+            "INSERT OR IGNORE INTO eliminator_terms "
+            "(list_type, kind, term, is_guarded, active, source, created_at) "
+            "VALUES (?,?,?,?,?,'mined',?)",
+            (list_type, kind, term, is_guarded, active, now),
+        )
+
+    for p in neg["phrases"]:
+        ins("neg", "phrase", p)
+    for w in neg["words"]:
+        # Drop the noise unigrams (recorded active=0 for provenance, never loaded).
+        if w in _GUARDED_NOISE:
+            ins("neg", "word", w, is_guarded=0, active=0)
+        else:
+            ins("neg", "word", w, is_guarded=1 if w in guarded else 0)
+    for p in pos["phrases"]:
+        ins("pos", "phrase", p)
+    for tk in pos["tokens"]:
+        ins("pos", "token", tk)
+    for s in stop:
+        ins("stop", "word", s)
+    parent.commit()
+    return {"seeded": parent.execute("SELECT COUNT(*) FROM eliminator_terms WHERE active=1").fetchone()[0],
+            "existing": existing, "guarded": len(guarded)}
+
+
+# ── live term set (read fresh from the table each run) ─────────────────────────────
+
+@dataclass
+class Terms:
+    neg_phrases: set = field(default_factory=set)
+    neg_words: set = field(default_factory=set)
+    guarded: set = field(default_factory=set)
+    pos_phrases: list = field(default_factory=list)
+    pos_tokens: set = field(default_factory=set)
+    stop: set = field(default_factory=set)
+
+
+def load_terms(parent: sqlite3.Connection) -> Terms:
+    t = Terms()
+    for lt, kind, term, g in parent.execute(
+        "SELECT list_type, kind, term, is_guarded FROM eliminator_terms WHERE active=1"
+    ):
+        if lt == "neg" and kind == "phrase":
+            t.neg_phrases.add(term)
+        elif lt == "neg" and kind == "word":
+            t.neg_words.add(term)
+            if g:
+                t.guarded.add(term)
+        elif lt == "pos" and kind == "phrase":
+            t.pos_phrases.append(term)
+        elif lt == "pos" and kind == "token":
+            t.pos_tokens.add(term)
+        elif lt == "stop":
+            t.stop.add(term)
+    return t
+
+
+# ── the two-pass gate ──────────────────────────────────────────────────────────────
+
+def _grams(text: str, stop: set) -> set[str]:
+    """Lowercase -> [a-z]{3,} tokens minus stopwords -> unigrams + adjacent bigrams.
+    Identical to the miner's grams() — the gate's correctness depends on it."""
+    words = [w for w in _TOK.findall((text or "").lower()) if w not in stop]
+    out: set[str] = set(words)
+    for i in range(len(words) - 1):
+        out.add(words[i] + " " + words[i + 1])
+    return out
+
+
+def neg_match(g: set[str], t: Terms) -> list[str] | None:
+    """Matched negative terms (sorted) if the negative gate fires, else None. Mirrors
+    ``mine_eliminators._eliminates``: a phrase or non-guarded word hits directly; a
+    guarded unigram fires only under the two-signal rule (>=2 distinct word hits)."""
+    matched = (g & t.neg_phrases) | (g & t.neg_words)
+    direct = (g & t.neg_phrases) | (g & (t.neg_words - t.guarded))
+    if direct:
+        return sorted(matched)
+    if (g & t.guarded) and len(g & t.neg_words) >= 2:
+        return sorted(matched)
+    return None
+
+
+def pos_hit(text: str, t: Terms) -> bool:
+    """High-precision in-scope veto: a substring phrase hit or a word-boundary token hit."""
+    tl = (text or "").lower()
+    if any(p in tl for p in t.pos_phrases):
+        return True
+    return bool(set(_POS_TOK_RE.findall(tl)) & t.pos_tokens)
+
+
+def eliminate(text: str, t: Terms) -> list[str] | None:
+    """Two-pass decision. Returns the matched negative terms (sorted) if the bid is
+    eliminated (``neg_hit AND NOT pos_hit``), else None (survives -> Haiku)."""
+    matched = neg_match(_grams(text, t.stop), t)
+    if matched and not pos_hit(text, t):
+        return matched
+    return None
+
+
+# ── shadow analysis (no writes; the cutover gate) ──────────────────────────────────
+
+def collision_rows(records, t: Terms, min_score: int = 3) -> list[dict]:
+    """The would-eliminate bids whose existing score >= min_score (the cutover risk).
+    These are what shadow mode flags for human review before a hard cutover."""
+    out = []
+    for r in records:
+        if r.pass1_score is None or r.pass1_score < min_score:
+            continue
+        matched = eliminate(r.text, t)
+        if matched is not None:
+            out.append({"portal": r.portal, "bid_id": r.bid_id, "score": r.pass1_score,
+                        "matched": ", ".join(matched), "text": r.text})
+    out.sort(key=lambda d: (-d["score"], d["portal"]))
+    return out
+
+
+def shadow_report(records, t: Terms) -> dict:
+    """Run the gate over NormalizedRecords WITHOUT writing. Reports would-eliminate
+    counts, score>=3 collisions (must be 0 to cut over), and positive-veto saves."""
+    total = elim = collisions = vetoed = 0
+    for r in records:
+        total += 1
+        g = _grams(r.text, t.stop)
+        neg = neg_match(g, t)
+        if neg is None:
+            continue
+        if pos_hit(r.text, t):
+            vetoed += 1
+            continue
+        elim += 1
+        if r.pass1_score is not None and r.pass1_score >= 3:
+            collisions += 1
+    return {"total": total, "would_eliminate": elim,
+            "score_ge3_collisions": collisions, "pos_vetoed": vetoed}
