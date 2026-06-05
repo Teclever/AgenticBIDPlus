@@ -91,12 +91,15 @@ def _build_system(cap_ref: str) -> list[dict]:
 
 
 def _build_user(records: list[NormalizedRecord]) -> str:
-    listing = "\n".join(f"{i+1}. id={r.bid_id} | title={r.text}" for i, r in enumerate(records))
+    # Map by the line NUMBER, not the bid_id: a composite PK (HAL tender|line) contains
+    # delimiters the model mangles, breaking exact-id echo. An integer index it echoes
+    # reliably and is recovered defensively (digits) in _score_batch.
+    listing = "\n".join(f"{i+1}. {r.text}" for i, r in enumerate(records))
     return (
-        "Score each of the following bid titles 0-5 using the rubric above.\n\n"
+        "Score each numbered bid title 0-5 using the rubric above.\n\n"
         f"{listing}\n\n"
-        "Return ONLY a JSON array — no prose. Each element must have exactly: "
-        "id (echo the id string EXACTLY as given), score (integer 0-5), "
+        "Return ONLY a JSON array — no prose, one element per numbered item, each with "
+        "exactly: id (the item NUMBER as an integer), score (integer 0-5), "
         "confidence (High/Medium/Low), domain (matched core domain name), "
         "rationale (1-2 sentences). These are one-line titles — apply generous leeway; "
         "if the domain could plausibly match, score >=2."
@@ -183,14 +186,26 @@ def _coerce(res: dict) -> dict:
 
 
 def _score_batch(records, cap_ref, call_fn, _retry: bool = False) -> dict:
-    """Score one batch. Returns ``{bid_id: coerced}``. Every submitted id that the model
-    omits is recovered by a 1-item retry — never silently dropped."""
+    """Score one batch. Returns ``{bid_id: coerced}``, mapping the model's echoed line
+    NUMBER (1-based, defensively digit-extracted) back to each record. Any numbered item
+    the model omits is recovered by a 1-item retry — never silently dropped."""
     text = _with_retry(lambda: call_fn(records, cap_ref))
-    rmap = {str(r.get("id", "")): r for r in _parse_array(text)}
-    scored = {r.bid_id: _coerce(rmap[r.bid_id]) for r in records if r.bid_id in rmap}
+    rmap: dict[str, dict] = {}
+    for d in _parse_array(text):
+        m = re.search(r"\d+", str(d.get("id", "")))
+        if m:
+            rmap[m.group()] = d
+
+    scored: dict = {}
+    missing = []
+    for i, r in enumerate(records):
+        d = rmap.get(str(i + 1))
+        if d is None:
+            missing.append(r)
+        else:
+            scored[r.bid_id] = _coerce(d)
 
     if not _retry:
-        missing = [r for r in records if r.bid_id not in scored]
         for r in missing:  # per-item recovery (bounded: _retry=True won't recurse)
             scored.update(_score_batch([r], cap_ref, call_fn, _retry=True))
     return scored
