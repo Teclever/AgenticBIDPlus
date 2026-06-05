@@ -347,6 +347,73 @@ def cmd_ingest_excel(path: str | None) -> None:
 
 # ── entry point ────────────────────────────────────────────────────────────────
 
+def _parse_out(argv: list[str]) -> tuple[list[str], str | None]:
+    """Split '<pk...> --out <dir>' into (positional_args, out_dir)."""
+    if "--out" in argv:
+        i = argv.index("--out")
+        return argv[:i], (argv[i + 1] if i + 1 < len(argv) else None)
+    return argv, None
+
+
+def cmd_fetch_docs(tn: str | None, ln: str | None, out_dir: str | None) -> None:
+    """Orchestrator doc-fetch (S6 Channel 1): enumerate ALL documents listed for the tender
+    on the portal and download each, applying the filename exclusion list
+    (is_boilerplate_document) at download time. Raw files only land in <out_dir>; extraction
+    is the §8b module's job. Reuses the Pass-2 navigation (search → row → Show documents)."""
+    from pathlib import Path
+
+    from playwright.sync_api import sync_playwright
+
+    from modules.session import open_free_view, find_results_scope, fill_tender_number
+    from modules.fetcher import find_tender_row, open_tender_documents, download_document
+    from modules.scorer_pass2 import is_boilerplate_document
+
+    if not tn or not out_dir:
+        print("Error: fetch-docs requires <tender_number> <line_number> --out <dir>.", file=sys.stderr)
+        sys.exit(1)
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+
+    saved = skipped = 0
+    with sync_playwright() as pw:
+        context = pw.chromium.launch_persistent_context(
+            user_data_dir=str(BROWSER_PROFILE_DIR),
+            headless=True, accept_downloads=True, ignore_https_errors=True,
+            args=chromium_launch_args(),
+        )
+        try:
+            page = context.pages[0] if context.pages else context.new_page()
+            open_free_view(context, page)
+            search_page = find_results_scope(context)
+            if search_page is None:
+                print("[fetch-docs] ERROR: could not reach portal search form.", file=sys.stderr)
+                sys.exit(2)
+            search_page.goto(search_page.url, wait_until="domcontentloaded", timeout=30_000)
+            fill_tender_number(search_page, tn)
+            results_page = find_results_scope(context, timeout_ms=60_000)
+            if results_page is None:
+                print(f"[fetch-docs] results page not found for {tn}", file=sys.stderr)
+                sys.exit(2)
+            row_idx = find_tender_row(results_page, tn)
+            if row_idx is None:
+                print(f"[fetch-docs] {tn} not found in results table", file=sys.stderr)
+                sys.exit(2)
+            urls = open_tender_documents(context, results_page, row_idx=row_idx)
+            seen: set[str] = set()
+            for i, url in enumerate(sorted(urls), 1):
+                res = download_document(context, url, i, seen)
+                if res is None:
+                    continue
+                raw, fname = res
+                if is_boilerplate_document(fname):
+                    skipped += 1
+                    continue
+                (out / fname).write_bytes(raw)
+                saved += 1
+        finally:
+            context.close()
+    print(f"[fetch-docs] hal ({tn},{ln}): saved {saved} doc(s), {skipped} boilerplate skipped → {out}")
+
+
 def main() -> None:
     init_db()
 
@@ -362,6 +429,11 @@ def main() -> None:
         tn = sys.argv[2] if len(sys.argv) > 2 else None
         ln = sys.argv[3] if len(sys.argv) > 3 else None
         cmd_explain(tn, ln)
+
+    elif cmd == "fetch-docs":
+        pos, out_dir = _parse_out(sys.argv[2:])
+        cmd_fetch_docs(pos[0] if pos else None,
+                       pos[1] if len(pos) > 1 else None, out_dir)
 
     elif cmd == "run-pass2":
         arg = sys.argv[2] if len(sys.argv) > 2 else None

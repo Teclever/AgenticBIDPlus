@@ -166,7 +166,28 @@ class HALAdapter:
                 f"explain did not return valid JSON: {e}\n--- stdout ---\n{proc.stdout}"
             ) from e
 
-    # ── documents (built at S5) ──────────────────────────────────────────────
+    # ── documents (S6 Channel 1) ─────────────────────────────────────────────
 
     def fetch_documents(self, source_pk: str) -> list[FetchedDoc]:
-        raise NotImplementedError("HAL document fetch is built at S5")
+        """Enumerate + download all of the tender's portal documents (filename
+        exclusion applied tool-side) into $BIDPLUS_RUNTIME_DIR/hal/bids/<pk>/, then
+        return a FetchedDoc per saved file. source_pk = 'tender_number|line_number'."""
+        from bidplus.adapters.base import fetched_docs_in
+
+        tn, _, ln = source_pk.partition("|")
+        out_dir = str(config.bid_staging_dir(self.portal, source_pk))
+        proc = subprocess.run(
+            [sys.executable, "hal_tool.py", "fetch-docs", tn, ln, "--out", out_dir],
+            cwd=str(_HAL_SRC), env=self._subprocess_env(), capture_output=True, text=True,
+        )
+        self.last_output = (
+            f"$ hal_tool.py fetch-docs {tn} {ln} --out {out_dir}\n"
+            f"[returncode] {proc.returncode}\n--- stdout ---\n{proc.stdout}\n"
+            f"--- stderr ---\n{proc.stderr}\n"
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"hal_tool.py fetch-docs failed (exit {proc.returncode}): "
+                f"{proc.stderr.strip() or proc.stdout.strip()}"
+            )
+        return fetched_docs_in(out_dir)

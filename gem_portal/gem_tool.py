@@ -253,6 +253,68 @@ def cmd_explain(bid_number: str | None) -> None:
     print(json.dumps(payload, ensure_ascii=False))
 
 
+def _parse_out(argv: list[str]) -> tuple[list[str], str | None]:
+    """Split '<pk...> --out <dir>' into (positional_args, out_dir)."""
+    if "--out" in argv:
+        i = argv.index("--out")
+        return argv[:i], (argv[i + 1] if i + 1 < len(argv) else None)
+    return argv, None
+
+
+def cmd_fetch_docs(bid_number: str | None, out_dir: str | None) -> None:
+    """Orchestrator doc-fetch (S6 Channel 1): download the primary bid PDF, then parse it
+    for supplementary spec links and download every meaningful (non-skipped, ranked) one —
+    NO cap. Raw files only land in <out_dir>; extraction is the §8b module's job.
+    """
+    from pathlib import Path
+    from modules.csrf_handler import get_session
+    from modules.scorer_pass2 import download_pdf, extract_spec_links, _download_spec_pdf
+
+    if not bid_number or not out_dir:
+        print("Error: fetch-docs requires <bid_number> --out <dir>.", file=sys.stderr)
+        sys.exit(1)
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    safe = bid_number.replace("/", "_")
+
+    conn = _get_conn()
+    try:
+        row = conn.execute("SELECT internal_id FROM bids WHERE bid_number=?", (bid_number,)).fetchone()
+    finally:
+        conn.close()
+    if not row or not row[0]:
+        print(f"[fetch-docs] no internal_id for {bid_number}", file=sys.stderr)
+        sys.exit(2)
+
+    import hashlib
+    seen_hashes: set[str] = set()
+
+    def _save(b: bytes, name: str) -> bool:
+        h = hashlib.sha256(b).hexdigest()
+        if h in seen_hashes:   # different URL, identical content — don't duplicate to Sonnet
+            return False
+        seen_hashes.add(h)
+        (out / name).write_bytes(b)
+        return True
+
+    saved = dups = 0
+    primary = download_pdf(row[0])
+    _save(primary, f"{safe}_primary.pdf"); saved += 1
+
+    links = extract_spec_links(primary, max_docs=None)  # NO cap — all meaningful links
+    session, _ = get_session()
+    for i, url in enumerate(links, 1):
+        b = _download_spec_pdf(url, session)
+        if not b:
+            print(f"[fetch-docs] spec {i} skipped (download failed / not PDF): {url[:80]}")
+            continue
+        if _save(b, f"{safe}_spec_{i}.pdf"):
+            saved += 1
+        else:
+            dups += 1
+    print(f"[fetch-docs] gem {bid_number}: saved {saved} file(s) (1 primary + {saved-1} spec), "
+          f"{dups} duplicate(s) skipped → {out}")
+
+
 def main():
     init_db()
     seed_exclusion_rules()
@@ -321,6 +383,10 @@ def main():
     elif cmd == "explain":
         arg = sys.argv[2] if len(sys.argv) > 2 else None
         cmd_explain(arg)
+
+    elif cmd == "fetch-docs":
+        pos, out_dir = _parse_out(sys.argv[2:])
+        cmd_fetch_docs(pos[0] if pos else None, out_dir)
 
     elif cmd == "run-pass2":
         arg = sys.argv[2] if len(sys.argv) > 2 else None

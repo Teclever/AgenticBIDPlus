@@ -9,6 +9,7 @@ GeM csrf_handler.py). Implementations arrive in S1 (HAL) and S2 (ISRO + GeM).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 
@@ -21,6 +22,22 @@ class FetchedDoc:
     doc_name: str
     local_path: str
     fmt: str
+
+
+def fetched_docs_in(out_dir: str | Path) -> list["FetchedDoc"]:
+    """Enumerate the raw files a tool's ``fetch-docs`` subcommand wrote into a per-bid
+    staging dir into ``FetchedDoc`` descriptors (the adapter does not parse stdout).
+    Skips dotfiles and Channel-2 ``.txt`` extractions (which the §8b module writes later)."""
+    out = Path(out_dir)
+    if not out.is_dir():
+        return []
+    docs: list[FetchedDoc] = []
+    for p in sorted(out.iterdir()):
+        if not p.is_file() or p.name.startswith(".") or p.suffix.lower() == ".txt":
+            continue
+        docs.append(FetchedDoc(doc_name=p.name, local_path=str(p),
+                               fmt=p.suffix.lower().lstrip(".") or "bin"))
+    return docs
 
 
 @dataclass

@@ -147,11 +147,13 @@ def _rank_spec_url(url: str) -> int | None:
     return None
 
 
-def extract_spec_links(pdf_bytes: bytes) -> list[str]:
+def extract_spec_links(pdf_bytes: bytes, max_docs: int | None = _MAX_SPEC_DOCS) -> list[str]:
     """
     Extract hyperlink annotation URLs from a PDF, filter to spec-relevant ones,
-    and return up to _MAX_SPEC_DOCS URLs ordered by priority rank.
-    Deduplicates by URL.
+    and return them ordered by priority rank. Deduplicates by URL.
+
+    max_docs caps how many are returned (legacy Pass-2 default = _MAX_SPEC_DOCS);
+    the S6 orchestrator fetch passes ``None`` to download every meaningful link.
     """
     seen: set[str] = set()
     ranked: list[tuple[int, str]] = []
@@ -168,7 +170,8 @@ def extract_spec_links(pdf_bytes: bytes) -> list[str]:
                     ranked.append((rank, url))
 
     ranked.sort(key=lambda x: x[0])
-    return [url for _, url in ranked[:_MAX_SPEC_DOCS]]
+    urls = [url for _, url in ranked]
+    return urls if max_docs is None else urls[:max_docs]
 
 
 def _download_spec_pdf(url: str, session) -> bytes | None:

@@ -352,6 +352,64 @@ def _export_pass1_and_full() -> tuple[int, str, str]:
     return len(delta), bids_path, pass1_path
 
 
+def _parse_out(argv: list[str]) -> tuple[list[str], str | None]:
+    """Split '<pk...> --out <dir>' into (positional_args, out_dir)."""
+    if "--out" in argv:
+        i = argv.index("--out")
+        return argv[:i], (argv[i + 1] if i + 1 < len(argv) else None)
+    return argv, None
+
+
+def cmd_fetch_docs(tender_id: str | None, out_dir: str | None) -> None:
+    """Orchestrator doc-fetch (S6 Channel 1): ISRO exposes a single tender document (+ an
+    optional corrigendum) that carries all the info — download just those into <out_dir>.
+    We deliberately do NOT follow the detail page / scraped links (over-fetch + HTML noise).
+    Extension is sniffed from content (the viewDocumentPT URL has none); HTML responses
+    (e.g. an error/detail page) are dropped. Raw files only; extraction is the §8b module's job."""
+    from pathlib import Path
+    from modules.fetcher import make_session
+    from modules.scorer_pass2 import _safe_name
+
+    if not tender_id or not out_dir:
+        print("Error: fetch-docs requires <tender_id> --out <dir>.", file=sys.stderr)
+        sys.exit(1)
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+
+    conn = _conn()
+    try:
+        row = conn.execute(
+            "SELECT document_url, corrigendum_url FROM bids WHERE tender_id=?",
+            (tender_id,)).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        print(f"[fetch-docs] no bid {tender_id}", file=sys.stderr)
+        sys.exit(2)
+
+    urls = [u for u in (row[0], row[1]) if u]
+    session = make_session()
+    saved = 0
+    for i, url in enumerate(urls, 1):
+        try:
+            resp = session.get(url, timeout=60)
+            resp.raise_for_status()
+            content = resp.content
+        except Exception as e:
+            print(f"[fetch-docs] isro link {i} failed: {e}")
+            continue
+        head = content[:64].lstrip().lower()
+        if content[:4] == b"%PDF":
+            ext = ".pdf"
+        elif head.startswith(b"<!doctype") or head.startswith(b"<html"):
+            print(f"[fetch-docs] isro link {i} is HTML (not a document) — skipped")
+            continue
+        else:
+            ext = ".bin"
+        (out / f"{_safe_name(tender_id)}_{i}{ext}").write_bytes(content)
+        saved += 1
+    print(f"[fetch-docs] isro {tender_id}: saved {saved} doc(s) from {len(urls)} link(s) → {out}")
+
+
 def main() -> None:
     load_dotenv()
     ensure_runtime_dirs()
@@ -368,6 +426,9 @@ def main() -> None:
         cmd_scrape_score()
     elif cmd == "explain":
         cmd_explain(arg)
+    elif cmd == "fetch-docs":
+        pos, out_dir = _parse_out(sys.argv[2:])
+        cmd_fetch_docs(pos[0] if pos else None, out_dir)
     elif cmd == "run-pass2":
         cmd_run_pass2(arg)
     elif cmd == "score-pending":
