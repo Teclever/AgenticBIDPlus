@@ -43,8 +43,10 @@ def init_db() -> None:
                 pass1_score              INTEGER,
                 pass1_confidence         TEXT,
                 pass1_domain             TEXT,
+                pass1_matching_tech      TEXT,
                 pass1_rationale          TEXT,
                 pass1_gaps               TEXT,
+                pass1_recommendation     TEXT,
                 pass2_score              INTEGER,
                 pass2_confidence         TEXT,
                 pass2_domain             TEXT,
@@ -83,6 +85,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
     additions = [
         ("previous_closing_date", "TEXT"),
         ("extension_count", "INTEGER DEFAULT 0"),
+        ("pass1_matching_tech", "TEXT"),
+        ("pass1_recommendation", "TEXT"),
     ]
     for col, dtype in additions:
         if col not in existing:
@@ -191,15 +195,18 @@ def update_pass1_score(tender_id: str, fields: dict[str, Any]) -> None:
         conn.execute(
             """
             UPDATE bids
-            SET pass1_score=?, pass1_confidence=?, pass1_domain=?, pass1_rationale=?, pass1_gaps=?
+            SET pass1_score=?, pass1_confidence=?, pass1_domain=?, pass1_matching_tech=?,
+                pass1_rationale=?, pass1_gaps=?, pass1_recommendation=?
             WHERE tender_id=?
             """,
             (
                 fields.get("pass1_score"),
                 fields.get("pass1_confidence"),
                 fields.get("pass1_domain"),
+                fields.get("pass1_matching_tech"),
                 fields.get("pass1_rationale"),
                 fields.get("pass1_gaps"),
+                fields.get("pass1_recommendation"),
                 tender_id,
             ),
         )

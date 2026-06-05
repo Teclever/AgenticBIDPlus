@@ -3,6 +3,8 @@ ISRO bid automation tool.
 
 Usage:
   python isro_tool.py run
+  python isro_tool.py scrape-score                 # Orchestrator: scrape + CLOSED sweep + Pass 1 (no Excel)
+  python isro_tool.py explain <tender_id>          # Dry-run JSON: input fields -> prompt -> stored Pass-1 result
   python isro_tool.py run-pass2 <excel_path>
   python isro_tool.py run-pass2 --no-file
   python isro_tool.py score-pending
@@ -13,6 +15,7 @@ Usage:
 from __future__ import annotations
 
 import datetime
+import json
 import os
 import sys
 import time
@@ -26,6 +29,7 @@ except Exception:  # pragma: no cover
 
 from config import CAPABILITY_REF_PATH, EXPORTS_DIR, PASS2_THRESHOLD, ensure_runtime_dirs
 from modules.db import (
+    _conn,
     get_all_bids,
     get_unexported_pass1_bids,
     get_unscored_bids,
@@ -41,7 +45,7 @@ from modules.excel_export import export_pass1_delta, export_pass2_delta, export_
 from modules.excel_ingest import ingest_all_pending, ingest_excel
 from modules.fetcher import fetch_all_tenders
 from modules.logutil import log_banner, log_done, log_info, log_ok, log_phase, log_step, log_warn
-from modules.scorer_pass1 import score_bids_pass1_bulk
+from modules.scorer_pass1 import build_pass1_prompt, score_bids_pass1_bulk
 from modules.scorer_pass2 import score_bid_pass2
 
 
@@ -112,6 +116,104 @@ def cmd_run() -> None:
         f"Fetched {len(bids)} (inserted={inserted}, updated={updated}) | Pass1 scored this run: {scored} | "
         f"pass1 export: {pass1_n} rows | full: {bids_path} | elapsed {elapsed}s"
     )
+
+
+def cmd_scrape_score() -> None:
+    """Orchestrator pipeline: scrape -> CLOSED sweep -> Pass 1. No Excel ingest/export, no Pass 2.
+
+    This is the entry point the bidplus PortalAdapter shells out to.
+    """
+    log_banner("scrape-score (orchestrator)")
+    _check_api_key()
+    t0 = time.time()
+
+    log_phase(1, "Scrape ISRO portal")
+    inserted = 0
+    updated = 0
+    try:
+        bids = fetch_all_tenders()
+        log_info(f"Upserting {len(bids)} tender(s) into database…")
+        for i, bid in enumerate(bids, start=1):
+            op = upsert_raw_bid(bid)
+            if op == "inserted":
+                inserted += 1
+            else:
+                updated += 1
+            if i % 25 == 0 or i == len(bids):
+                log_step(f"stored {i}/{len(bids)} (new={inserted}, updated={updated})")
+        log_ok(f"Scrape complete: fetched={len(bids)} -> inserted={inserted}, updated={updated}")
+    except Exception as exc:
+        log_warn(f"Scrape failed or skipped: {exc}")
+
+    log_phase(2, "CLOSED sweep")
+    closed = sweep_closed_bids()
+    log_ok(f"{closed} tender(s) marked CLOSED.")
+
+    log_phase(3, "Pass 1 scoring (Anthropic)")
+    scored = _run_pass1()
+
+    elapsed = int(time.time() - t0)
+    log_done(
+        f"scrape-score: inserted={inserted}, updated={updated}, closed={closed}, "
+        f"Pass1 scored={scored} | elapsed {elapsed}s"
+    )
+
+
+def cmd_explain(tender_id: str | None) -> None:
+    """Print a single JSON dry-run object for one tender (NO API call).
+
+    Reads the stored row from the DB, assembles the deterministic Pass-1 prompt
+    via build_pass1_prompt([row]), and reports the stored pass1_* result. Only the
+    JSON object is printed to stdout (so the adapter can parse it); human/log lines
+    go to stderr.
+    """
+    if not tender_id:
+        print("Error: explain requires <tender_id>.", file=sys.stderr)
+        sys.exit(1)
+
+    conn = _conn()
+    try:
+        row = conn.execute("SELECT * FROM bids WHERE tender_id=?", (tender_id,)).fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        print(f"Error: no tender found for {tender_id}", file=sys.stderr)
+        sys.exit(1)
+
+    row_dict = dict(row)
+
+    input_field_names = [
+        "tender_id", "center_name", "tender_description", "detail_text",
+        "bid_closing_date", "bid_opening_date",
+    ]
+    input_fields = {f: row_dict.get(f) for f in input_field_names}
+
+    # Read the rubric directly (NOT via _load_capability_ref, which logs to stdout
+    # and would corrupt the pure-JSON stdout the adapter parses).
+    cap_path = Path(CAPABILITY_REF_PATH)
+    cap_ref = cap_path.read_text(encoding="utf-8") if cap_path.exists() else ""
+    assembled_prompt = build_pass1_prompt([row_dict], cap_ref)
+
+    parsed_result = {
+        "score":          row_dict.get("pass1_score"),
+        "confidence":     row_dict.get("pass1_confidence"),
+        "domain":         row_dict.get("pass1_domain"),
+        "matching_tech":  row_dict.get("pass1_matching_tech"),
+        "gaps":           row_dict.get("pass1_gaps"),
+        "rationale":      row_dict.get("pass1_rationale"),
+        "recommendation": row_dict.get("pass1_recommendation"),
+    }
+
+    payload = {
+        "portal": "isro",
+        "source_pk": tender_id,
+        "input_fields": input_fields,
+        "assembled_prompt": assembled_prompt,
+        "parsed_result": parsed_result,
+    }
+
+    print(json.dumps(payload, ensure_ascii=False))
 
 
 def cmd_run_pass2(arg: str | None) -> None:
@@ -255,13 +357,18 @@ def main() -> None:
     load_dotenv()
     ensure_runtime_dirs()
     init_db()
-    log_step(f"Database ready: data/bids.db")
+    # Status line to stderr so the `explain` command keeps stdout pure JSON.
+    print("    Database ready: bids.db", file=sys.stderr, flush=True)
 
     cmd = sys.argv[1] if len(sys.argv) > 1 else "run"
     arg = sys.argv[2] if len(sys.argv) > 2 else None
 
     if cmd == "run":
         cmd_run()
+    elif cmd == "scrape-score":
+        cmd_scrape_score()
+    elif cmd == "explain":
+        cmd_explain(arg)
     elif cmd == "run-pass2":
         cmd_run_pass2(arg)
     elif cmd == "score-pending":

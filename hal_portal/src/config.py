@@ -4,14 +4,30 @@ import urllib.parse
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+from bidplus.runtime import capability_reference_path, resolve_portal_dir, runtime_root
 
 BASE_DIR = Path(__file__).parent
 
-DB_PATH             = BASE_DIR / "data" / "bids.db"
-EXPORTS_DIR         = BASE_DIR / "exports"
-DOWNLOADS_DIR       = BASE_DIR / "downloads"
-CAPABILITY_REF_PATH = BASE_DIR / "data" / "capability_reference.md"
+# Writable state relocates under $BIDPLUS_RUNTIME_DIR/hal/ (outside iCloud) when the
+# orchestrator sets the env var; falls back to the in-tree default for standalone runs.
+_RT = resolve_portal_dir("hal")
+
+# Single .env: load the one in the runtime dir when relocated, else the in-tree default.
+if _RT is not None:
+    load_dotenv(runtime_root() / ".env")
+    DB_PATH             = _RT / "bids.db"
+    EXPORTS_DIR         = _RT / "exports"
+    DOWNLOADS_DIR       = _RT / "downloads"
+    BROWSER_PROFILE_DIR = _RT / ".browser_profile"
+else:
+    load_dotenv()
+    DB_PATH             = BASE_DIR / "data" / "bids.db"
+    EXPORTS_DIR         = BASE_DIR / "exports"
+    DOWNLOADS_DIR       = BASE_DIR / "downloads"
+    BROWSER_PROFILE_DIR = BASE_DIR / ".browser_profile"
+
+# One canonical Pass-1 rubric for all three portals (decision #8), in bidplus/data/.
+CAPABILITY_REF_PATH = capability_reference_path()
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
@@ -24,7 +40,7 @@ HAL_BASE_URL = "https://eproc.hal-india.co.in/HAL/"
 
 # Persistent Playwright browser profile — reused across runs so the portal
 # session survives between scrape and pass-2 without re-authenticating.
-BROWSER_PROFILE_DIR = BASE_DIR / ".browser_profile"
+# (BROWSER_PROFILE_DIR is resolved above — runtime dir when relocated, else in-tree.)
 
 SCRAPE_DELAY_SECONDS = 0.7   # polite delay between portal requests
 PASS1_BATCH_SIZE     = 25

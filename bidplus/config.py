@@ -1,0 +1,66 @@
+"""Central orchestrator configuration.
+
+Reads ``BIDPLUS_RUNTIME_DIR`` (via :mod:`bidplus.runtime`, which applies the iCloud
+guard), resolves all writable paths under it, pins the model IDs, the trigger-only
+score gate, the bounded summary-retry cap, and loads the single ANTHROPIC_API_KEY
+from the one .env in the runtime dir. No second key source, ever.
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+from bidplus.runtime import runtime_root
+
+RUNTIME_DIR = runtime_root()
+PARENT_DB_PATH = RUNTIME_DIR / "parent.db"
+ENV_PATH = RUNTIME_DIR / ".env"
+
+# Single source of secrets: the one .env in the runtime dir. (No per-tool .env files.)
+load_dotenv(ENV_PATH)
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+
+# --- Model pins (AGENTS.md / plan §5) -------------------------------------------------
+PASS1_MODEL = "claude-haiku-4-5-20251001"   # batch Pass-1 scoring
+SUMMARY_MODEL = "claude-sonnet-4-6"         # one structured call per bid (vision-capable)
+
+# --- Score gate (TRIGGER ONLY; same summarization module for every score) -------------
+# Score 5 is the ONLY automatic Sonnet call (overnight). Score 4 gets a cheap regex
+# preview now and the module deferred to a "Fetch more" click. 3/2/1/0 are on demand.
+SCORE_AUTO_SUMMARIZE = 5
+SCORE_LOCAL_EXTRACT = 4
+
+# --- Summarization module bounds (plan §8b) -------------------------------------------
+SUMMARY_MAX_ATTEMPTS = int(os.environ.get("SUMMARY_MAX_ATTEMPTS", "3"))  # initial + retries
+SUMMARY_TOKEN_BUDGET = int(os.environ.get("SUMMARY_TOKEN_BUDGET", "150000"))
+
+# --- File retention (S6 nightly sweep) ------------------------------------------------
+RETENTION_DAYS = int(os.environ.get("BIDPLUS_RETENTION_DAYS", "7"))
+
+# Strict sequential scrape order (HAL -> ISRO -> GeM). One heavy op at a time.
+PORTALS = ("hal", "isro", "gem")
+
+
+def portal_dir(portal: str) -> Path:
+    """Runtime dir for a portal: $BIDPLUS_RUNTIME_DIR/<portal>/."""
+    return RUNTIME_DIR / portal
+
+
+def bid_staging_dir(portal: str, source_pk: str) -> Path:
+    """Per-bid document staging dir. Source PKs with '/' (HAL tender numbers) are
+    sanitised to '_' for the path."""
+    safe = str(source_pk).replace("/", "_")
+    return portal_dir(portal) / "bids" / safe
+
+
+def require_api_key() -> str:
+    """Return the API key or fail loud (used by code paths that actually call Sonnet)."""
+    if not ANTHROPIC_API_KEY:
+        raise RuntimeError(
+            "ANTHROPIC_API_KEY is not set. Put it in the single "
+            f"{ENV_PATH} (or the environment)."
+        )
+    return ANTHROPIC_API_KEY

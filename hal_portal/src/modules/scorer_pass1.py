@@ -67,8 +67,12 @@ def build_pass1_prompt(tenders: list[dict]) -> str:
         '  "score"          : integer 0–5\n'
         '  "confidence"     : "High" | "Medium" | "Low"\n'
         '  "domain"         : closest Core Domain name\n'
+        '  "matching_tech"  : comma-separated matched technologies/standards, or "None"\n'
         '  "rationale"      : 2–3 sentences citing specific evidence\n'
-        '  "gaps"           : missing capability/tech, or "None"\n\n'
+        '  "gaps"           : missing capability/tech, or "None"\n'
+        '  "recommendation" : "PURSUE" | "PURSUE WITH RAMP-UP" | "ASSESS FURTHER" | "DECLINE"\n'
+        "                     (mapping: PURSUE=score 4–5, PURSUE WITH RAMP-UP=score 3, "
+        "ASSESS FURTHER=score 2, DECLINE=score 0–1)\n\n"
         "Return ONLY the JSON array. No markdown fences. No other text.\n\n"
         "TENDERS:"
     )
@@ -169,8 +173,10 @@ def _parse_json_results(text: str) -> list[dict]:
                 "score":         int(item.get("score", 0)),
                 "confidence":    str(item.get("confidence", "Low")),
                 "domain":        str(item.get("domain", "")),
+                "matching_tech": str(item.get("matching_tech", "")),
                 "rationale":     str(item.get("rationale", "")),
                 "gaps":          str(item.get("gaps", "")),
+                "recommendation": str(item.get("recommendation", "")),
             })
         except (TypeError, ValueError):
             continue

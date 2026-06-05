@@ -8,6 +8,7 @@ from config import DB_PATH, PASS2_THRESHOLD
 _PRESERVED = frozenset({
     "tender_number", "line_number",
     "pass1_score", "pass1_confidence", "pass1_domain", "pass1_rationale", "pass1_gaps",
+    "pass1_recommendation", "pass1_matching_tech",
     "pass2_score", "pass2_confidence", "pass2_domain", "pass2_rationale",
     "pass2_gaps", "pass2_recommendation",
     "human_override_score", "human_override_reason",
@@ -34,6 +35,8 @@ def _migrate(conn: sqlite3.Connection) -> None:
         ("directory_id",      "INTEGER"),
         ("issue_date_from",   "TEXT"),
         ("issue_date_to",     "TEXT"),
+        ("pass1_recommendation", "TEXT"),
+        ("pass1_matching_tech",  "TEXT"),
     ]
     for col, dtype in additions:
         if col not in existing:
@@ -288,7 +291,10 @@ def count_rejected_unscored() -> int:
 
 def update_pass1_score(tn: str, ln: str, fields: dict) -> None:
     """Write Pass 1 scoring columns for one tender."""
-    allowed = {"pass1_score", "pass1_confidence", "pass1_domain", "pass1_rationale", "pass1_gaps"}
+    allowed = {
+        "pass1_score", "pass1_confidence", "pass1_domain", "pass1_rationale", "pass1_gaps",
+        "pass1_recommendation", "pass1_matching_tech",
+    }
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return

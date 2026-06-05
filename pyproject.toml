@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bidplus"
+version = "0.0.0"
+description = "Teclever Bid Portal orchestrator (backend) — runs HAL/ISRO/GeM scrapers, merges into a parent SQLite, Pass-1 scores, and summarizes via Sonnet."
+requires-python = ">=3.12"
+# Merged union of the three tool requirements + the plan's pins (MASTER_ACTION_PLAN_V3.md
+# §5 / decision #24). chromadb / sentence-transformers are deliberately excluded (no vector
+# store, no embeddings). fastapi / uvicorn are deferred to the web-app round.
+dependencies = [
+    "anthropic>=0.105.2",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "pandas>=2.0.0",
+    "openpyxl>=3.1.0",
+    "pdfplumber>=0.11.0",
+    "pypdf>=4.0",
+    "python-docx>=1.1.0",
+    "python-dotenv>=1.0",
+    "playwright>=1.40.0",
+    "pydantic>=2.6",
+    # Pinned so a later `pip install` never silently upgrades certifi and wipes the
+    # eMudhra->certifi append the GeM TLS fix relies on (DEPLOY_WORKFLOW.md §2). If you
+    # ever bump this, re-run the eMudhra append.
+    "certifi==2026.4.22",
+]
+
+[tool.setuptools]
+# Explicit package list: the repo root also holds the three tool folders, so we do NOT
+# want setuptools auto-discovery to treat those as packages. Only `bidplus` is importable.
+packages = ["bidplus", "bidplus.adapters"]

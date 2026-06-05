@@ -50,7 +50,14 @@ def score_bids_pass1_bulk(
         print(f"  [batch {batch_idx}/{total_batches}] done ({done}/{total} processed)")
 
 
-def _score_chunk(client: anthropic.Anthropic, bids: list[dict], cap_ref: str) -> list[dict]:
+def build_pass1_prompt(bids: list[dict], cap_ref: str) -> str:
+    """Assemble the deterministic Pass-1 user prompt for a batch of ISRO tenders.
+
+    Requests the full unified-rubric output shape (the same fields HAL/GeM use):
+    tender_id, score, confidence, domain, matching_tech, rationale, gaps,
+    recommendation. Factored out so the dry-run `explain` view can reproduce the
+    exact prompt without making an API call.
+    """
     payload = [
         {
             "tender_id": b["tender_id"],
@@ -60,13 +67,27 @@ def _score_chunk(client: anthropic.Anthropic, bids: list[dict], cap_ref: str) ->
         }
         for b in bids
     ]
-    prompt = (
-        "Score each ISRO tender from 0 to 5 for Teclever fit.\n"
-        "Return strict JSON list with fields: "
-        "tender_id, score, confidence, domain, rationale, gaps.\n\n"
+    return (
+        "Score each ISRO tender from 0 to 5 for Teclever fit using the capability "
+        "reference below.\n"
+        "Return a strict JSON list — one object per tender — with exactly these fields:\n"
+        '  "tender_id"      : string (echo back unchanged)\n'
+        '  "score"          : integer 0-5\n'
+        '  "confidence"     : "High" | "Medium" | "Low"\n'
+        '  "domain"         : closest Core Domain name\n'
+        '  "matching_tech"  : comma-separated matched technologies/standards, or "None"\n'
+        '  "rationale"      : 2-3 sentences citing specific evidence\n'
+        '  "gaps"           : missing capability/tech, or "None"\n'
+        '  "recommendation" : "PURSUE" | "PURSUE WITH RAMP-UP" | "ASSESS FURTHER" | "DECLINE"\n'
+        "                     (mapping: PURSUE=score 4-5, PURSUE WITH RAMP-UP=score 3, "
+        "ASSESS FURTHER=score 2, DECLINE=score 0-1)\n\n"
         f"Capability reference:\n{cap_ref}\n\n"
         f"Tenders JSON:\n{json.dumps(payload, ensure_ascii=True)}"
     )
+
+
+def _score_chunk(client: anthropic.Anthropic, bids: list[dict], cap_ref: str) -> list[dict]:
+    prompt = build_pass1_prompt(bids, cap_ref)
     try:
         msg = client.messages.create(
             model=PASS1_MODEL,
@@ -89,8 +110,10 @@ def _score_chunk(client: anthropic.Anthropic, bids: list[dict], cap_ref: str) ->
                     "pass1_score": _clamp_score(item.get("score")),
                     "pass1_confidence": str(item.get("confidence") or "Low"),
                     "pass1_domain": str(item.get("domain") or "Unknown"),
+                    "pass1_matching_tech": str(item.get("matching_tech") or ""),
                     "pass1_rationale": str(item.get("rationale") or "No rationale returned."),
                     "pass1_gaps": str(item.get("gaps") or ""),
+                    "pass1_recommendation": str(item.get("recommendation") or ""),
                 }
             )
         return output
@@ -148,8 +171,10 @@ def _fallback_item(bid: dict) -> dict:
         "pass1_score": None,
         "pass1_confidence": "Low",
         "pass1_domain": "Unknown",
+        "pass1_matching_tech": "",
         "pass1_rationale": "Scoring failed; will retry in a later run.",
         "pass1_gaps": "API or parse failure",
+        "pass1_recommendation": "",
     }
 
 

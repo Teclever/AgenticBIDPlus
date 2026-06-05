@@ -1,0 +1,21 @@
+[Unit]
+Description=Teclever Bid Portal — nightly orchestration cycle (scrape -> Pass 1 -> merge -> gate)
+Documentation=file:///home/congo/BidAnalysisPortal/DEPLOY_WORKFLOW.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=congo
+WorkingDirectory=/home/congo/BidAnalysisPortal
+Environment=BIDPLUS_RUNTIME_DIR=/home/congo/bidplus-runtime
+# The single ANTHROPIC_API_KEY is read from the one .env in the runtime dir by config.py;
+# do NOT add a second key source here.
+ExecStart=/home/congo/bidplus-runtime/venv/bin/python -m bidplus.launcher run
+# The cycle is internally STRICTLY SEQUENTIAL (one heavy op at a time). The overnight
+# window is ~3am -> ~9am; cap a stuck run well inside it.
+TimeoutStartSec=21600
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

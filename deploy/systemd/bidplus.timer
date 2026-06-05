@@ -1,0 +1,13 @@
+[Unit]
+Description=Nightly Teclever Bid Portal cycle (~3am, must finish by ~9am)
+Documentation=file:///home/congo/BidAnalysisPortal/DEPLOY_WORKFLOW.md
+
+[Timer]
+# Low-usage overnight window. Persistent=true runs a missed cycle (box was off) on boot.
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=300
+Unit=bidplus.service
+
+[Install]
+WantedBy=timers.target

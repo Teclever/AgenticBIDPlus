@@ -3,6 +3,8 @@ HAL bid automation tool — CLI entry point.
 
 Usage:
   python hal_tool.py run                           # Full pipeline: scrape + Pass 1 score + export
+  python hal_tool.py scrape-score                  # Orchestrator: scrape + CLOSED sweep + Pass 1 (no Excel/Pass 2)
+  python hal_tool.py explain <tender_no> <line_no> # Dry-run JSON: input fields -> prompt -> stored Pass-1 result
   python hal_tool.py run-pass2 <excel_path>        # Ingest Excel + Pass 2 PDF score + export
   python hal_tool.py run-pass2 --no-file           # Skip ingest, run Pass 2 using existing DB flags
   python hal_tool.py score-pending                 # Score unscored tenders in DB (no fetch)
@@ -11,6 +13,7 @@ Usage:
 """
 
 import datetime
+import json
 import sys
 from pathlib import Path
 
@@ -21,6 +24,7 @@ from config import (
     chromium_launch_args,
 )
 from modules.db import (
+    _get_conn,
     count_rejected_unscored,
     get_unexported_pass1_tender_numbers,
     get_unscored_tenders,
@@ -35,7 +39,7 @@ from modules.db import (
 from modules.excel_export import export_pass1_delta, export_pass2_delta, export_to_excel
 from modules.excel_ingest import ingest_all_pending, ingest_excel
 from modules.fetcher import fetch_all_tenders
-from modules.scorer_pass1 import score_bids_pass1_bulk
+from modules.scorer_pass1 import build_pass1_prompt, score_bids_pass1_bulk
 from modules.scorer_pass2 import score_tender_pass2
 
 
@@ -81,11 +85,13 @@ def _score_pending_tenders() -> tuple[int, int]:
     def save_batch(scored_chunk):
         for item in scored_chunk:
             fields = {
-                "pass1_score":      item.get("score"),
-                "pass1_confidence": item.get("confidence"),
-                "pass1_domain":     item.get("domain"),
-                "pass1_rationale":  item.get("rationale"),
-                "pass1_gaps":       item.get("gaps"),
+                "pass1_score":          item.get("score"),
+                "pass1_confidence":     item.get("confidence"),
+                "pass1_domain":         item.get("domain"),
+                "pass1_rationale":      item.get("rationale"),
+                "pass1_gaps":           item.get("gaps"),
+                "pass1_recommendation": item.get("recommendation"),
+                "pass1_matching_tech":  item.get("matching_tech"),
             }
             update_pass1_score(item["tender_number"], item["line_number"], fields)
 
@@ -198,6 +204,84 @@ def cmd_run() -> None:
     print(f"  Full snapshot: exports/bids_{today}.xlsx")
 
 
+def cmd_scrape_score() -> None:
+    """Orchestrator pipeline: scrape -> CLOSED sweep -> Pass 1. No Excel ingest/export, no Pass 2.
+
+    This is the entry point the bidplus PortalAdapter shells out to. Pass 2 is
+    intentionally absent — it is replaced by the S5 Sonnet summarization module.
+    """
+    print("=== Phase 1: Scraping HAL portal ===")
+    total = _scrape_tenders()
+    print(f"  {total} tender(s) fetched and stored.")
+
+    print("\n=== Phase 2: CLOSED sweep ===")
+    closed_count = sweep_closed_tenders()
+    print(f"  {closed_count} tender(s) transitioned to CLOSED.")
+
+    print("\n=== Phase 3: Pass 1 scoring ===")
+    scored_count, skipped = _score_pending_tenders()
+    print(f"  Skipped (rejected/closed): {skipped}")
+
+    print("\nDone (scrape-score).")
+
+
+def cmd_explain(tn: str | None, ln: str | None) -> None:
+    """Print a single JSON dry-run object for one tender (NO API call).
+
+    Reads the stored row from the DB, assembles the deterministic Pass-1 prompt
+    via build_pass1_prompt([row]), and reports the stored pass1_* result. Only the
+    JSON object is printed to stdout (so the adapter can parse it); human/log lines
+    go to stderr.
+    """
+    if not tn or not ln:
+        print("Error: explain requires <tender_number> <line_number>.", file=sys.stderr)
+        sys.exit(1)
+
+    conn = _get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM tenders WHERE tender_number=? AND line_number=?",
+            (tn, ln),
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        print(f"Error: no tender found for {tn} | {ln}", file=sys.stderr)
+        sys.exit(1)
+
+    row_dict = dict(row)
+
+    # The listing fields build_pass1_prompt actually consumes.
+    input_field_names = [
+        "tender_number", "line_number", "tender_description", "buyer",
+        "tender_region", "estimated_cost", "emd_listing", "closing_date", "bidder_type",
+    ]
+    input_fields = {f: row_dict.get(f) for f in input_field_names}
+
+    assembled_prompt = build_pass1_prompt([row_dict])
+
+    parsed_result = {
+        "score":          row_dict.get("pass1_score"),
+        "confidence":     row_dict.get("pass1_confidence"),
+        "domain":         row_dict.get("pass1_domain"),
+        "matching_tech":  row_dict.get("pass1_matching_tech"),
+        "gaps":           row_dict.get("pass1_gaps"),
+        "rationale":      row_dict.get("pass1_rationale"),
+        "recommendation": row_dict.get("pass1_recommendation"),
+    }
+
+    payload = {
+        "portal": "hal",
+        "source_pk": f"{tn}|{ln}",
+        "input_fields": input_fields,
+        "assembled_prompt": assembled_prompt,
+        "parsed_result": parsed_result,
+    }
+
+    print(json.dumps(payload, ensure_ascii=False))
+
+
 def cmd_run_pass2(arg: str | None) -> None:
     """Ingest Excel (or skip) → Pass 2 PDF scoring → export."""
     if arg is None:
@@ -271,6 +355,14 @@ def main() -> None:
 
     if cmd == "run":
         cmd_run()
+
+    elif cmd == "scrape-score":
+        cmd_scrape_score()
+
+    elif cmd == "explain":
+        tn = sys.argv[2] if len(sys.argv) > 2 else None
+        ln = sys.argv[3] if len(sys.argv) > 3 else None
+        cmd_explain(tn, ln)
 
     elif cmd == "run-pass2":
         arg = sys.argv[2] if len(sys.argv) > 2 else None

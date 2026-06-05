@@ -1,6 +1,8 @@
 """
 Usage:
   python gem_tool.py run                           # Full pipeline: fetch + refresh + score + export
+  python gem_tool.py scrape-score                  # Orchestrator: fetch + CLOSED sweep + Pass 1 (no Excel/Pass 2)
+  python gem_tool.py explain <bid_number>          # Dry-run JSON: input fields -> prompt -> stored Pass-1 result
   python gem_tool.py run-pass2 <excel_path>        # Ingest specific Excel + Pass 2 PDF score + export Excel
   python gem_tool.py run-pass2 --no-file           # Skip ingest, run Pass 2 using existing DB flags
   python gem_tool.py score-pending                 # Score unscored bids already in DB (no fetch)
@@ -11,15 +13,34 @@ Usage:
 
 import sys, json, datetime
 from pathlib import Path
-from modules.excel_ingest import ingest_all_pending, ingest_excel
 from modules.fetcher import fetch_all_bids_for_org
-from modules.scorer_pass1 import score_bid_pass1, score_bids_pass1_bulk
+from modules.scorer_pass1 import build_pass1_prompt, score_bid_pass1, score_bids_pass1_bulk
 from modules.scorer_pass2 import score_bid_pass2
-from modules.db import (upsert_bid, upsert_raw_bid, get_unscored_bids,
+from modules.db import (_get_conn, upsert_bid, upsert_raw_bid, get_unscored_bids,
                          update_pass1_score, query_pass2_candidates, init_db,
                          sweep_closed_bids, count_rejected_unscored,
                          get_unexported_pass1_bid_numbers, mark_pass1_exported)
-from modules.excel_export import export_to_excel, export_pass1_delta, export_pass2_delta
+
+# The Excel ingest/export helpers are NOT bundled with this GeM sample
+# (gem_portal/modules has no excel_ingest.py / excel_export.py). The orchestrator
+# paths (`scrape-score`, `explain`) do not need them, so defer the import failure
+# to the Excel-only commands (`run`, `run-pass2`, `ingest-excel`, `export-excel`,
+# `score-pending`) rather than breaking module import for everything.
+try:
+    from modules.excel_ingest import ingest_all_pending, ingest_excel
+    from modules.excel_export import export_to_excel, export_pass1_delta, export_pass2_delta
+except ModuleNotFoundError as _excel_import_error:
+    _EXCEL_UNAVAILABLE = _excel_import_error
+
+    def _excel_missing(*_args, **_kwargs):
+        raise ModuleNotFoundError(
+            "GeM Excel helpers (modules.excel_ingest / modules.excel_export) are not "
+            "bundled with this tool; only the orchestrator paths (scrape-score, explain) "
+            f"are available. Original error: {_EXCEL_UNAVAILABLE}"
+        )
+
+    ingest_all_pending = ingest_excel = _excel_missing
+    export_to_excel = export_pass1_delta = export_pass2_delta = _excel_missing
 from modules.feedback import seed_exclusion_rules
 from config import TARGET_ORGS, DB_PATH, STATE_PATH, EXPORTS_DIR, CAPABILITY_REF_PATH
 
@@ -157,6 +178,83 @@ def run_pipeline2() -> list[str]:
     return scored_bid_numbers
 
 
+def cmd_scrape_score() -> None:
+    """Orchestrator pipeline: fetch all orgs -> CLOSED sweep -> Pass 1. No Excel, no Pass 2.
+
+    This is the entry point the bidplus PortalAdapter shells out to. The scorer and
+    schema are unchanged — GeM already uses the unified rubric byte-for-byte.
+    """
+    print("=== Phase 1: Full fetch — all active bids ===")
+    total_fetched, extended_bid_numbers = fetch_all_orgs()
+
+    print("\n=== Phase 2: CLOSED sweep ===")
+    closed_count = sweep_closed_bids()
+    print(f"  {closed_count} bid(s) transitioned to CLOSED.")
+
+    print("\n=== Phase 3: Score pending bids ===")
+    delta_bid_numbers, skipped = score_pending_bids()
+    print(f"  Skipped (rejected/closed): {skipped}")
+
+    print(f"\nDone (scrape-score). fetched={total_fetched}, "
+          f"extended={len(extended_bid_numbers)}, closed={closed_count}, "
+          f"scored={len(delta_bid_numbers)}")
+
+
+def cmd_explain(bid_number: str | None) -> None:
+    """Print a single JSON dry-run object for one bid (NO API call).
+
+    Reads the stored row, assembles the deterministic Pass-1 prompt via
+    build_pass1_prompt(title), and reports the stored pass1_* result. Only the JSON
+    object goes to stdout (so the adapter can parse it); errors go to stderr.
+    """
+    if not bid_number:
+        print("Error: explain requires <bid_number>.", file=sys.stderr)
+        sys.exit(1)
+
+    conn = _get_conn()
+    try:
+        row = conn.execute(
+            "SELECT * FROM bids WHERE bid_number=?", (bid_number,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        print(f"Error: no bid found for {bid_number}", file=sys.stderr)
+        sys.exit(1)
+
+    row_dict = dict(row)
+    title = row_dict.get("items") or ""
+
+    input_field_names = [
+        "bid_number", "items", "ministry", "organization", "department",
+        "start_date", "end_date",
+    ]
+    input_fields = {f: row_dict.get(f) for f in input_field_names}
+
+    # build_pass1_prompt returns a messages list; surface the user content string.
+    messages = build_pass1_prompt(title)
+    assembled_prompt = messages[0]["content"] if messages else ""
+
+    parsed_result = {
+        "score":      row_dict.get("pass1_score"),
+        "confidence": row_dict.get("pass1_confidence"),
+        "domain":     row_dict.get("pass1_domain"),
+        "gaps":       row_dict.get("pass1_gaps"),
+        "rationale":  row_dict.get("pass1_rationale"),
+    }
+
+    payload = {
+        "portal": "gem",
+        "source_pk": bid_number,
+        "input_fields": input_fields,
+        "assembled_prompt": assembled_prompt,
+        "parsed_result": parsed_result,
+    }
+
+    print(json.dumps(payload, ensure_ascii=False))
+
+
 def main():
     init_db()
     seed_exclusion_rules()
@@ -218,6 +316,13 @@ def main():
         print(f"\nDone. Excel written to exports/bids_{today}.xlsx")
         print(f"Review delta:   exports/pass1_{today}.xlsx "
               f"({len(delta_bid_numbers)} new, {len(extended_bid_numbers)} extended)")
+
+    elif cmd == "scrape-score":
+        cmd_scrape_score()
+
+    elif cmd == "explain":
+        arg = sys.argv[2] if len(sys.argv) > 2 else None
+        cmd_explain(arg)
 
     elif cmd == "run-pass2":
         arg = sys.argv[2] if len(sys.argv) > 2 else None
