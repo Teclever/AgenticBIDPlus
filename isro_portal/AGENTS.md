@@ -21,7 +21,7 @@ the Anthropic API in two passes, and uses Excel as a human review surface. SQLit
 | How human edits are read back | [`modules/excel_ingest.py`](modules/excel_ingest.py) |
 | Phase order, CLI commands, logging | [`isro_tool.py`](isro_tool.py) |
 | Paths, model names, thresholds | [`config.py`](config.py) |
-| Scoring rubric (no code) | [`data/capability_reference.md`](data/capability_reference.md) |
+| Scoring rubric (no code) | [`bidplus/data/capability_reference.md`](../bidplus/data/capability_reference.md) — one canonical copy for all portals |
 
 ## Control flow
 

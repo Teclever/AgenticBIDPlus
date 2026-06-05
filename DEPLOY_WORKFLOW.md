@@ -13,7 +13,7 @@ for that); it describes how a built, committed change gets onto the deploy box a
 - **Deployment is always a git pull on the box.** Never rsync, never scp of source. The
   box checks out a commit; runtime state and secrets are never shipped (they're gitignored).
 - **The deploy box is a deploy-phase dependency, not a build-phase one.** All slices
-  (S0–S6) are built and validated on the Mac. This workflow only runs once the box is
+  (S0–S7) are built and validated on the Mac. This workflow only runs once the box is
   reachable; nothing here blocks development.
 - **Forward-looking (optional):** lanes for the React frontend and the middleware are
   sketched in §4 for *if* they ever land — but per the deploy-once cadence they are **not a
@@ -87,7 +87,8 @@ and records the result. Order matters where noted.
       sweep is the real safeguard (no high-watermark). Listed here so the headroom is known.
 - [ ] **Clone the repo** — `git clone <origin> /home/congo/BidAnalysisPortal` (branch `main`).
 - [ ] **Create the runtime root** — `/home/congo/bidplus-runtime/` with `gem/ hal/ isro/`,
-      `exports/`, and the `bids/` staging trees (per §5b of the plan). Set `BIDPLUS_RUNTIME_DIR`
+      `exports/`, the `bids/` staging trees, and `list_review/{pending,ready,consumed}/` (the
+      eliminator list-change review folders, per §5b of the plan). Set `BIDPLUS_RUNTIME_DIR`
       in the box's environment (e.g. the systemd unit's `Environment=` and an interactive
       `~/.profile` export).
 - [ ] **Create the venv** — `python3.12 -m venv /home/congo/bidplus-runtime/venv` and
@@ -109,8 +110,18 @@ and records the result. Order matters where noted.
       `requirements.txt`** (plan §5) so a later `pip install` won't silently upgrade it and
       wipe this append — but if you ever *do* bump `certifi`, **re-run this append**. (§4 of
       the plan.)
-- [ ] **Install systemd units** — `bidplus.service` + `bidplus.timer` (~3am). `systemctl
-      enable --now bidplus.timer`. Confirm `systemctl list-timers` shows the next fire.
+- [ ] **Install systemd units** — copy `deploy/systemd/bidplus.service` + `bidplus.timer`
+      (shipped in the repo, ~3am) to `/etc/systemd/system/`, `systemctl daemon-reload`, then
+      `systemctl enable --now bidplus.timer`. Confirm `systemctl list-timers` shows the next
+      fire. The service runs `python -m bidplus.launcher run` (the full sequential cycle:
+      scrape → Pass 1 → merge → tiered gate, writing `scrape_runs` + sticky `system_alerts`).
+- [ ] **Seed the eliminator lists (FIRST DEPLOY ONLY)** — load the mined seeds shipped in
+      `bidplus/data/` into the `eliminator_terms` table: `eliminator_keywords.json` (689
+      negative) + `inscope_signals.json` (237 positive), all `source='mined'`. This is a
+      **one-time** seed; thereafter the table is the source of truth and changes **only** via
+      the Excel governance loop (drop reviewed files in `list_review/ready/`; ingested at the
+      next run). See plan §32 / `ELIMINATOR_DESIGN.md` §5. *(Idempotent: re-running the seed on
+      an already-populated table is a no-op — it must NOT clobber governance-applied changes.)*
 - [ ] **First real orchestration** — run the orchestrator once end-to-end (or wait for the
       nightly); confirm `scrape_runs` rows are written, paths resolve under the runtime root,
       and a sample `summary_json` looks sane. (No dry-run/fixture mode exists — verification is
