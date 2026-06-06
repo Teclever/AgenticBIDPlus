@@ -30,6 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# Archives — never commit large zips or exports
+*.zip
+*.tar.gz
+*.tar.bz2
+
 # OS / editor cruft
 .DS_Store
 
