@@ -123,8 +123,10 @@ and records the result. Order matters where noted.
       `systemctl enable --now bidplus.timer`. Confirm `systemctl list-timers` shows the next
       fire. The service runs `python -m bidplus.launcher run` (the full sequential cycle:
       scrape → Pass 1 → merge → **Pass 2 (score-5 Sonnet summaries + score-4 local extraction)**
-      → tiered gate, writing `scrape_runs` — incl. `summarized_count`/`local_extracted_count`/
-      `summary_failed_count` — + sticky `system_alerts`).
+      → tiered gate → **S7 sweep (CLOSED marking + 7-day file retention + orphan reaping)** →
+      finalize + **overnight-budget check** (vs `BIDPLUS_OVERNIGHT_DEADLINE`, default 09:00),
+      writing `scrape_runs` — incl. `summarized_count`/`local_extracted_count`/
+      `summary_failed_count` + per-stage timings — + sticky `system_alerts`).
 - [ ] **Seed the eliminator lists (FIRST DEPLOY ONLY)** — load the mined seeds shipped in
       `bidplus/data/` into the `eliminator_terms` table: `eliminator_keywords.json` (689
       negative) + `inscope_signals.json` (237 positive), all `source='mined'`. This is a

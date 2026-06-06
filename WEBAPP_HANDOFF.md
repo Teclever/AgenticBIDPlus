@@ -117,7 +117,12 @@ start appearing. Build the "filtered" badge + override path from day one regardl
 
 ## 7. Other display rules (from `AGENTS.md`)
 
-- **CLOSED** bids: retained with all data, shown as terminal, no new AI work.
+- **CLOSED** bids: retained with all data (`summary_json`/`local_extract_json` persist), shown as
+  terminal, no new AI work — the nightly S7 sweep marks past-closing bids CLOSED and deletes their
+  staged files (the DB row is the durable artifact).
+- **7-day file window**: staged documents age out after 7 days (S7 retention sweep). The DB summary
+  always remains; only re-fetch-needing actions are affected. A "Retrieve information" click on an
+  **open** bid whose files have aged out triggers a re-fetch; on a **CLOSED** bid it does nothing.
 - **EXTENDED** bids: `bid_status`/`extension_count`/`closing_date` update; the summary (if any)
   is unchanged — a bid is summarized at most once.
 - **Sticky `system_alerts`**: a failed/partial nightly cycle raises a banner that persists

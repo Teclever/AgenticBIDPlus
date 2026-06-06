@@ -47,8 +47,11 @@ SCORE_LOCAL_EXTRACT = 4
 SUMMARY_MAX_ATTEMPTS = int(os.environ.get("SUMMARY_MAX_ATTEMPTS", "3"))  # initial + retries
 SUMMARY_TOKEN_BUDGET = int(os.environ.get("SUMMARY_TOKEN_BUDGET", "150000"))
 
-# --- File retention (S6 nightly sweep) ------------------------------------------------
+# --- File retention + overnight budget (S7 nightly sweep) -----------------------------
 RETENTION_DAYS = int(os.environ.get("BIDPLUS_RETENTION_DAYS", "7"))
+# The cycle starts ~3am and must finish by ~9am (plan "Overnight budget"). The S7 budget
+# check compares the cycle's finished_at against this wall-clock deadline (local time).
+OVERNIGHT_DEADLINE = os.environ.get("BIDPLUS_OVERNIGHT_DEADLINE", "09:00")
 
 # --- Our identity (single-vendor / single-tender favourability, S6 Channel 2) ---------
 # A single-vendor tender restricted to US is a pursue; restricted to anyone else is dead.

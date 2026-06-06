@@ -108,6 +108,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     from bidplus import eliminator
     from bidplus import gate as gate_mod
     from bidplus import governance
+    from bidplus import lifecycle
     from bidplus import merge as merge_mod
     from bidplus import runs
     from bidplus import scoring
@@ -195,10 +196,22 @@ def cmd_run(args: argparse.Namespace) -> int:
     g = gate_mod.tiered_gate(parent)
     timings["gate"] = round(time.monotonic() - g0, 3)
 
+    # S7 housekeeping (terminal, idempotent): mark past-closing bids CLOSED + drop their files,
+    # run the N-day retention sweep, reap orphaned dirs. Runs LAST so a freshly past-closing bid
+    # settles CLOSED for the day even if this cycle's merge briefly re-opened it.
+    sw0 = time.monotonic()
+    sweep = lifecycle.run_sweep(parent)
+    timings["sweep"] = round(time.monotonic() - sw0, 3)
+    print(f"[launcher] sweep (S7): {sweep}")
+
     status = runs.finalize_cycle(parent, overall_id, results, cycle_start, timings,
                                  pass2_totals=pass2_totals)
     _print_gate(g)
     print(f"[launcher] Pass 2 (S6) totals: {pass2_totals}")
+    budget = lifecycle.budget_report(parent)
+    print(f"[launcher] overnight budget: {budget}")
+    if not budget.get("within_budget", True):
+        print("[launcher] ⚠ cycle finished AFTER the overnight deadline — review stage timings.")
     print(f"\n[launcher] Cycle {overall_id} finalized: status={status}")
     if status in ("partial", "failed"):
         print("[launcher] Sticky system_alerts row raised (clear it in the web app).")
@@ -233,6 +246,24 @@ def cmd_summarize(args: argparse.Namespace) -> int:
     finally:
         parent.close()
     return rc
+
+
+def cmd_sweep(_args: argparse.Namespace) -> int:
+    """Run the S7 housekeeping pass standalone (CLOSED sweep + N-day retention + orphan reaping)
+    and print the overnight-budget report for the latest cycle. Idempotent; no scrape, no Sonnet."""
+    from bidplus import lifecycle
+    from bidplus import merge as merge_mod
+
+    parent = merge_mod.connect_parent()
+    try:
+        merge_mod.ensure_shared(parent)
+        res = lifecycle.run_sweep(parent)
+        for stage, per_portal in res.items():
+            print(f"[sweep] {stage}: {per_portal}")
+        print(f"[sweep] budget: {lifecycle.budget_report(parent)}")
+    finally:
+        parent.close()
+    return 0
 
 
 def cmd_gate(_args: argparse.Namespace) -> int:
@@ -507,6 +538,11 @@ def build_parser() -> argparse.ArgumentParser:
         "gate", help="Print the tiered-gate buckets over parent.db (no scrape, no Sonnet)."
     )
     p_gate.set_defaults(func=cmd_gate)
+
+    p_sweep = sub.add_parser(
+        "sweep", help="S7 housekeeping: CLOSED sweep + N-day file retention + orphan reaping."
+    )
+    p_sweep.set_defaults(func=cmd_sweep)
 
     p_status = sub.add_parser(
         "run-status", help="Report in-progress cycle (finished_at IS NULL) + sticky alerts."
