@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "id": 412,
+      "user": "karthikeyan@teclever.com",
+      "portal": "gem",
+      "bidId": "GEM/2026/B/7605377",
+      "action": "accepted",
+      "detail": null,
+      "createdAt": "2026-06-06T09:14:00Z"
+    },
+    {
+      "id": 411,
+      "user": "priya@teclever.com",
+      "portal": "hal",
+      "bidId": "HAL/KPT/ED/E-PROC/WC-1245/1 (line WC-1245)",
+      "action": "rejected",
+      "detail": null,
+      "createdAt": "2026-06-06T09:02:00Z"
+    },
+    {
+      "id": 410,
+      "user": "priya@teclever.com",
+      "portal": "gem",
+      "bidId": "GEM/2026/B/9001233",
+      "action": "disputed",
+      "detail": "This is a test rig procurement, in-scope for us",
+      "createdAt": "2026-06-06T08:55:00Z"
+    }
+  ],
+  "page": 1,
+  "pageSize": 50,
+  "total": 137
+}

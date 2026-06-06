@@ -15,7 +15,8 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Query, Response
-from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -25,6 +26,20 @@ from bidplus.web import mapping, passwords
 from bidplus.web.auth import COOKIE_NAME, create_session, current_user, delete_session, get_db
 
 app = FastAPI(title="Teclever Bid Intelligence API", version="1.0")
+
+# Vite dev server (5173) may call this API cross-origin during local dev.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 PORTALS = mapping.PORTALS
 CLOSING_WINDOW_DAYS = 7
@@ -377,8 +392,28 @@ def system_alert_clear(alert_id: int, user: dict = Depends(current_user),
     return Response(status_code=204)
 
 
-# ── static UI (mounted last so it never shadows /api) ────────────────────────────────
+# ── SPA static serving (must come last so it never shadows /api) ─────────────────────
+#
+# StaticFiles with html=True returns 404 for React Router client-side paths like /login
+# because dist/login doesn't exist as a file. Fix: mount /assets separately for asset
+# bundles, then a catch-all route that serves real dist/ files when they exist and falls
+# back to index.html for everything else so React Router handles routing client-side.
 
 _DIST = Path(__file__).resolve().parents[2] / "UIReference" / "Teclever Bid intelligence" / "dist"
-if _DIST.is_dir():
-    app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="ui")
+
+_ASSETS = _DIST / "assets"
+if _ASSETS.is_dir():
+    app.mount("/assets", StaticFiles(directory=str(_ASSETS)), name="assets")
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_fallback(full_path: str):
+    """Serve real dist/ files when they exist; fall back to index.html for SPA routes."""
+    if _DIST.is_dir():
+        candidate = _DIST / full_path
+        if candidate.is_file():
+            return FileResponse(str(candidate))
+        index = _DIST / "index.html"
+        if index.is_file():
+            return FileResponse(str(index))
+    raise HTTPException(404)

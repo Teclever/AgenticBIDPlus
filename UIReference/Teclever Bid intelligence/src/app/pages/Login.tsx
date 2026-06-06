@@ -1,19 +1,64 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { Button } from "../components/ui/Button";
+import { Button } from "../components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import TecleverLogo from "../../imports/TECLEVER_Logo.jpg";
+import { authApi, ApiRequestError } from "../lib/api";
+import { useAuth } from "../context/AuthContext";
 
 export function Login() {
   const navigate = useNavigate();
+  const { user, refresh } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  useEffect(() => {
+    if (user) navigate("/", { replace: true });
+  }, [user, navigate]);
+
+  const canSubmit = email.trim() !== "" && password.trim() !== "";
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userEmail', email);
-    navigate('/');
+    if (!canSubmit) return;
+
+    setSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      await authApi.login(email.trim(), password, rememberMe);
+      try {
+        await refresh();
+      } catch {
+        setErrorMessage("Signed in but session could not be verified. Try again.");
+        return;
+      }
+      navigate("/");
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        if (err.code === "invalid_credentials" || err.code === "non_teclever_email") {
+          setErrorMessage("Sign in failed. Check your Teclever email and password.");
+        } else {
+          setErrorMessage("Unable to reach the server. Try again later.");
+        }
+      } else if (err instanceof TypeError) {
+        setErrorMessage("Unable to reach the server. Try again later.");
+      } else {
+        setErrorMessage("Sign in failed. Check your Teclever email and password.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -31,16 +76,16 @@ export function Login() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email address
+                Teclever email
               </label>
               <input
                 id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="you@teclever.com"
+                autoComplete="email"
               />
             </div>
 
@@ -53,37 +98,48 @@ export function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="••••••••"
+                autoComplete="current-password"
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">Remember me</span>
-              </label>
-              <a href="#" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
-                Forgot password?
-              </a>
-            </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Remember me</span>
+            </label>
 
-            <Button type="submit" size="lg" className="w-full">
-              Sign In
+            <Button
+              type="submit"
+              size="lg"
+              variant="primary"
+              className="w-full"
+              disabled={!canSubmit || submitting}
+            >
+              {submitting ? "Signing in…" : "Sign In"}
             </Button>
           </form>
-
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Internal use only • 5 user team
-          </p>
         </div>
       </div>
+
+      <Dialog open={!!errorMessage} onOpenChange={() => setErrorMessage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sign in failed</DialogTitle>
+            <DialogDescription>{errorMessage}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="primary" onClick={() => setErrorMessage(null)}>
+              OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

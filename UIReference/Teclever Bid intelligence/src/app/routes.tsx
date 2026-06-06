@@ -5,6 +5,7 @@ import { PortalBids } from "./pages/PortalBids";
 import { BidDetail } from "./pages/BidDetail";
 import { ActivityLog } from "./pages/ActivityLog";
 import { Layout } from "./components/Layout";
+import { AuthGuard } from "./components/AuthGuard";
 
 export const router = createBrowserRouter([
   {
@@ -15,10 +16,38 @@ export const router = createBrowserRouter([
     path: "/",
     Component: Layout,
     children: [
-      { index: true, Component: Dashboard },
-      { path: "portal/:portalId", Component: PortalBids },
-      { path: "bid/:bidId", Component: BidDetail },
-      { path: "activity", Component: ActivityLog },
+      {
+        index: true,
+        element: (
+          <AuthGuard>
+            <Dashboard />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: "portal/:portalId",
+        element: (
+          <AuthGuard>
+            <PortalBids />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: "portal/:portalId/bid/:bidKey",
+        element: (
+          <AuthGuard>
+            <BidDetail />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: "activity",
+        element: (
+          <AuthGuard>
+            <ActivityLog />
+          </AuthGuard>
+        ),
+      },
     ],
   },
 ]);

@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "portal": "gem",
+      "bidKey": "GEM/2026/B/9001233",
+      "bidId": "GEM/2026/B/9001233",
+      "description": "Supply of A4 copier paper and toner cartridges",
+      "matchedKeyword": "toner cartridges",
+      "closingDateRaw": "2026-06-18",
+      "firstSeen": "2026-06-06T03:40:00Z"
+    },
+    {
+      "portal": "gem",
+      "bidKey": "GEM/2026/B/9001876",
+      "bidId": "GEM/2026/B/9001876",
+      "description": "Housekeeping and manpower outsourcing services",
+      "matchedKeyword": "housekeeping",
+      "closingDateRaw": "2026-06-21",
+      "firstSeen": "2026-06-06T03:41:00Z"
+    },
+    {
+      "portal": "hal",
+      "bidKey": "HAL/KPT/ED/E-PROC/CAT-9912/1|CAT-9912",
+      "bidId": "HAL/KPT/ED/E-PROC/CAT-9912/1 (line CAT-9912)",
+      "description": "Annual catering contract for staff canteen",
+      "matchedKeyword": "catering",
+      "closingDateRaw": "20-06-2026 15:00",
+      "firstSeen": "2026-06-06T03:12:00Z"
+    }
+  ],
+  "total": 3
+}

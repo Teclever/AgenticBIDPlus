@@ -296,6 +296,43 @@ S6 Ch3 + wiring committed `a66d62a`. Earlier on `main`: `73b58ae` (Ch2) → `cc7
 
 ---
 
+## 16. Web app (frontend) — IN PROGRESS (2026-06-06)
+
+**Frontend agent** is building the React UI in-place inside `UIReference/Teclever Bid intelligence/`.
+`npm run build` succeeds; `dist/` is live at `UIReference/.../dist/`. FastAPI serves it at
+`http://localhost:8000`. Login is working end-to-end against the real `parent.db`.
+
+**Three known issues under active fix:**
+1. **Dashboard all 0s** — root cause: stats fetch calls missing `credentials: "include"`. API returns
+   correct data when authenticated (GEM total 11,333 / score5 22 / highPriority 186). Frontend
+   receives `401 unauthenticated` and silently zero-fills.
+2. **No pagination UI** — API correctly returns `{items, page, pageSize, total}` and supports
+   `?page=N&pageSize=N`. Frontend is not rendering prev/next controls.
+3. **Generate Summary behaviour** — understood: triggers a real Sonnet call (up to ~60s);
+   two staged bids exist (`GEM/2026/B/7489616`, `GEM/2026/B/7605377`); frontend needs spinner +
+   three response-state handlers (200 → render markdown, 409 → "busy", else → error).
+
+**CORS middleware** was added to `app.py` by the frontend agent (allows Vite dev-server on 5173/5174
+— `allow_credentials=True`). This is intentional and committed.
+
+**Deployed user:** `karthikeyan@teclever.com` (password reset during diagnosis on 2026-06-06 —
+set a fresh one via `python -m bidplus.users edit karthikeyan@teclever.com`).
+
+**Run commands:**
+```bash
+# FastAPI (already running with --reload)
+export BIDPLUS_RUNTIME_DIR=~/bidplus-runtime
+~/bidplus-runtime/venv/bin/uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000 --reload
+
+# Frontend dev server (MSW mock, VITE_ENABLE_MSW=true)
+cd "UIReference/Teclever Bid intelligence" && npm run dev
+
+# Production build → FastAPI serves dist/
+cd "UIReference/Teclever Bid intelligence" && npm run build
+```
+
+---
+
 ## 15. Web/API layer (`bidplus/web/`) — BUILT + smoke-validated (2026-06-06)
 
 The web round's **backend API** is built in-repo (the front-end is a separate handoff —
