@@ -9,7 +9,7 @@ description = "Teclever Bid Portal orchestrator (backend) — runs HAL/ISRO/GeM 
 requires-python = ">=3.12"
 # Merged union of the three tool requirements + the plan's pins (MASTER_ACTION_PLAN_V3.md
 # §5 / decision #24). chromadb / sentence-transformers are deliberately excluded (no vector
-# store, no embeddings). fastapi / uvicorn are deferred to the web-app round.
+# store, no embeddings). fastapi / uvicorn / passlib power the web round (bidplus.web, §16).
 dependencies = [
     "anthropic>=0.105.2",
     "requests>=2.31.0",
@@ -24,6 +24,11 @@ dependencies = [
     "python-dotenv>=1.0",
     "playwright>=1.40.0",
     "pydantic>=2.6",
+    # Web round (WEBAPP_DESIGN §16): FastAPI read/act layer + bcrypt session auth.
+    # bcrypt used directly (passlib 1.7.4 is incompatible with bcrypt 4.x).
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "bcrypt>=4.1",
     # Pinned so a later `pip install` never silently upgrades certifi and wipes the
     # eMudhra->certifi append the GeM TLS fix relies on (DEPLOY_WORKFLOW.md §2). If you
     # ever bump this, re-run the eMudhra append.
@@ -33,4 +38,4 @@ dependencies = [
 [tool.setuptools]
 # Explicit package list: the repo root also holds the three tool folders, so we do NOT
 # want setuptools auto-discovery to treat those as packages. Only `bidplus` is importable.
-packages = ["bidplus", "bidplus.adapters"]
+packages = ["bidplus", "bidplus.adapters", "bidplus.web"]

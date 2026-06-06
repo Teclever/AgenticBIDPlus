@@ -1,0 +1,14 @@
+{
+  "portal": "gem",
+  "windowDate": "2026-06-13",
+  "counts": {
+    "total": 11333,
+    "new": 420,
+    "score3plus": 210,
+    "score4plus": 62,
+    "score5": 23,
+    "highPriority": 40,
+    "closingSoon": 18,
+    "bidsClosingBy": 12
+  }
+}

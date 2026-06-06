@@ -294,4 +294,36 @@ S6 Ch3 + wiring committed `a66d62a`. Earlier on `main`: `73b58ae` (Ch2) → `cc7
 
 **Validated (synthetic, zero spend):** CLOSED marking across all 3 date formats + overlay retention + file removal; unparsed-date skip; retention age-split + empty-dir removal; orphan removal vs valid-kept; budget within/over; missing-table guard; `sweep` CLI end-to-end. **NOT done:** real full-cycle timing on the deploy box (shared with S6's deploy proof).
 
+---
+
+## 15. Web/API layer (`bidplus/web/`) — BUILT + smoke-validated (2026-06-06)
+
+The web round's **backend API** is built in-repo (the front-end is a separate handoff —
+`webapp-design/`). Authoritative spec: **`webapp-design/WEBAPP_DESIGN.md` §16**; the front-end
+contract is **`webapp-design/API.md`**. Stack: **FastAPI**, reusing bidplus modules directly.
+
+- **`bidplus/web/`** — `app.py` (all endpoints: auth, per-portal stats, listing w/ filters+search,
+  bid detail, generate-summary, disposition, notifications, activity, system-alert; serves
+  `UIReference/.../dist` static if present), `schema.py` (new tables), `auth.py` (DB-session cookie),
+  `passwords.py` (bcrypt + `@teclever` guard), `mapping.py` (per-portal column→normalized field map).
+- **`bidplus/locks.py`** — `flock` on `$RUNTIME/summarize.lock`; web generate-summary takes it
+  NON-blocking → `409 summarization_busy`; nightly `_run_pass2` holds it (blocking) around the
+  score-5 loop. **One path to Sonnet, never entered twice at once.**
+- **`bidplus/dispositions.py`** — accept/reject writes `user_state`+`disposed_*`+an `activity_log`
+  row in one txn; `log_activity` also records notification disputes.
+- **`bidplus/users.py`** — `python -m bidplus.users {add|edit|remove|list}`, run MANUALLY on the
+  deploy box (bcrypt, `@teclever` email enforced). No self-signup, no web admin.
+- **New `parent.db` tables** (additive, `bidplus.web.schema.ensure_web_schema`): `sessions`,
+  `activity_log`, `notification_views`. No new bid columns — the per-user notification watermark
+  reuses each table's existing `first_seen_date`.
+- **Deps added** (`pyproject.toml`): `fastapi`, `uvicorn`, `bcrypt`. Run:
+  `uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000`.
+
+**Smoke-validated** (FastAPI TestClient against a copy of the live `parent.db`, zero spend):
+unauth→401, wrong-password→401, non-teclever→422, login/`/me`/logout, stats for all 3 portals
+(7-day window date + buckets), listing incl. `closingsoon`, **HAL composite-key** detail,
+disposition→activity row, notifications queue/count/viewed. **NOT exercised:** live
+`generate-summary` (real Sonnet call — needs API key + network; the lock/409 path is wired) and a
+real browser front-end (built separately from `webapp-design/`).
+
 *End of handoff. Update this file when a slice DONE-WHEN passes or when validation state changes.*

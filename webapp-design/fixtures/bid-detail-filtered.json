@@ -1,0 +1,33 @@
+{
+  "portal": "gem",
+  "bidKey": "GEM/2026/B/9001233",
+  "bidId": "GEM/2026/B/9001233",
+  "rating": 0,
+  "rationale": null,
+  "method": "keyword",
+  "eliminatedBy": "toner cartridges",
+  "autoRejected": true,
+  "userState": "new",
+  "bidStatus": "OPEN",
+  "hasRestrictiveEligibility": false,
+  "overview": {
+    "title": "Supply of A4 copier paper and toner cartridges",
+    "buyer": "Office of the Commissioner",
+    "ministry": "Ministry of Finance",
+    "department": "General Administration",
+    "location": "New Delhi",
+    "value": "₹2,40,000",
+    "openingDateRaw": "2026-06-02",
+    "closingDate": "2026-06-18T17:00:00Z",
+    "closingDateRaw": "2026-06-18T17:00:00Z"
+  },
+  "summary": {
+    "available": false,
+    "status": null,
+    "markdown": null,
+    "coverage": null,
+    "unparsedDocuments": [],
+    "model": null,
+    "generatedAt": null
+  }
+}

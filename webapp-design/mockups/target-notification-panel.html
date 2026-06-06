@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Notification Panel</title>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="h-16 bg-white border-b flex items-center justify-end px-6">
+    <div class="relative p-2">
+      <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+    </div>
+  </div>
+  <div class="fixed inset-y-0 right-0 w-full max-w-md bg-white shadow-2xl border-l flex flex-col">
+    <div class="p-6 border-b flex items-center justify-between">
+      <h2 class="text-lg font-semibold">Auto-filtered bids</h2>
+      <button class="text-gray-400 text-xl">&times;</button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-3">
+      <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+        <div class="flex justify-between items-start mb-1">
+          <span class="text-blue-600 font-medium text-sm">GEM-2026-999</span>
+          <span class="text-xs text-gray-500">GEM</span>
+        </div>
+        <p class="text-sm text-gray-700 line-clamp-2">Supply of toner cartridges and office stationery items</p>
+        <p class="text-xs text-amber-700 mt-2">Matched: toner cartridges</p>
+        <p class="text-xs text-gray-500 mt-1">Closes Jun 15, 2026</p>
+      </div>
+      <div class="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer">
+        <div class="flex justify-between items-start mb-1">
+          <span class="text-blue-600 font-medium text-sm">HAL-2026-088</span>
+          <span class="text-xs text-gray-500">HAL</span>
+        </div>
+        <p class="text-sm text-gray-700 line-clamp-2">Annual housekeeping and cleaning services contract</p>
+        <p class="text-xs text-amber-700 mt-2">Matched: housekeeping</p>
+        <p class="text-xs text-gray-500 mt-1">Closes Jun 20, 2026</p>
+      </div>
+    </div>
+    <div class="p-4 border-t">
+      <button class="w-full py-2.5 bg-blue-600 text-white rounded-lg font-medium text-sm">Save all</button>
+      <p class="text-xs text-gray-500 text-center mt-2">Click a bid to disagree and provide a reason</p>
+    </div>
+  </div>
+</body>
+</html>

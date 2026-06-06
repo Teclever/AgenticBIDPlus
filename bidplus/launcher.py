@@ -69,18 +69,24 @@ def _run_pass2(summarize_mod, gate_mod, parent, portal: str) -> dict:
     locally extract the score-4 queue (NO Sonnet). Per-bid isolation — one bad bid logs and is
     skipped, never aborting the phase; a billing/usage ``SystemExit`` DOES propagate to abort
     the cycle. Idempotent via the gate predicates (already-done bids are not in the queue)."""
+    from bidplus import locks
+
     q = gate_mod.work_pks(parent, portal)
     counts = {"summarized": 0, "summary_failed": 0, "local_extracted": 0}
-    for pk in q["auto_summarize"]:
-        try:
-            r = summarize_mod.summarize_bid(portal, pk, parent, fetch=True)
-        except SystemExit:
-            raise
-        except Exception as e:
-            counts["summary_failed"] += 1
-            print(f"  [pass2] {portal} {pk} summarize error: {type(e).__name__}: {e}")
-            continue
-        counts["summary_failed" if r.get("status") == "failed" else "summarized"] += 1
+    # Hold the global summarization lock for the whole score-5 loop so a concurrent web
+    # "Generate Summary" click is told the system is busy (WEBAPP_DESIGN §16.8) — the one
+    # path to Sonnet is never entered twice at once. local_extract (no Sonnet) stays outside.
+    with locks.summarize_lock(blocking=True):
+        for pk in q["auto_summarize"]:
+            try:
+                r = summarize_mod.summarize_bid(portal, pk, parent, fetch=True)
+            except SystemExit:
+                raise
+            except Exception as e:
+                counts["summary_failed"] += 1
+                print(f"  [pass2] {portal} {pk} summarize error: {type(e).__name__}: {e}")
+                continue
+            counts["summary_failed" if r.get("status") == "failed" else "summarized"] += 1
     for pk in q["local_extract"]:
         try:
             summarize_mod.local_extract_bid(portal, pk, parent, fetch=True)

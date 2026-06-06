@@ -1,0 +1,33 @@
+{
+  "portal": "gem",
+  "bidKey": "GEM/2026/B/7605377",
+  "bidId": "GEM/2026/B/7605377",
+  "rating": 5,
+  "rationale": "Strong match: environmental test chamber + integrated data-acquisition and control system aligns with Teclever's instrumentation & test-automation capability. Clear deliverables, installation + commissioning scope.",
+  "method": "model",
+  "eliminatedBy": null,
+  "autoRejected": false,
+  "userState": "new",
+  "bidStatus": "OPEN",
+  "hasRestrictiveEligibility": true,
+  "overview": {
+    "title": "Supply & Installation of Environmental Test Chamber",
+    "buyer": "ISRO Propulsion Complex",
+    "ministry": "Department of Space",
+    "department": "Quality & Reliability",
+    "location": "Mahendragiri, Tamil Nadu",
+    "value": "₹1,80,00,000",
+    "openingDateRaw": "2026-05-20",
+    "closingDate": "2026-06-13T17:00:00Z",
+    "closingDateRaw": "2026-06-13T17:00:00Z"
+  },
+  "summary": {
+    "available": true,
+    "status": "ok",
+    "markdown": "## Project Description\nSupply, installation and commissioning of a walk-in environmental test chamber (-40°C to +150°C) with an integrated PC-based data-acquisition and control system.\n\n## Technical Scope\n- Chamber volume ≥ 8 m³, humidity 10–98% RH\n- 32-channel data acquisition, SCADA HMI\n- Calibration certificates traceable to NABL\n\n## Hardware Requirements\n- PLC + industrial PC, redundant sensors\n\n## Eligibility / Restrictions\n- **Restrictive:** OEM authorisation certificate mandated for the refrigeration unit\n- Minimum 3 similar installations in the last 5 years\n\n## Commercials\n- EMD: ₹3,60,000 · PBG: 10% of order value\n- Total estimated value: ₹1,80,00,000\n\n## Submission\n- Closing: 13 Jun 2026, 17:00 IST",
+    "coverage": "full",
+    "unparsedDocuments": ["legacy_annexure.doc"],
+    "model": "claude-sonnet-4-6",
+    "generatedAt": "2026-06-06T04:12:00Z"
+  }
+}

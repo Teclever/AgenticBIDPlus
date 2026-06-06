@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Target Bid Detail Layout</title>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold">HAL-2026-042</h1>
+        <p class="text-gray-600">Hindustan Aeronautics Limited</p>
+      </div>
+      <div class="flex gap-3">
+        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Accept</button>
+        <button class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm">Reject</button>
+      </div>
+    </div>
+    <div class="bg-white rounded-xl border p-6">
+      <h2 class="text-xl font-semibold mb-4">Bid Overview</h2>
+      <p class="text-sm text-gray-500 mb-2">Portal-sourced fields only</p>
+      <div class="grid grid-cols-2 gap-4 text-sm">
+        <div><span class="text-gray-500">Ministry</span><div class="font-medium">Ministry of Defence</div></div>
+        <div><span class="text-gray-500">Close Date</span><div class="font-medium">Jun 25, 2026</div></div>
+      </div>
+    </div>
+    <div class="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-200 p-6">
+      <h2 class="text-xl font-semibold mb-4">AI Evaluation</h2>
+      <div class="text-2xl font-bold mb-2">4 <span class="text-base font-normal text-gray-600">Rating</span></div>
+      <p class="text-sm">Haiku Pass-1 rationale shown here.</p>
+    </div>
+    <div class="bg-white rounded-xl border p-6 text-center">
+      <button class="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium">Generate Summary</button>
+    </div>
+    <p class="text-xs text-gray-400 text-center">No chat panel · No tender documents list</p>
+  </div>
+</body>
+</html>
