@@ -122,7 +122,7 @@ testing against the real API.
 
 | Screen | Route | Status | Notes |
 |--------|-------|--------|-------|
-| **Login** | `/login` | **Working** | Teclever email label, disabled Sign In until fields filled, error dialog, no footer/forgot-password. Post-login calls `refresh()` (`/api/auth/me`) before navigate. |
+| **Login** | `/login` | **Working** | Teclever email label, disabled Sign In until fields filled, error dialog, no footer/forgot-password. Post-login calls `refresh()` (`/api/auth/me`) before navigate. **Enter key submits** from the password field (`onKeyDown`); double-submit guarded by `submitting` flag. |
 | **Dashboard** | `/` | **Working (UI updated 2026-06-08)** | Three portal cards wired to `GET /api/portals/{id}/stats`. Bar chart replaced with clickable filter chips. Actionable closing count is now a link. See §6.2 for bucket definitions. |
 | **Bid list** | `/portal/:portalId` | **Built, needs validation** | API pagination (`page`/`pageSize=50`), filter banner, Filtered badge, mobile cards. Header shows `total` from API. New filter keys active: `score1to3`, `score4`, `closingactionable`. |
 | **Bid detail** | `/portal/:portalId/bid/:bidKey` | **Working — error fix landed (2026-06-08)** | Single column, Generate Summary, Accept/Reject, markdown summary. Error display fixed: errors now persist across navigation in `generationState.ts`; shown in spinner slot (not below button). Exercised live on HAL bid. HAL `bidKey` URL-encoded (`tender\|line`). |
@@ -139,6 +139,7 @@ testing against the real API.
 - **Filtered bids:** always shown (rating 0 + badge + `eliminatedBy`); never hidden from lists.
 - **Notification Save all:** `POST /api/notifications/auto-filtered/save-all` — primary queue clear.
 - **Generate Summary:** spinner + disabled button; handles 200 / 409 `summarization_busy` / generic error. Error message persists across navigation (stored in module-level `generationState.errors` Map; hydrated on component mount). Error displayed in the spinner slot (same visual position), never lost on navigate-away-then-back.
+- **Cross-user generation banner:** `Layout.tsx` polls `GET /api/generating` every 5 s and calls `setServerGenerating(active)`. The banner (`generationBid` state) is driven by `getAnyGenerating()` — local optimistic state first, server state fallback. Banner is a clickable `<Link>` to the bid's detail page; shows "View bid →" on the right.
 - **Accept/Reject:** only when `userState === "new"` AND `method === "model"`.
 
 ---
@@ -251,7 +252,35 @@ deploy path — `git pull` on the box only needed for source, not for the runnin
 
 ---
 
-### 6.5 Legacy prototype artefacts
+### 6.5 Cross-user generation banner (2026-06-08)
+
+**What it does:** the blue "Generating AI summary for …" banner in `Layout.tsx` is now visible
+across all logged-in browsers/users, not just the one that triggered the summary.
+
+**How it works — three layers:**
+
+1. **Backend** (`bidplus/web/app.py`) — module-level `_active_job: dict | None` set when the
+   lock is acquired in `generate_summary`, cleared in `finally`. TTL 300 s guards against the
+   browser-closed-mid-generation edge case. `GET /api/generating` → `{"active": {...} | null}`.
+
+2. **State module** (`src/app/lib/generationState.ts`) — added `serverGenerating: ServerState | null`
+   and `setServerGenerating()`. `getAnyGenerating()` returns local optimistic state first (instant
+   for the triggering tab), then falls back to `serverGenerating` (cross-user). `getOtherGenerating()`
+   similarly checks both.
+
+3. **API** (`src/app/lib/api/system.ts`) — `generatingApi.get()` wraps `GET /api/generating`;
+   silently returns `{active: null}` on error so a stale banner is never shown as a broken UI.
+
+4. **Layout** (`src/app/components/Layout.tsx`) — `pollServerGenerating` called once on mount,
+   then every 5 s via `genInterval`. Subscribes to `generationState` changes so the banner updates
+   immediately on local state changes. Banner is a `<Link>` to the bid detail page.
+
+**MSW stub:** `handlers.ts` mocks `GET /api/generating` → `{active: null}` (always idle in dev
+fixtures mode).
+
+---
+
+### 6.6 Legacy prototype artefacts
 
 - `src/app/lib/mockData.ts` — original Figma mock data; **not used** by wired screens.
 - `src/app/components/ui/Button` imports in old paths — canonical file is `button.tsx`.
@@ -317,5 +346,6 @@ composite `bidKey` · Generate Summary 409 handling · closing window = `stats.w
 | 2026-06-08 | Folder renamed `frontend/` (was `UIReference/Teclever Bid intelligence/`). Deploy box provisioned and running at `192.168.2.193:8000`. Timer fixed to 01:00 IST (`b04f044`). Generate Summary error propagation bug fixed (`455358f`): errors persist across navigation via `generationState.ts` errors Map; error shown in spinner slot. Live test on HAL bid confirmed fix. |
 | 2026-06-08 | **Stats API field rename + Dashboard UI overhaul.** Backend renamed all stats `counts` fields (old `score3plus/score4plus/bidsClosingBy` → new `scoreBelow4/scoreExact4/scoreExact5/closingSoonActionable`; window 7→10 days). Three closing categories: `closingSoon` (score 3–5, not rejected), `closingSoonActionable` (score 5 or accepted), `highPriority` (accepted — now date-based). Frontend: `types.ts`, `BidFilter` type, `FILTER_LABELS`, `VALID_FILTERS` updated; Dashboard bar chart replaced with clickable chip grid; actionable count links to `?filter=closingactionable`. |
 | 2026-06-08 | **Score 0 filter added.** Backend: `filtered` key → `pass1_score = 0` (all score-0 bids — both keyword-eliminated and model-scored 0). Frontend: `BidFilter`, `FILTER_LABELS` ("Score 0 bids"), `VALID_FILTERS`, quick-filter chip list, MSW handler. The "Filtered" badge on each card still distinguishes sub-types visually. |
+| 2026-06-08 | **Cross-user generation banner + Login Enter key fix.** `generationState.ts` extended with `ServerState`/`serverGenerating`/`setServerGenerating`/`getAnyGenerating()`/`getOtherGenerating()` cross-user logic. `api/system.ts` adds `generatingApi.get()` (silent-fail). `Layout.tsx` polls `GET /api/generating` every 5 s, subscribes to generation state, banner upgraded to a clickable `<Link>` to the bid detail page. `Login.tsx`: password field `onKeyDown` submits on Enter; `submitting` flag prevents double-submit. MSW handler stubs `GET /api/generating → {active: null}`. |
 
 *Update this file when validation state changes or new screens ship.*

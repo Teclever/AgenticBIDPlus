@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Outlet, Link, useNavigate } from "react-router";
+import { bidDetailPath } from "../lib/format";
 import { Bell, LogOut, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import TecleverLogo from "../../imports/TECLEVER_Logo.jpg";
-import { authApi, notificationsApi, systemAlertsApi } from "../lib/api";
-import { getAnyGenerating, subscribe as subscribeGenerating } from "../lib/generationState";
+import { authApi, notificationsApi, systemAlertsApi, generatingApi } from "../lib/api";
+import { getAnyGenerating, setServerGenerating, subscribe as subscribeGenerating } from "../lib/generationState";
 import { useAuth } from "../context/AuthContext";
 import { SystemAlertPanel } from "./SystemAlertPanel";
 
@@ -38,20 +39,27 @@ export function Layout() {
     setGeneratingBid(getAnyGenerating());
   }, []);
 
+  const pollServerGenerating = useCallback(async () => {
+    const { active } = await generatingApi.get();
+    setServerGenerating(active); // triggers notify() → checkGeneratingBid via subscribe
+  }, []);
+
   useEffect(() => {
     refreshNotifCount();
     refreshAlertCount();
-    checkGeneratingBid();
-    const interval = setInterval(() => {
+    pollServerGenerating();
+    const slowInterval = setInterval(() => {
       refreshNotifCount();
       refreshAlertCount();
     }, 60_000);
+    const genInterval = setInterval(pollServerGenerating, 5_000);
     const unsub = subscribeGenerating(checkGeneratingBid);
     return () => {
-      clearInterval(interval);
+      clearInterval(slowInterval);
+      clearInterval(genInterval);
       unsub();
     };
-  }, [refreshNotifCount, refreshAlertCount, checkGeneratingBid]);
+  }, [refreshNotifCount, refreshAlertCount, checkGeneratingBid, pollServerGenerating]);
 
   const handleLogout = async () => {
     try {
@@ -120,10 +128,14 @@ export function Layout() {
         </div>
       </header>
       {generatingBid && (
-        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-2 text-sm text-blue-800">
+        <Link
+          to={bidDetailPath(generatingBid.portal, generatingBid.bidKey)}
+          className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-2 text-sm text-blue-800 hover:bg-blue-100 transition-colors"
+        >
           <Loader2 className="w-4 h-4 animate-spin shrink-0" />
           <span>Generating AI summary for <span className="font-semibold">{generatingBid.bidId}</span>…</span>
-        </div>
+          <span className="ml-auto text-xs text-blue-600 underline underline-offset-2">View bid →</span>
+        </Link>
       )}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />

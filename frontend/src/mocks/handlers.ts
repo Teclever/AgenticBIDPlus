@@ -162,6 +162,10 @@ function getBidDetail(bidKey: string): BidDetail | null {
 }
 
 export const handlers = [
+  http.get(`${API_BASE}/api/generating`, () => {
+    return HttpResponse.json({ active: null });
+  }),
+
   http.post(`${API_BASE}/api/auth/login`, async ({ request }) => {
     const body = (await request.json()) as {
       email: string;

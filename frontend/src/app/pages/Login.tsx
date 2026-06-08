@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, KeyboardEvent, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -21,9 +21,9 @@ export function Login() {
 
   const canSubmit = email.trim() !== "" && password.trim() !== "";
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!canSubmit) return;
+  const handleSubmit = async (e?: FormEvent | KeyboardEvent) => {
+    e?.preventDefault();
+    if (!canSubmit || submitting) return;
 
     setSubmitting(true);
     setErrorMessage(null);
@@ -82,7 +82,7 @@ export function Login() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={(e) => handleSubmit(e)} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Teclever email
@@ -107,6 +107,7 @@ export function Login() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(e); }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 placeholder="••••••••"
                 autoComplete="current-password"

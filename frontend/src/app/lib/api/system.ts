@@ -3,6 +3,25 @@ import { apiClient, axiosErrorToApiError } from "./client";
 import type { AxiosError } from "axios";
 import type { ApiError } from "../types";
 
+export interface ActiveGeneration {
+  portal: string;
+  bidKey: string;
+  bidId: string;
+  startedAt: string;
+}
+
+export const generatingApi = {
+  get: async (): Promise<{ active: ActiveGeneration | null }> => {
+    try {
+      const res = await apiClient.get<{ active: ActiveGeneration | null }>("/api/generating");
+      return res.data;
+    } catch {
+      // Fail silently — a stale banner is better than a broken UI
+      return { active: null };
+    }
+  },
+};
+
 export const systemAlertsApi = {
   list: async (includeCleared = false) => {
     try {

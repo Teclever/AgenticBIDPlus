@@ -340,9 +340,8 @@ cd "frontend" && npm run build
 ```
 
 **Recent commits:**
-- `ce902a6` feat(governance): include bid text in AI delta prompt
-- `d013916` fix(web): Score 0 filter shows all score-0 bids (not just pre-filtered)
-- `1e19888` feat(web): add filtered (keyword-eliminated) bid filter
+- *(pending)* feat(ui): cross-user generation banner via server poll + login Enter key fix
+- `57dd471` feat(web): cross-user generation endpoint + filter/closing-window redesign + governance bid-text prompt
 - `a906125` feat(web): mutually exclusive score buckets + closing-window redesign
 - `455358f` fix(ui): propagate generate-summary errors across navigation
 
