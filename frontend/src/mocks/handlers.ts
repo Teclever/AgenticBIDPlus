@@ -79,7 +79,7 @@ function filterBids(
       result = result.filter((b) => b.userState === "new");
       break;
     case "filtered":
-      result = result.filter((b) => b.method === "keyword");
+      result = result.filter((b) => b.rating === 0);
       break;
     case "score1to3":
       result = result.filter((b) => { const r = b.rating ?? -1; return r >= 1 && r <= 3; });

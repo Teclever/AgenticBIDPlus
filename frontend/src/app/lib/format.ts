@@ -32,7 +32,7 @@ export function formatDateTime(iso: string): { date: string; time: string } {
 export const FILTER_LABELS: Record<BidFilter, string> = {
   all: "All bids",
   new: "New bids",
-  filtered: "Keyword-filtered bids",
+  filtered: "Score 0 bids",
   score1to3: "Score 1–3 bids",
   score4: "Score 4 bids",
   score5: "Score 5 bids",
