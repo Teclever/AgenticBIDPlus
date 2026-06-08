@@ -206,7 +206,7 @@ def list_bids(portal: str,
     _check_portal(portal)
     table = f"{portal}_bids"
     f = mapping.PORTAL_FIELDS[portal]
-    order = "ORDER BY pass1_score IS NULL, pass1_score DESC"
+    order = "ORDER BY first_seen_date DESC, pass1_score IS NULL, pass1_score DESC"
 
     # Date-based filters require per-portal closing-date parsing — handled here, return early.
     if filter in ("closingsoon", "closingactionable", "highpriority"):
