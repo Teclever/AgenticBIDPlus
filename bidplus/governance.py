@@ -39,6 +39,16 @@ _ADAPTER_PK = {
     "gem": ("bid_number",),
 }
 
+# Column that holds the raw bid text in both the tool DB and the parent table —
+# must match the column the miner/eliminator runs grams() over.
+_ADAPTER_TEXT = {
+    "hal": "tender_description",
+    "isro": "tender_description",
+    "gem": "items",
+}
+
+_BID_TEXT_PREVIEW = 600  # chars to include in the delta prompt per bid
+
 
 def _now() -> str:
     return datetime.datetime.now().isoformat(timespec="seconds")
@@ -207,16 +217,20 @@ def pending_promotions(parent: sqlite3.Connection) -> list[dict]:
         table = _table(portal)
         pk = _ADAPTER_PK[portal]
         try:
-            q = (f"SELECT {', '.join(pk)}, pass1_eliminated_by, human_reason, disposed_at "
+            text_col = _ADAPTER_TEXT[portal]
+            q = (f"SELECT {', '.join(pk)}, pass1_eliminated_by, human_reason, disposed_at, "
+                 f"{text_col} "
                  f"FROM {table} WHERE human_disposition='promoted' AND human_reason IS NOT NULL")
             args: tuple = ()
             if cutoff:
                 q += " AND (disposed_at IS NULL OR disposed_at > ?)"
                 args = (cutoff,)
             for r in parent.execute(q, args).fetchall():
+                raw_text = r[len(pk) + 3] or ""
                 out.append({"portal": portal,
                             "bid_id": "|".join("" if v is None else str(v) for v in r[:len(pk)]),
-                            "eliminated_by": r[len(pk)], "reason": r[len(pk) + 1]})
+                            "eliminated_by": r[len(pk)], "reason": r[len(pk) + 1],
+                            "bid_text": raw_text[:_BID_TEXT_PREVIEW]})
         except sqlite3.OperationalError:
             continue
     return out
@@ -296,6 +310,10 @@ def _build_delta_prompt(parent: sqlite3.Connection, promos: list[dict]) -> str:
         f"CURRENT LISTS:\n{json.dumps(lists)}\n\n"
         f"LEDGER (negative-term stats):\n{json.dumps(ledger)}\n\n"
         f"NEW HUMAN PROMOTIONS (false-eliminations to learn from):\n{json.dumps(promos)}\n\n"
+        "Each promotion includes: eliminated_by (the negative term that fired), reason (the "
+        "human's explanation of why the bid is in-scope), and bid_text (the first ~600 chars "
+        "of the actual bid — use this to identify precise positive rescue terms or to judge "
+        "whether the negative term needs refining).\n\n"
         "Return ONLY a JSON array. Each element: {list_type:'neg'|'pos', change_type:'add'|"
         "'remove'|'refine', term:str, kind:'phrase'|'word'|'token', refine_to:str|null, "
         "ai_rationale:str, source_reason:str}."
