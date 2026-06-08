@@ -1,4 +1,4 @@
-import type { SystemAlert } from "../types";
+import type { SystemAlert, ScrapeRun } from "../types";
 import { apiClient, axiosErrorToApiError } from "./client";
 import type { AxiosError } from "axios";
 import type { ApiError } from "../types";
@@ -18,6 +18,17 @@ export const generatingApi = {
     } catch {
       // Fail silently — a stale banner is better than a broken UI
       return { active: null };
+    }
+  },
+};
+
+export const scrapeRunsApi = {
+  list: async (limit = 3): Promise<{ runs: ScrapeRun[] }> => {
+    try {
+      const res = await apiClient.get<{ runs: ScrapeRun[] }>(`/api/scrape-runs?limit=${limit}`);
+      return res.data;
+    } catch {
+      return { runs: [] };
     }
   },
 };

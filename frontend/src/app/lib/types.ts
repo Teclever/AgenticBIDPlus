@@ -144,6 +144,31 @@ export interface ActivityItem {
 
 export type AlertStatus = "active" | "retry_failed" | "cleared";
 
+export interface PortalRunSummary {
+  portal: string;
+  status: string;
+  newCount: number;
+  scoredCount: number;
+  summarizedCount: number;
+  errorSummary: string | null;
+}
+
+export interface ScrapeRun {
+  id: number;
+  startedAt: string;
+  finishedAt: string | null;
+  status: string;
+  newCount: number;
+  updatedCount: number;
+  closedCount: number;
+  scoredCount: number;
+  summarizedCount: number;
+  localExtractedCount: number;
+  summaryFailedCount: number;
+  errorSummary: string | null;
+  portals: PortalRunSummary[];
+}
+
 export interface SystemAlert {
   id: number;
   alertType: string;

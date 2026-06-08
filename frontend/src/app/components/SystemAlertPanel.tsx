@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { X, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { X, ShieldAlert, RefreshCw, CheckCircle, AlertTriangle, Clock, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
-import { systemAlertsApi, ApiRequestError } from "../lib/api";
-import type { SystemAlert, AlertStatus } from "../lib/types";
+import { systemAlertsApi, scrapeRunsApi, ApiRequestError } from "../lib/api";
+import type { SystemAlert, AlertStatus, ScrapeRun } from "../lib/types";
 
 interface Props {
   open: boolean;
@@ -119,8 +119,76 @@ function AlertCard({
   );
 }
 
+function runStatusStyle(status: string) {
+  if (status === "running") return "bg-blue-100 text-blue-800";
+  if (status === "success") return "bg-green-100 text-green-800";
+  if (status === "partial") return "bg-amber-100 text-amber-800";
+  if (status === "failed") return "bg-red-100 text-red-800";
+  return "bg-gray-100 text-gray-700";
+}
+
+function RunCard({ run }: { run: ScrapeRun }) {
+  const isRunning = !run.finishedAt;
+  const startDate = new Date(run.startedAt);
+  const duration = run.finishedAt
+    ? Math.round((new Date(run.finishedAt).getTime() - startDate.getTime()) / 60000)
+    : null;
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          {isRunning && <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />}
+          <span className="text-sm font-medium text-gray-800">
+            {startDate.toLocaleDateString(undefined, { day: "numeric", month: "short" })}{" "}
+            {startDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+          </span>
+          {duration !== null && (
+            <span className="text-xs text-gray-400">· {duration} min</span>
+          )}
+        </div>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${runStatusStyle(run.status)}`}>
+          {run.status}
+        </span>
+      </div>
+
+      {run.portals.length > 0 && (
+        <div className="space-y-0.5">
+          {run.portals.map((p) => (
+            <div key={p.portal} className="flex items-center justify-between text-xs text-gray-600">
+              <span className="uppercase font-medium w-10">{p.portal}</span>
+              <span className="flex gap-2 text-gray-500">
+                <span>{p.newCount} new</span>
+                <span>{p.scoredCount} scored</span>
+                {p.summarizedCount > 0 && <span>{p.summarizedCount} summarised</span>}
+                {p.status !== "success" && (
+                  <span className="text-amber-600 font-medium capitalize">{p.status}</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!isRunning && run.portals.length === 0 && (
+        <div className="text-xs text-gray-400 flex gap-3">
+          <span>{run.newCount} new</span>
+          <span>{run.scoredCount} scored</span>
+          {run.summarizedCount > 0 && <span>{run.summarizedCount} summarised</span>}
+          {run.closedCount > 0 && <span>{run.closedCount} closed</span>}
+        </div>
+      )}
+
+      {run.errorSummary && (
+        <p className="text-xs text-red-600 leading-snug">{run.errorSummary}</p>
+      )}
+    </div>
+  );
+}
+
 export function SystemAlertPanel({ open, onClose, onAlertsChange }: Props) {
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [runs, setRuns] = useState<ScrapeRun[]>([]);
   const [showCleared, setShowCleared] = useState(false);
   const [loading, setLoading] = useState(false);
   const [retryingKey, setRetryingKey] = useState<string | null>(null);
@@ -129,8 +197,12 @@ export function SystemAlertPanel({ open, onClose, onAlertsChange }: Props) {
   const load = async (incCleared = showCleared) => {
     setLoading(true);
     try {
-      const { items } = await systemAlertsApi.list(incCleared);
+      const [{ items }, { runs: r }] = await Promise.all([
+        systemAlertsApi.list(incCleared),
+        scrapeRunsApi.list(3),
+      ]);
       setAlerts(items);
+      setRuns(r);
     } catch {
       // silently ignore load errors
     } finally {
@@ -197,15 +269,37 @@ export function SystemAlertPanel({ open, onClose, onAlertsChange }: Props) {
             <p className="text-sm text-gray-500 text-center py-4">Loading…</p>
           )}
 
+          {!loading && runs.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                Nightly runs
+              </p>
+              {runs.map((r) => <RunCard key={r.id} run={r} />)}
+            </div>
+          )}
+
+          {!loading && runs.length === 0 && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Nightly runs</p>
+              <p className="text-sm text-gray-500">No runs recorded yet.</p>
+            </div>
+          )}
+
           {!loading && retryError && (
             <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-700">{retryError}</p>
             </div>
           )}
 
+          {!loading && (
+            <p className="text-xs font-medium text-gray-400 uppercase tracking-wide pt-1">
+              Alerts
+            </p>
+          )}
+
           {!loading && activeAlerts.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-400" />
+            <div className="flex items-center gap-2 text-gray-500 py-1">
+              <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
               <p className="text-sm">No active alerts</p>
             </div>
           )}

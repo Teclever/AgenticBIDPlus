@@ -452,6 +452,66 @@ def activity(page: int = Query(1, ge=1), pageSize: int = Query(50, ge=1, le=200)
     return {"items": items, "page": page, "pageSize": pageSize, "total": total}
 
 
+# ── scrape runs ──────────────────────────────────────────────────────────────────────
+
+@app.get("/api/scrape-runs")
+def scrape_runs_list(limit: int = Query(3, ge=1, le=10),
+                     user: dict = Depends(current_user),
+                     db: sqlite3.Connection = Depends(get_db)):
+    """Return the last `limit` completed overall cycles with per-portal breakdowns."""
+    overall = db.execute(
+        "SELECT * FROM scrape_runs WHERE tool IS NULL "
+        "ORDER BY id DESC LIMIT ?", (limit,)
+    ).fetchall()
+
+    def _serialize_run(r) -> dict:
+        run_id = r["id"]
+        # Per-portal rows sit between this overall row's ID and the next overall row's ID
+        nxt = db.execute(
+            "SELECT MIN(id) FROM scrape_runs WHERE tool IS NULL AND id > ?", (run_id,)
+        ).fetchone()[0]
+        upper = (nxt - 1) if nxt else 999999999
+        portals = db.execute(
+            "SELECT * FROM scrape_runs WHERE tool IS NOT NULL AND id > ? AND id <= ? "
+            "ORDER BY id ASC",
+            (run_id, upper),
+        ).fetchall()
+        return {
+            "id": run_id,
+            "startedAt": r["started_at"],
+            "finishedAt": r["finished_at"],
+            "status": r["status"] or "running",
+            "newCount": r["new_count"] or 0,
+            "updatedCount": r["updated_count"] or 0,
+            "closedCount": r["closed_count"] or 0,
+            "scoredCount": r["scored_count"] or 0,
+            "summarizedCount": r["summarized_count"] or 0,
+            "localExtractedCount": r["local_extracted_count"] or 0,
+            "summaryFailedCount": r["summary_failed_count"] or 0,
+            "errorSummary": r["error_summary"],
+            "portals": [{
+                "portal": p["tool"],
+                "status": p["status"] or "unknown",
+                "newCount": p["new_count"] or 0,
+                "scoredCount": p["scored_count"] or 0,
+                "summarizedCount": p["summarized_count"] or 0,
+                "errorSummary": p["error_summary"],
+            } for p in portals],
+        }
+
+    # Also include any in-progress run
+    running = db.execute(
+        "SELECT * FROM scrape_runs WHERE tool IS NULL AND finished_at IS NULL "
+        "ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+
+    runs = []
+    if running:
+        runs.append(_serialize_run(running))
+    runs.extend([_serialize_run(r) for r in overall])
+    return {"runs": runs}
+
+
 # ── system alerts ────────────────────────────────────────────────────────────────────
 
 class RetryAlertsBody(BaseModel):

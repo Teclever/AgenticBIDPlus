@@ -3,5 +3,5 @@ export { authApi } from "./auth";
 export { portalApi } from "./portals";
 export { notificationsApi } from "./notifications";
 export { activityApi } from "./activity";
-export { systemAlertsApi, generatingApi } from "./system";
+export { systemAlertsApi, generatingApi, scrapeRunsApi } from "./system";
 export type { ActiveGeneration } from "./system";
