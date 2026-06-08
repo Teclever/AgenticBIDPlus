@@ -340,7 +340,7 @@ cd "frontend" && npm run build
 ```
 
 **Recent commits:**
-- *(pending)* feat(ui): cross-user generation banner via server poll + login Enter key fix
+- `4ea56be` feat(ui): cross-user generation banner via server poll + login Enter key fix
 - `57dd471` feat(web): cross-user generation endpoint + filter/closing-window redesign + governance bid-text prompt
 - `a906125` feat(web): mutually exclusive score buckets + closing-window redesign
 - `455358f` fix(ui): propagate generate-summary errors across navigation
