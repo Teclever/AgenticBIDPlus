@@ -264,6 +264,41 @@ def list_bids(portal: str,
     return {"items": items, "page": page, "pageSize": pageSize, "total": total}
 
 
+# ── active generation job (server-side, visible to all users / browsers) ─────────────
+# One slot — the summarize lock already enforces single concurrency.
+# startedAt is stored so a TTL check can auto-clear a stale slot (browser closed mid-run).
+
+_active_job: dict | None = None
+_ACTIVE_JOB_TTL = 300  # seconds — auto-clear if still set after this long
+
+
+def _set_active_job(portal: str, key: str) -> None:
+    global _active_job
+    _active_job = {
+        "portal": portal,
+        "bidKey": key,
+        "bidId": _activity_bid_id(portal, key),
+        "startedAt": datetime.datetime.now().isoformat(timespec="seconds"),
+    }
+
+
+def _clear_active_job() -> None:
+    global _active_job
+    _active_job = None
+
+
+@app.get("/api/generating")
+def get_generating(user: dict = Depends(current_user)):
+    """Return the currently-active generation job, or {active: null}.
+    Auto-clears a stale slot so a closed browser never leaves the banner stuck."""
+    global _active_job
+    if _active_job:
+        started = datetime.datetime.fromisoformat(_active_job["startedAt"])
+        if (datetime.datetime.now() - started).total_seconds() > _ACTIVE_JOB_TTL:
+            _active_job = None
+    return {"active": _active_job}
+
+
 # ── bid detail + actions ─────────────────────────────────────────────────────────────
 
 @app.get("/api/portals/{portal}/bids/{bidKey:path}")
@@ -286,7 +321,11 @@ def generate_summary(portal: str, bidKey: str, user: dict = Depends(current_user
     from bidplus import summarize
     try:
         with locks.summarize_lock(blocking=False):
-            summarize.summarize_bid(portal, key, db, fetch=True)
+            _set_active_job(portal, key)
+            try:
+                summarize.summarize_bid(portal, key, db, fetch=True)
+            finally:
+                _clear_active_job()
     except locks.LockBusy:
         raise HTTPException(409, {"code": "summarization_busy",
                                   "message": "AI summarization is already in progress. "

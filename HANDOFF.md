@@ -339,11 +339,19 @@ cd "frontend" && npm run dev
 cd "frontend" && npm run build
 ```
 
-**Recent commits (frontend):**
+**Recent commits:**
+- `ce902a6` feat(governance): include bid text in AI delta prompt
+- `d013916` fix(web): Score 0 filter shows all score-0 bids (not just pre-filtered)
+- `1e19888` feat(web): add filtered (keyword-eliminated) bid filter
+- `a906125` feat(web): mutually exclusive score buckets + closing-window redesign
 - `455358f` fix(ui): propagate generate-summary errors across navigation
-- `b04f044` chore(timer): shift nightly run to 1am IST
-- `4749a23` chore(deploy): rename frontend/, add web systemd unit, update docs
-- `07dc647` feat(webapp): frontend build + doc/memory sync
+
+**Governance loop (`bidplus/governance.py`) — fully implemented, not yet exercised on real data:**
+- `promote()` / `accept()` wired to web `/dispute` + `/save-all` endpoints
+- `ingest_ready()` runs automatically at the start of every nightly `launcher run`
+- `generate_delta()` triggered manually via `launcher governance-delta` (prints "DUE" reminder after each nightly run when threshold is met)
+- Delta prompt now includes `bid_text` (first 600 chars of actual bid) alongside `eliminated_by` + human `reason` — gives Sonnet enough context to propose precise positive rescue terms
+- Full loop fires once ~35 promotions accumulate or weekly, whichever first; Excel lands in `$BIDPLUS_RUNTIME_DIR/list_review/pending/` for operator review before any list changes apply
 
 ---
 
