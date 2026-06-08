@@ -190,6 +190,7 @@ def stats(portal: str, user: dict = Depends(current_user),
 _FILTER_WHERE = {
     "all": None,
     "new": "user_state='new'",
+    "filtered": "pass1_method='keyword'",
     "score1to3": "pass1_score >= 1 AND pass1_score <= 3",
     "score4": "pass1_score = 4",
     "score5": "pass1_score = 5",

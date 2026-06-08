@@ -113,6 +113,7 @@ export interface Paginated<T> {
 export type BidFilter =
   | "all"
   | "new"
+  | "filtered"
   | "score1to3"
   | "score4"
   | "score5"
