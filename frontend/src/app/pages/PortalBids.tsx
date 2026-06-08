@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router";
-import { Search, Filter, Calendar, ChevronRight, X } from "lucide-react";
+import { Search, Filter, Calendar, ChevronRight, X, Loader2, Sparkles } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { portalApi } from "../lib/api";
 import {
@@ -46,40 +46,40 @@ export function PortalBids() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchBids = useCallback(async () => {
-    if (!portal || authLoading || !user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await portalApi.bids(portal, {
-        filter: activeFilter,
-        search: searchQuery || undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        page,
-        pageSize: PAGE_SIZE,
-      });
-      setBids(data.items);
-      setTotal(data.total);
-    } catch (e) {
-      if (e instanceof ApiRequestError && isAuthError(e.status, e.code)) {
-        return;
-      }
-      setBids([]);
-      setTotal(0);
-      setError("Unable to load bids. Try refreshing the page.");
-    } finally {
-      setLoading(false);
-    }
-  }, [portal, activeFilter, searchQuery, statusFilter, page, user, authLoading]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setPage(1);
   }, [portal, activeFilter, searchQuery, statusFilter]);
 
   useEffect(() => {
-    fetchBids();
-  }, [fetchBids]);
+    if (!portal || authLoading || !user) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const doFetch = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await portalApi.bids(portal, {
+          filter: activeFilter,
+          search: searchQuery || undefined,
+          status: statusFilter !== "all" ? statusFilter : undefined,
+          page,
+          pageSize: PAGE_SIZE,
+        });
+        setBids(data.items);
+        setTotal(data.total);
+      } catch (e) {
+        if (e instanceof ApiRequestError && isAuthError(e.status, e.code)) return;
+        setBids([]);
+        setTotal(0);
+        setError("Unable to load bids. Try refreshing the page.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    debounceRef.current = setTimeout(doFetch, searchQuery ? 300 : 0);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [portal, activeFilter, searchQuery, statusFilter, page, user, authLoading]);
 
   const clearUrlFilter = () => {
     const next = new URLSearchParams(searchParams);
@@ -103,7 +103,7 @@ export function PortalBids() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">{PORTAL_NAMES[portal]}</h1>
         <p className="text-gray-600 mt-1">
-          {loading ? "Loading…" : `${total.toLocaleString()} opportunities found`}
+          {loading ? " " : `${total.toLocaleString()} opportunities found`}
         </p>
       </div>
 
@@ -204,90 +204,120 @@ export function PortalBids() {
         )}
       </div>
 
-      <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Bid ID</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Buyer</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Description</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Close Date</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Rating</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {bids.map((bid) => (
-              <tr
-                key={bid.bidKey}
-                className="hover:bg-gray-50 cursor-pointer"
-                onClick={() => navigate(bidDetailPath(portal, bid.bidKey))}
-              >
-                <td className="px-4 py-4 text-blue-600 font-medium text-sm">{bid.bidId}</td>
-                <td className="px-4 py-4 text-sm text-gray-900">{bid.buyer}</td>
-                <td className="px-4 py-4 text-sm text-gray-900 line-clamp-2 max-w-md">{bid.title}</td>
-                <td className="px-4 py-4 text-sm text-gray-900">
-                  {formatClosingDate(bid.closingDate, bid.closingDateRaw)}
-                </td>
-                <td className="px-4 py-4">
-                  <RatingDisplay
-                    rating={bid.rating}
-                    method={bid.method}
-                    eliminatedBy={bid.eliminatedBy}
-                    compact
-                  />
-                </td>
-                <td className="px-4 py-4"><StatusBadge status={bid.userState} /></td>
-                <td className="px-4 py-4"><ChevronRight className="w-5 h-5 text-gray-400" /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!loading && bids.length === 0 && (
-          <p className="text-center text-gray-500 py-12">No bids match your filters.</p>
-        )}
-        <Pagination
-          page={page}
-          pageSize={PAGE_SIZE}
-          total={total}
-          onPageChange={setPage}
-        />
-      </div>
-
-      <div className="lg:hidden space-y-4">
-        {bids.map((bid) => (
-          <Link
-            key={bid.bidKey}
-            to={bidDetailPath(portal, bid.bidKey)}
-            className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-shadow"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="text-blue-600 font-semibold mb-1 text-sm">{bid.bidId}</div>
-                <div className="text-sm text-gray-900 font-medium">{bid.buyer}</div>
-              </div>
-              <StatusBadge status={bid.userState} />
-            </div>
-            <p className="text-sm text-gray-600 line-clamp-2 mb-3">{bid.title}</p>
-            <div className="flex items-center justify-between">
-              <RatingDisplay rating={bid.rating} method={bid.method} eliminatedBy={bid.eliminatedBy} compact />
-              <div className="flex items-center gap-1 text-sm text-gray-500">
-                <Calendar className="w-4 h-4" />
-                {formatClosingDate(bid.closingDate, bid.closingDateRaw)}
-              </div>
-            </div>
-          </Link>
-        ))}
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <Pagination
-            page={page}
-            pageSize={PAGE_SIZE}
-            total={total}
-            onPageChange={setPage}
-          />
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="hidden lg:block bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {bids.length > 0 ? (
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Bid ID</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Buyer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Description</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Close Date</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Rating</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">AI</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
+                    <th className="px-4 py-3" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {bids.map((bid) => (
+                    <tr
+                      key={bid.bidKey}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => navigate(bidDetailPath(portal, bid.bidKey))}
+                    >
+                      <td className="px-4 py-4 text-blue-600 font-medium text-sm">{bid.bidId}</td>
+                      <td className="px-4 py-4 text-sm text-gray-900">{bid.buyer}</td>
+                      <td className="px-4 py-4 text-sm text-gray-900 line-clamp-2 max-w-md">{bid.title}</td>
+                      <td className="px-4 py-4 text-sm text-gray-900">
+                        {formatClosingDate(bid.closingDate, bid.closingDateRaw)}
+                      </td>
+                      <td className="px-4 py-4">
+                        <RatingDisplay
+                          rating={bid.rating}
+                          method={bid.method}
+                          eliminatedBy={bid.eliminatedBy}
+                          compact
+                        />
+                      </td>
+                      <td className="px-4 py-4">
+                        {bid.summaryAvailable
+                          ? <Sparkles className="w-4 h-4 text-teal-500" title="AI summary available" />
+                          : <Sparkles className="w-4 h-4 text-gray-300" title="No AI summary yet" />}
+                      </td>
+                      <td className="px-4 py-4"><StatusBadge status={bid.userState} /></td>
+                      <td className="px-4 py-4"><ChevronRight className="w-5 h-5 text-gray-400" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="p-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No bids found</h3>
+                <p className="text-gray-600">Try adjusting your filters or search query</p>
+              </div>
+            )}
+            {bids.length > 0 && (
+              <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
+            )}
+          </div>
+
+          <div className="lg:hidden space-y-4">
+            {bids.length > 0 ? (
+              <>
+                {bids.map((bid) => (
+                  <Link
+                    key={bid.bidKey}
+                    to={bidDetailPath(portal, bid.bidKey)}
+                    className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-shadow"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <div className="text-blue-600 font-semibold mb-1 text-sm">{bid.bidId}</div>
+                        <div className="text-sm text-gray-900 font-medium">{bid.buyer}</div>
+                      </div>
+                      <StatusBadge status={bid.userState} />
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-2 mb-3">{bid.title}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <RatingDisplay rating={bid.rating} method={bid.method} eliminatedBy={bid.eliminatedBy} compact />
+                        {bid.summaryAvailable && (
+                          <Sparkles className="w-4 h-4 text-teal-500" title="AI summary available" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                        <Calendar className="w-4 h-4" />
+                        {formatClosingDate(bid.closingDate, bid.closingDateRaw)}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
+                </div>
+              </>
+            ) : (
+              <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No bids found</h3>
+                <p className="text-gray-600">Try adjusting your filters or search query</p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

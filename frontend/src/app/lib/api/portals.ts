@@ -1,0 +1,75 @@
+import type { BidDetail, BidFilter, BidListItem, BidSummary, Paginated, PortalId, PortalStats } from "../types";
+import { apiClient, axiosErrorToApiError } from "./client";
+import type { AxiosError } from "axios";
+import type { ApiError } from "../types";
+
+export const portalApi = {
+  stats: async (portal: PortalId) => {
+    try {
+      const res = await apiClient.get<PortalStats>(`/api/portals/${portal}/stats`);
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
+  bids: async (
+    portal: PortalId,
+    params: {
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      filter?: BidFilter;
+      status?: string;
+    } = {},
+  ) => {
+    const qs = new URLSearchParams();
+    qs.set("page", String(params.page ?? 1));
+    qs.set("pageSize", String(params.pageSize ?? 50));
+    if (params.search) qs.set("search", params.search);
+    if (params.filter && params.filter !== "all") qs.set("filter", params.filter);
+    if (params.status && params.status !== "all") qs.set("status", params.status);
+    try {
+      const res = await apiClient.get<Paginated<BidListItem>>(
+        `/api/portals/${portal}/bids?${qs.toString()}`,
+      );
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
+  bidDetail: async (portal: PortalId, bidKey: string) => {
+    try {
+      const res = await apiClient.get<BidDetail>(
+        `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}`,
+      );
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
+  generateSummary: async (portal: PortalId, bidKey: string) => {
+    try {
+      const res = await apiClient.post<BidSummary>(
+        `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/generate-summary`,
+      );
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
+  disposition: async (portal: PortalId, bidKey: string, action: "accepted" | "rejected" | "reset") => {
+    try {
+      const res = await apiClient.post<{ userState: string }>(
+        `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/disposition`,
+        { action },
+      );
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+};

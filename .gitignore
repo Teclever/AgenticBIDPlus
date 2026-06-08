@@ -40,3 +40,6 @@ yarn-error.log*
 
 # Local scratch
 _oldFiles/
+
+# Large reference archive — never commit
+UIReference/BidPortal-V2_merged/

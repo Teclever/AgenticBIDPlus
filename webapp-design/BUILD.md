@@ -11,7 +11,7 @@ This is a **two-folder** handoff — both must travel together:
 | Folder | Role |
 |--------|------|
 | `webapp-design/` (this folder) | **The spec.** Read [`WEBAPP_DESIGN.md`](WEBAPP_DESIGN.md) end-to-end first — product, screens, behaviour, copy. Then [`API.md`](API.md) (the API contract) and [`fixtures/`](fixtures/) (mockable sample responses). `screenshots/` (40 PNGs) + `mockups/` (10 HTML wireframes) are the visual truth. |
-| `UIReference/Teclever Bid intelligence/` | **The visual + component foundation.** A runnable Vite + React + React Router + Tailwind 4 + shadcn/Radix prototype: theme, component library, layout shell, Teclever logo. Look-and-feel only; **behaviour/copy in `WEBAPP_DESIGN.md` overrides the prototype.** |
+| `frontend/` | **The visual + component foundation.** A runnable Vite + React + React Router + Tailwind 4 + shadcn/Radix prototype: theme, component library, layout shell, Teclever logo. Look-and-feel only; **behaviour/copy in `WEBAPP_DESIGN.md` overrides the prototype.** |
 
 > If you only received `webapp-design/`, ask for `UIReference/` — the theme, components and logo
 > live there.

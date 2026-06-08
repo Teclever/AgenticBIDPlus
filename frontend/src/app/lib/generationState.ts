@@ -1,0 +1,43 @@
+type Listener = () => void;
+
+// key → bidId (key = "portal:bidKey")
+const generating = new Map<string, string>();
+const listeners: Listener[] = [];
+
+function notify() {
+  listeners.forEach((l) => l());
+}
+
+export function startGenerating(key: string, bidId: string): void {
+  generating.set(key, bidId);
+  notify();
+}
+
+export function stopGenerating(key: string): void {
+  generating.delete(key);
+  notify();
+}
+
+export function isGenerating(key: string): boolean {
+  return generating.has(key);
+}
+
+export function getAnyGenerating(): { bidId: string } | null {
+  const entry = [...generating.values()][0];
+  return entry ? { bidId: entry } : null;
+}
+
+export function getOtherGenerating(excludeKey: string): string | null {
+  for (const [k, bidId] of generating) {
+    if (k !== excludeKey) return bidId;
+  }
+  return null;
+}
+
+export function subscribe(listener: Listener): () => void {
+  listeners.push(listener);
+  return () => {
+    const idx = listeners.indexOf(listener);
+    if (idx !== -1) listeners.splice(idx, 1);
+  };
+}

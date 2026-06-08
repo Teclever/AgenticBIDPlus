@@ -80,8 +80,10 @@ their scrape / download / Pass-1 / DB-write logic. Do NOT rewrite portal transpo
   re-summarize — EXTENDED only updates flag + closing date; re-running the module is a no-op.
 - CLOSED is terminal — NEVER fetch documents, run local extraction, or summarize a CLOSED
   bid (gate skips it; a later "Fetch more" click on a CLOSED bid does nothing).
-- A failed/partial nightly cycle raises a STICKY `system_alerts` row (cleared only by a human
-  in the web app, never auto-cleared by a later success). No email anywhere.
+- A failed/partial nightly cycle raises a typed `system_alerts` row (CYCLE_FAILED / SCORING_FAILURE /
+  CREDIT_EXHAUSTED / SUMMARY_FAILURE). SCORING_FAILURE and SUMMARY_FAILURE auto-clear when all their
+  affected bid_refs are resolved on the next cycle. CYCLE_FAILED requires a human retry in the web app.
+  Cleared rows are purged after 10 days. No email anywhere.
 - ONE ANTHROPIC_API_KEY, from env only (orchestrator injects it for all adapters). Do NOT
   create per-tool .env files.
 - Build slices S0..S7 IN ORDER. Do not start a slice until the prior DONE-WHEN passes.

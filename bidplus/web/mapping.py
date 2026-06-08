@@ -98,14 +98,16 @@ def _summary_block(row: dict) -> dict:
         markdown = summarize.render_markdown(summary)
         unparsed = summary.unparsed_documents
         coverage = summary.coverage
+        critical_flags = [f.model_dump() for f in summary.critical_flags]
     except Exception:
-        markdown, unparsed, coverage = None, [], row.get("summary_coverage")
+        markdown, unparsed, coverage, critical_flags = None, [], row.get("summary_coverage"), []
     return {
         "available": True,
         "status": row.get("summary_status") or "ok",
         "markdown": markdown,
         "coverage": coverage or row.get("summary_coverage"),
         "unparsedDocuments": unparsed,
+        "criticalFlags": critical_flags,
         "model": row.get("summary_model"),
         "generatedAt": row.get("summary_generated_at"),
     }

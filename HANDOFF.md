@@ -1,6 +1,6 @@
 # Teclever Bid Portal — Development Handoff
 
-**As of:** 2026-06-04  
+**As of:** 2026-06-08  
 **Repo:** `BidAnalysisPortal/` (git root)  
 **Authoritative rules:** [`AGENTS.md`](AGENTS.md) · full design [`MASTER_ACTION_PLAN_V3.md`](MASTER_ACTION_PLAN_V3.md) · deploy [`DEPLOY_WORKFLOW.md`](DEPLOY_WORKFLOW.md)
 
@@ -57,12 +57,12 @@ status and validation detail are in **§3**.
 | **S1** HAL orchestrator | `HALAdapter`, `hal_tool scrape-score` + `explain`, Pass-1 full shape (`matching_tech`, `recommendation`), minimal launcher | **Done** in tree | **Live:** 137 tenders scraped, 132 Pass-1 scored, `explain` OK; log `~/bidplus-runtime/logs/hal_20260604_143849.log` |
 | **S2** ISRO + GeM | ISRO/GeM adapters, unified rubric content for ISRO, ISRO parser full shape, sequential launcher `run` | **Done + live-validated** | **Live (2026-06-04→05):** sequential HAL→ISRO→GeM, three populated `bids.db`, Pass-1 parses under unified rubric, `explain` per portal. HAL 139/136, ISRO 155/154, GeM 11,333/**10,807** scored. **526 GeM bids unscored** = ~23 transient `APIConnectionError` batches the in-tool scorer skipped to NULL (benign + recoverable; robustness fix held for **S5**). GeM was driven **standalone** (`gem_tool.py scrape-score`) after the launcher run took a `KeyboardInterrupt` at the GeM stage — data + scores identical, but the single-orchestrated-run path wasn't shown end-to-end. **Accepted as S2-complete.** |
 | **S3** Parent merge | `parent.db`, gap-aware upsert, overlay preservation | **Done + validated (2026-06-05)** | `bidplus/merge.py` + launcher `merge [--check]`. **Live-validated:** parent mirrors all 3 tools (HAL 139 / ISRO 155 / GeM 11,333, 0 mismatches); 2nd merge idempotent (0 ins/0 upd); overlay (`user_state`/`docs_summarized`/`summary_json`) survives re-merge; EXTENDED updates only `bid_status`/`extension_count`/closing-date, overlay untouched; manual tool-row picked up next merge. WAL on. |
-| **S4** Hardening | `scrape_runs`, sticky alerts, systemd timer, tiered queues | **Done + validated (2026-06-05)** | `runs.py` + `gate.py` + launcher cycle/`gate`/`run-status` + systemd units. **Validated (17 checks):** in-progress overall row (`finished_at IS NULL`) then finalized; 1 overall + 3 per-tool rows w/ counts + stage timings; failed portal → `failed` for it, **`partial`** overall, others finish; partial/failed raises **sticky** `system_alerts` (a later success leaves it active); all-failed → `failed`; tiered gate buckets 5/4/≤3 (auto5=23, local4=168) with **CLOSED + keyword excluded** (NULL-safe), matched to manual SQL. **Timer firing** = deploy-box (systemd) verification, units shipped. |
+| **S4** Hardening | `scrape_runs`, sticky alerts, systemd timer, tiered queues | **Done + validated (2026-06-05)** | `runs.py` + `gate.py` + launcher cycle/`gate`/`run-status` + systemd units. **Validated (17 checks):** in-progress overall row (`finished_at IS NULL`) then finalized; 1 overall + 3 per-tool rows w/ counts + stage timings; failed portal → `failed` for it, **`partial`** overall, others finish; partial/failed raises **sticky** `system_alerts` (a later success leaves it active); all-failed → `failed`; tiered gate buckets 5/4/≤3 (auto5=23, local4=168) with **CLOSED + keyword excluded** (NULL-safe), matched to manual SQL. **Timer firing** = deploy-box (systemd) verification, units shipped. `deploy/systemd/bidplus-web.service` added 2026-06-08 for the FastAPI server. |
 | **S5** Shared scoring module + eliminator | centralize Pass-1 out of the tools; normalized-record seam; **two-pass** eliminator gate (`neg & !pos`, read from `eliminator_terms` DB) shadow→hard; ledger + AI-delta + Excel governance; output-budget batching; 1:1 mapping; transient-error retry | **Done — all 3 chunks (2026-06-05).** ✅ C1 eliminator core (`bidplus/eliminator.py`: schema + idempotent seed + two-pass gate byte-faithful to the miner + shadow analysis; `scoring_records()` seam on all 3 adapters). ✅ C2 Haiku engine (`bidplus/scoring.py`: 1:1 mapping, per-item retry, transient retry/no-skip-to-NULL, no dup-gate). ✅ **C3 governance + cutover:** `bidplus/governance.py` — ledger (promote→`false_positives`++/requeue, accept/clear-table→`confirmed_rejections`++, **never auto-quarantine high-support**); AI delta ADD/REMOVE/REFINE + **keep-guard** (blocks neg-add hitting any score≥3 bid / removing an `under_review` term) → `list_change_proposals` → risk-coded **Excel** in `list_review/{pending,ready,consumed}/`; transactional `ready/`→apply at run start. **In-tool Pass-1 + GeM exclusion pre-filter removed** (3 tools scrape-only). `launcher run` rewired: governance-ingest → scrape → **centralized hard score** → merge → gate. **Hard cutover flipped** (`score_portal`/CLI default `mode='hard'`; `--shadow` retained); promoted bids bypass the eliminator. **Collision review resolved:** of 109 score≥3 collisions the operator rescued 4 via positive adds (`testing rig`/`test stand`/`shop floor`+`digitization`/`hlnm`) + removed neg unigram `blade` (kept `wiper blade`); other ~101 accepted. Governance loop validated end-to-end (deterministic, no-API: accept/promote/ledger, keep-guard block, Excel export, ready→apply→consumed). ✅ **Live 30-bid/portal hard smoke (2026-06-05):** HAL 25 model + 5 keyword, ISRO 28 + 2, GeM 5 + 25 — **0 unscored, 0 bad-provenance rows** (keyword rows carry `auto_rejected=1`+`pass1_eliminated_by`+score 0; model rows carry a score). Smoke caught + fixed a **composite-PK 1:1 mapping bug**: HAL `tender\|line` ids collided with the prompt's `\|` field separator (model echoed only the pre-`\|` part → 14/25 HAL survivors NULL); Pass-1 now maps by **line NUMBER** (digit-extracted), robust to any PK. | — |
 | **S6** Pass 2: docs → summary | `fetch_documents`, local extract, **one** Sonnet summarization path | **In progress — built in 3 CHANNELS (2026-06-05).** ✅ **Ch1 Document Fetch** (committed `cc73a2c`): `fetch_documents` on all 3 adapters via a `fetch-docs <pk> --out <dir>` subcommand reusing each tool's transport (HAL Playwright enumerate-all + filename exclusion; ISRO single doc, HTML dropped; GeM primary + ranked spec links, 3-doc cap REMOVED, content-dedup). Live-validated. ✅ **Ch2 Local Extraction** (committed `73b58ae`): `bidplus/extraction.py` → relevant English text only (drop non-English + governance/T&C boilerplate; keep technical/financial crux), text→`.txt` in the bid folder, scans/images kept whole for Sonnet, regex local_fields (EMD/PBG/value/dates from RAW). Formats: PDF/Word/Excel/PPT/images native + legacy .doc/.xls/.ppt via LibreOffice (deploy needs `apt install libreoffice`). ✅ **Ch3 Sonnet Summarization** (`bidplus/summarize.py`) — **BUILT + REAL-SONNET VALIDATED (2026-06-05), UNCOMMITTED.** §8b module + score-gated wiring into `launcher run` (per-portal Pass-2: score-5 Sonnet, score-4 local extract), `summarize` CLI, `scrape_runs` counts, unreadable-doc (`unparsed_documents`) surfacing. LibreOffice intentionally NOT installed. Remaining: full integrated `run` on real data (deploy proof) + commit. See §13. | — |
 | **S7** Lifecycle | CLOSED sweep, 7-day file retention, orphan reaping, overnight budget | **BUILT + dev-validated (UNCOMMITTED), 2026-06-06.** `bidplus/lifecycle.py` (+ `sweep` CLI; wired into `run` after the gate). `closed_sweep` (parse per-portal closing date → mark CLOSED, retain row+overlay, delete files), `retention_sweep` (N-day file age-out + empty-dir removal), `reap_orphans` (dirs with no parent row), `budget_report` (finished_at vs `OVERNIGHT_DEADLINE`). All four proven on synthetic data. Remaining: real full-cycle budget timing on the deploy box. | — |
 
-**S2 + S3 + S4 + S5 DONE-WHEN: satisfied (2026-06-05). S6 (Pass 2) + S7 (lifecycle/retention) BUILT + dev-validated (S6 real-Sonnet, S7 synthetic). S6 committed `a66d62a`; S7 uncommitted. The remaining gate for BOTH is a real full-cycle `launcher run` on the deploy box (real scrape across 3 portals → Pass 1 → merge → Pass 2 Sonnet → sweep → budget-within-9am) — that's the deploy-phase proof, see §13/§14.** *(S2 caveat retained: GeM finished standalone after a mid-run interrupt; substance met. S4 timer firing is the one item deferred to deploy-box systemd verification. S5: hard cutover is live; full integrated nightly `run` is the deploy-box proof.)*
+**S2 + S3 + S4 + S5 DONE-WHEN: satisfied (2026-06-05). S6 (Pass 2) + S7 (lifecycle/retention) BUILT + dev-validated (S6 real-Sonnet, S7 synthetic). S6 committed `a66d62a`; S7 committed `2b9b8f9`. The remaining gate for BOTH is a real full-cycle `launcher run` on the deploy box (real scrape across 3 portals → Pass 1 → merge → Pass 2 Sonnet → sweep → budget-within-9am) — that's the deploy-phase proof, see §13/§14.** *(S2 caveat retained: GeM finished standalone after a mid-run interrupt; substance met. S4 timer firing is the one item deferred to deploy-box systemd verification. S5: hard cutover is live; full integrated nightly `run` is the deploy-box proof.)*
 
 ---
 
@@ -279,7 +279,7 @@ S6 is built in **three channels**, all now wired. **Ch1 + Ch2 committed (`cc73a2
 - A fetched test bid already on disk: **GeM `GEM/2026/B/7605377`** (primary PDF text + 1 image-only spec → scan). HAL `HAL/KPT/ED/E-PROC/WC-1245/1|WC-1245` (7 docs) and ISRO `SA202600126601` (1 PDF) also fetched.
 
 ### Git
-S6 Ch3 + wiring committed `a66d62a`. Earlier on `main`: `73b58ae` (Ch2) → `cc73a2c` (Ch1) → `910b1b1` (Pass-1 mapping fix) → `584fac2` (S5 C3) → `01dcde7` (S5 C1-2) → … . **S7 (`lifecycle.py` + wiring, §14) is NOT yet committed.**
+`07dc647` (frontend build + path rename) → `2b9b8f9` (S7: lifecycle + retention + budget) → `a66d62a` (S6 Ch3 + score-gated wiring) → `73b58ae` (Ch2) → `cc73a2c` (Ch1) → `910b1b1` (Pass-1 mapping fix) → `584fac2` (S5 C3) → `01dcde7` (S5 C1-2) → … . S7 committed as of `2b9b8f9`. **Deploy box provisioning is next (see §§ deploy checklist).**
 
 ---
 
@@ -298,8 +298,8 @@ S6 Ch3 + wiring committed `a66d62a`. Earlier on `main`: `73b58ae` (Ch2) → `cc7
 
 ## 16. Web app (frontend) — IN PROGRESS (2026-06-06)
 
-**Frontend agent** is building the React UI in-place inside `UIReference/Teclever Bid intelligence/`.
-`npm run build` succeeds; `dist/` is live at `UIReference/.../dist/`. FastAPI serves it at
+**Frontend agent** built the React UI inside `frontend/` (renamed from `UIReference/Teclever Bid intelligence/` on 2026-06-08).
+`npm run build` succeeds; `dist/` is live at `frontend/dist/`. FastAPI serves it at
 `http://localhost:8000`. Login is working end-to-end against the real `parent.db`.
 
 **Three known issues under active fix:**
@@ -325,10 +325,10 @@ export BIDPLUS_RUNTIME_DIR=~/bidplus-runtime
 ~/bidplus-runtime/venv/bin/uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000 --reload
 
 # Frontend dev server (MSW mock, VITE_ENABLE_MSW=true)
-cd "UIReference/Teclever Bid intelligence" && npm run dev
+cd "frontend" && npm run dev
 
 # Production build → FastAPI serves dist/
-cd "UIReference/Teclever Bid intelligence" && npm run build
+cd "frontend" && npm run build
 ```
 
 ---
@@ -341,7 +341,7 @@ contract is **`webapp-design/API.md`**. Stack: **FastAPI**, reusing bidplus modu
 
 - **`bidplus/web/`** — `app.py` (all endpoints: auth, per-portal stats, listing w/ filters+search,
   bid detail, generate-summary, disposition, notifications, activity, system-alert; serves
-  `UIReference/.../dist` static if present), `schema.py` (new tables), `auth.py` (DB-session cookie),
+  `frontend/dist` static if present), `schema.py` (new tables), `auth.py` (DB-session cookie),
   `passwords.py` (bcrypt + `@teclever` guard), `mapping.py` (per-portal column→normalized field map).
 - **`bidplus/locks.py`** — `flock` on `$RUNTIME/summarize.lock`; web generate-summary takes it
   NON-blocking → `409 summarization_busy`; nightly `_run_pass2` holds it (blocking) around the

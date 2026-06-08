@@ -1,14 +1,7 @@
 import { useState, FormEvent, useEffect } from "react";
 import { useNavigate } from "react-router";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "../components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../components/ui/dialog";
 import TecleverLogo from "../../imports/TECLEVER_Logo.jpg";
 import { authApi, ApiRequestError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
@@ -73,6 +66,22 @@ export function Login() {
             <p className="text-sm text-gray-600 mt-1">Sign in to your account</p>
           </div>
 
+          {errorMessage && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <p className="flex-1 text-sm text-red-800">{errorMessage}</p>
+              <button
+                onClick={() => setErrorMessage(null)}
+                className="text-red-400 hover:text-red-600"
+                aria-label="Dismiss"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -118,28 +127,18 @@ export function Login() {
               type="submit"
               size="lg"
               variant="primary"
-              className="w-full"
+              className="w-full gap-2"
               disabled={!canSubmit || submitting}
             >
-              {submitting ? "Signing in…" : "Sign In"}
+              {submitting ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />Signing in…</>
+              ) : (
+                "Sign In"
+              )}
             </Button>
           </form>
         </div>
       </div>
-
-      <Dialog open={!!errorMessage} onOpenChange={() => setErrorMessage(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sign in failed</DialogTitle>
-            <DialogDescription>{errorMessage}</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="primary" onClick={() => setErrorMessage(null)}>
-              OK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

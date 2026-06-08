@@ -22,9 +22,9 @@ This package is a **front-end** handoff: the API layer is built **separately in 
 
 ## Regenerate screenshots
 
-1. Start the reference UI: `cd "../UIReference/Teclever Bid intelligence" && npm run dev`
+1. Start the reference UI: `cd "../frontend" && npm run dev`
 2. From this folder: `node scripts/capture-screenshots.mjs`
 
 ## Interactive prototype
 
-The runnable reference app lives at [`../UIReference/Teclever Bid intelligence/`](../UIReference/Teclever%20Bid%20intelligence/). Behaviour in `WEBAPP_DESIGN.md` overrides the prototype where they differ.
+The runnable reference app lives at [`../frontend/`](../frontend/). Behaviour in `WEBAPP_DESIGN.md` overrides the prototype where they differ.

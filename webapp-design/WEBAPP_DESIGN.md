@@ -4,7 +4,7 @@
 **Audience:** Backend agent (API contract) · UX/frontend agent (implementation) · Human reviewers.  
 **Package location:** This file lives alongside visual references in [`webapp-design/`](.).
 
-**Visual reference (interactive prototype):** [`../UIReference/Teclever Bid intelligence/`](../UIReference/Teclever%20Bid%20intelligence/) — Figma-derived; layout and look-and-feel only. **Behaviour and copy in this document take precedence.**
+**Visual reference (interactive prototype):** [`../frontend/`](../frontend/) — Figma-derived; layout and look-and-feel only. **Behaviour and copy in this document take precedence.**
 
 **Supersedes:** [`../WEBAPP_HANDOFF.md`](../WEBAPP_HANDOFF.md) for all web-app UX and front-end decisions.
 
@@ -456,7 +456,7 @@ List clears only after **Save all** or **every bid disputed**. Opening panel alo
 
 ### 10.1 Reference implementation
 
-- **Prototype:** `../UIReference/Teclever Bid intelligence/`
+- **Prototype:** `../frontend/`
 - **Stack:** Vite + React + React Router + Tailwind 4 + shadcn/Radix
 - **Theme:** `UIReference/.../src/styles/theme.css`
 - **Logo:** `UIReference/.../src/imports/TECLEVER_Logo.jpg`
@@ -526,7 +526,7 @@ reusing `bidplus/` modules.
 **Start with [`BUILD.md`](BUILD.md)** (zero-context build guide) + [`API.md`](API.md) (the API
 contract you code against) + [`fixtures/`](fixtures/) (mockable responses). Then:
 
-1. Interactive prototype: `npm i && npm run dev` in `UIReference/Teclever Bid intelligence/`
+1. Interactive prototype: `npm i && npm run dev` in `frontend/`
 2. Visual truth: screenshots in this package + this document
 3. Build net-new UI from `target-*` screenshots: filter banner, All Bids, notification panel, Generate Summary, login changes
 
@@ -557,7 +557,7 @@ state, unseeded auth, no global summarization lock, and an under-specified bid r
 - Reads `parent.db` (WAL, read-mostly). The **only** writes it performs: dispositions,
   `activity_log`, `sessions`, `notification_views`, and the overlay summary fields (via the
   summarize module). Scrape/merge/score remain the nightly CLI's job.
-- Serves the **built React UI** (`UIReference/Teclever Bid intelligence/dist`) as static assets
+- Serves the **built React UI** (`frontend/dist`) as static assets
   from the same process. One venv, one **systemd service**, **separate** from the nightly timer.
 
 ### 16.2 New `parent.db` tables (additive migrations; the web round owns them)
@@ -719,4 +719,4 @@ the existing single summarization module behind the new lock.
 | 2026-06-06 | Moved to `webapp-design/` package with 40 screenshots |
 | 2026-06-06 | **§16 added** — backend/API gap-closure decisions (FastAPI stack, DB-session auth + user CLI, activity_log, per-user notification watermark, bid routing, summarize file-lock, 7-day closing window). Inline fixes: §3.1 bid route, §5.2 closing rule. |
 | 2026-06-06 | **§16 IMPLEMENTED** — `bidplus/web/` FastAPI app + `locks.py`/`dispositions.py`/`users.py`; `API.md` + `fixtures/` + `BUILD.md` front-end handoff added; smoke-validated against `parent.db`. (bcrypt direct, not passlib.) |
-| 2026-06-06 | **Frontend build started** — React UI in `UIReference/Teclever Bid intelligence/`. `npm run build` → `dist/`. FastAPI serving at `localhost:8000`. Login working. CORS middleware added. Three known issues in progress: dashboard 0s (missing `credentials: "include"`), no pagination UI, Generate Summary spinner/states. Screen build order: login → dashboard → list → detail → activity → notifications. |
+| 2026-06-06 | **Frontend build started** — React UI in `frontend/`. `npm run build` → `dist/`. FastAPI serving at `localhost:8000`. Login working. CORS middleware added. Three known issues in progress: dashboard 0s (missing `credentials: "include"`), no pagination UI, Generate Summary spinner/states. Screen build order: login → dashboard → list → detail → activity → notifications. |

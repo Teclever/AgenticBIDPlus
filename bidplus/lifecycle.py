@@ -31,6 +31,7 @@ import shutil
 import sqlite3
 
 import bidplus.config as config
+from bidplus import runs as _runs
 from bidplus.adapters.gem import GeMAdapter
 from bidplus.adapters.hal import HALAdapter
 from bidplus.adapters.isro import ISROAdapter
@@ -236,9 +237,11 @@ def budget_report(parent: sqlite3.Connection,
 
 
 def run_sweep(parent: sqlite3.Connection, now: datetime.datetime | None = None) -> dict:
-    """The full nightly housekeeping pass (CLOSED → retention → orphans). Idempotent."""
+    """The full nightly housekeeping pass (CLOSED → retention → orphans → alert purge). Idempotent."""
+    purged = _runs.purge_old_cleared(parent, days=10)
     return {
         "closed": closed_sweep(parent, now=now),
         "retention": retention_sweep(now=now),
         "orphans": reap_orphans(parent),
+        "alerts_purged": purged,
     }

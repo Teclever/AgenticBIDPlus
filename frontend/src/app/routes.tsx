@@ -4,6 +4,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { PortalBids } from "./pages/PortalBids";
 import { BidDetail } from "./pages/BidDetail";
 import { ActivityLog } from "./pages/ActivityLog";
+import { Notifications } from "./pages/Notifications";
 import { Layout } from "./components/Layout";
 import { AuthGuard } from "./components/AuthGuard";
 
@@ -45,6 +46,14 @@ export const router = createBrowserRouter([
         element: (
           <AuthGuard>
             <ActivityLog />
+          </AuthGuard>
+        ),
+      },
+      {
+        path: "notifications",
+        element: (
+          <AuthGuard>
+            <Notifications />
           </AuthGuard>
         ),
       },

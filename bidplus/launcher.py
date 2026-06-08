@@ -72,7 +72,7 @@ def _run_pass2(summarize_mod, gate_mod, parent, portal: str) -> dict:
     from bidplus import locks
 
     q = gate_mod.work_pks(parent, portal)
-    counts = {"summarized": 0, "summary_failed": 0, "local_extracted": 0}
+    counts: dict = {"summarized": 0, "summary_failed": 0, "local_extracted": 0, "failed_pks": []}
     # Hold the global summarization lock for the whole score-5 loop so a concurrent web
     # "Generate Summary" click is told the system is busy (WEBAPP_DESIGN §16.8) — the one
     # path to Sonnet is never entered twice at once. local_extract (no Sonnet) stays outside.
@@ -84,9 +84,14 @@ def _run_pass2(summarize_mod, gate_mod, parent, portal: str) -> dict:
                 raise
             except Exception as e:
                 counts["summary_failed"] += 1
+                counts["failed_pks"].append(str(pk))
                 print(f"  [pass2] {portal} {pk} summarize error: {type(e).__name__}: {e}")
                 continue
-            counts["summary_failed" if r.get("status") == "failed" else "summarized"] += 1
+            if r.get("status") == "failed":
+                counts["summary_failed"] += 1
+                counts["failed_pks"].append(str(pk))
+            else:
+                counts["summarized"] += 1
     for pk in q["local_extract"]:
         try:
             summarize_mod.local_extract_bid(portal, pk, parent, fetch=True)
@@ -160,13 +165,28 @@ def cmd_run(args: argparse.Namespace) -> int:
         pass2: dict | None = None
         score_elapsed = merge_elapsed = pass2_elapsed = 0.0
         if result.status != "failed":
+            adapter = _ADAPTERS[portal]()
+            pk_cols = tuple(adapter._SCORING["pk"])
+
             s0 = time.monotonic()
             try:
                 score_info = scoring.score_portal(portal, parent, mode=mode)
                 result.scored_count = (score_info.get("model_scored", 0)
                                        + score_info.get("keyword_eliminated", 0))
-            except SystemExit:
-                raise  # billing/usage limit — abort the whole cycle
+                runs.auto_clear_scoring_alerts(
+                    parent, portal, str(adapter.tool_db_path()), pk_cols)
+                if score_info.get("unscored_left", 0) > 0:
+                    runs.raise_typed_alert(
+                        parent, overall_id, "SCORING_FAILURE", portal,
+                        score_info.get("unscored_ids", []),
+                        f"{score_info['unscored_left']} bid(s) could not be scored after retries",
+                    )
+            except SystemExit as e:
+                runs.raise_typed_alert(
+                    parent, overall_id, "CREDIT_EXHAUSTED", portal, [],
+                    f"Anthropic billing/usage limit reached: {str(e)[:300]}",
+                )
+                raise
             except Exception as e:
                 score_info = {"error": f"{type(e).__name__}: {e}"}
                 result.status = "partial"
@@ -182,10 +202,24 @@ def cmd_run(args: argparse.Namespace) -> int:
             # S6 Pass 2 (one heavy op at a time, right after this portal's merge): summarize
             # the score-5 queue via Sonnet + locally extract the score-4 queue (no Sonnet).
             q0 = time.monotonic()
-            pass2 = _run_pass2(summarize_mod, gate_mod, parent, portal)
+            try:
+                pass2 = _run_pass2(summarize_mod, gate_mod, parent, portal)
+            except SystemExit as e:
+                runs.raise_typed_alert(
+                    parent, overall_id, "CREDIT_EXHAUSTED", portal, [],
+                    f"Anthropic billing/usage limit reached during summarization: {str(e)[:300]}",
+                )
+                raise
             pass2_elapsed = time.monotonic() - q0
-            for k in pass2_totals:
+            for k in ("summarized", "summary_failed", "local_extracted"):
                 pass2_totals[k] += pass2[k]
+            if pass2.get("summary_failed", 0) > 0:
+                runs.raise_typed_alert(
+                    parent, overall_id, "SUMMARY_FAILURE", portal,
+                    pass2.get("failed_pks", []),
+                    f"{pass2['summary_failed']} AI summary/ies failed",
+                )
+            runs.auto_clear_summary_alerts(parent, portal, pk_cols)
 
         timings[portal] = round(time.monotonic() - t0, 3)
         runs.record_portal(parent, result, p_start, runs._now(),

@@ -1,0 +1,17 @@
+[Unit]
+Description=Teclever Bid Portal — FastAPI web app (port 8000)
+Documentation=file:///home/congo/BidAnalysisPortal/DEPLOY_WORKFLOW.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=congo
+WorkingDirectory=/home/congo/BidAnalysisPortal
+Environment=BIDPLUS_RUNTIME_DIR=/home/congo/bidplus-runtime
+ExecStart=/home/congo/bidplus-runtime/venv/bin/uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

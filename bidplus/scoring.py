@@ -282,10 +282,12 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
         ensure_scoring_columns(conn, table)
         pk_where = " AND ".join(f"{c}=?" for c in pk)
         model_n = 0
+        unscored_ids = []
         for r in survivors:
             res = scored.get(r.bid_id)
             if res is None:
-                continue  # unscored -> left NULL, re-queued next run (never a fake 0)
+                unscored_ids.append(r.bid_id)
+                continue  # left NULL, re-queued next run (never a fake 0)
             conn.execute(
                 f"UPDATE {table} SET pass1_score=?, pass1_confidence=?, pass1_domain=?, "
                 f"pass1_rationale=?, pass1_method='model', pass1_eliminated_by=NULL, "
@@ -308,4 +310,5 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
     return {"portal": portal, "mode": mode, "candidates": len(records),
             "would_eliminate": would, "model_scored": model_n,
             "keyword_eliminated": len(eliminated),
-            "unscored_left": len(survivors) - model_n}
+            "unscored_left": len(survivors) - model_n,
+            "unscored_ids": unscored_ids}

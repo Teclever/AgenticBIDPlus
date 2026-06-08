@@ -11,7 +11,7 @@ if [[ ! -x "$VENV/bin/uvicorn" ]]; then
   exit 1
 fi
 
-UI="$ROOT/UIReference/Teclever Bid intelligence"
+UI="$ROOT/frontend"
 if [[ ! -f "$UI/dist/index.html" ]]; then
   echo "Building React UI (first time or stale dist)…"
   (cd "$UI" && npm run build)

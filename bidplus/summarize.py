@@ -20,9 +20,9 @@ import re
 import sqlite3
 import time
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 import bidplus.config as config
 from bidplus import extraction
@@ -30,6 +30,25 @@ from bidplus import extraction
 _ADAPTER_PK = {"hal": ("tender_number", "line_number"), "isro": ("tender_id",), "gem": ("bid_number",)}
 _IMG_MEDIA = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
               ".gif": "image/gif", ".webp": "image/webp"}
+
+
+# ── critical_flags typed tiers ────────────────────────────────────────────────────────
+
+class T1aFlag(BaseModel):
+    tier: Literal["T1a"]
+    label: str
+    clause: str
+
+class T1bFlag(BaseModel):
+    tier: Literal["T1b"]
+    label: str
+    models: str
+
+class T2Flag(BaseModel):
+    tier: Literal["T2"]
+    label: str
+
+CriticalFlag = Annotated[Union[T1aFlag, T1bFlag, T2Flag], Field(discriminator="tier")]
 
 
 class BidSummary(BaseModel):
@@ -52,6 +71,7 @@ class BidSummary(BaseModel):
     single_vendor_name: str = ""
     single_vendor_favourable: bool = False     # set locally (vs OUR_VENDOR_ALIASES), never by the model
     vendor_lock_clauses: list[str] = []
+    critical_flags: list[CriticalFlag] = []
     # Files we could neither extract nor hand to Sonnet (legacy .doc/.xls/.ppt with no
     # LibreOffice on the box, or unknown formats). Set LOCALLY from extraction — NEVER by the
     # model — so the web app can tell the user "we couldn't read these document(s)" via the
@@ -60,44 +80,79 @@ class BidSummary(BaseModel):
     unparsed_documents: list[str] = []
     coverage: Literal["full", "partial"] = "full"
 
+    @field_validator("critical_flags", mode="before")
+    @classmethod
+    def _coerce_legacy_flags(cls, v: object) -> object:
+        # Old summaries stored critical_flags as list[str]; coerce each string to a T2Flag dict.
+        if not isinstance(v, list):
+            return v
+        return [{"tier": "T2", "label": item} if isinstance(item, str) else item for item in v]
 
-_SCHEMA_KEYS = ("buyer, location, project_description, technical_scope, hardware_requirements, "
-                "software_requirements, deliverables, implementation_timeline, submission_timeline, "
-                "total_value, emd_value, pbg_value, vendor_qualification, eligibility_restrictions, "
-                "has_restrictive_eligibility, single_vendor, single_vendor_name, vendor_lock_clauses, "
-                "coverage")
 
-PROMPT = (
-    "You are analysing a single government/PSU tender to help a technology-services company "
-    "decide whether to bid. You are given the tender's already-cleaned text (boilerplate, terms "
-    "& conditions, and non-English content have been removed) plus any scanned/image documents "
-    "attached directly.\n\n"
-    "Extract ONLY decision-relevant TECHNICAL, FINANCIAL, and ELIGIBILITY information. Ignore "
-    "generic terms & conditions, legal/governance clauses, signatures, and anything not in English.\n\n"
-    f"Return a SINGLE JSON object — no prose, no markdown fences — with EXACTLY these keys: "
-    f"{_SCHEMA_KEYS}.\n\n"
-    "TYPES (strict — wrong types are rejected): eligibility_restrictions and vendor_lock_clauses "
-    "are JSON ARRAYS of strings (use [] if none). has_restrictive_eligibility and single_vendor "
-    "are booleans. coverage is \"full\" or \"partial\". EVERY OTHER field — including "
-    "vendor_qualification — is a plain STRING (use \"\" if absent); never return an array for them.\n\n"
-    "Field rules (use \"\" or [] when absent — NEVER invent):\n"
-    "- buyer: procuring organization/department. location: delivery/project site.\n"
-    "- vendor_qualification: the bidder pre-qualification / eligibility criteria (turnover, "
-    "experience, certifications, mandated facilities) as ONE text block.\n"
-    "- technical_scope: the technical work/capabilities required. hardware_requirements / "
-    "software_requirements: specific specs/platforms/tools/standards mandated.\n"
-    "- total_value / emd_value / pbg_value: contract value, EMD, performance/bid guarantee "
-    "(amount or %), with currency.\n"
-    "- eligibility_restrictions: broad gates on WHO can bid (turnover, prior experience, "
-    "certifications); set has_restrictive_eligibility accordingly.\n"
-    "- single_vendor: true ONLY if the WHOLE tender is restricted to one named seller "
-    "(single tender / sole-source / nomination / proprietary article); single_vendor_name = that "
-    "seller. (Usually handled before you see it — leave false if unsure.)\n"
-    "- vendor_lock_clauses: EVERY clause mandating a specific item be procured from a NAMED "
-    "company/brand/OEM/authority — e.g. 'data card from XYZ Ltd', 'license from ABC', 'must be "
-    "Cisco or equivalent'. Capture item + named vendor. These are go/no-go signals — never omit one.\n"
-    "- coverage: 'full' normally; 'partial' only if explicitly told you received a reduced doc set.\n"
-)
+PROMPT = """\
+You are analysing a single government/PSU tender to help a technology-services company
+decide whether to bid. You are given the tender's already-cleaned text (boilerplate, terms
+& conditions, and non-English content have been removed) plus any scanned/image documents
+attached directly.
+
+Extract ONLY decision-relevant information. Be terse — summaries, not explanations.
+Do NOT recommend. Do NOT judge fit. Surface facts only; a human reviewer decides.
+
+Return a SINGLE JSON object — no prose, no markdown fences — with EXACTLY these keys:
+buyer, location, project_description, technical_scope, hardware_requirements,
+software_requirements, deliverables, implementation_timeline, submission_timeline,
+total_value, emd_value, pbg_value, vendor_qualification, eligibility_restrictions,
+has_restrictive_eligibility, single_vendor, single_vendor_name, vendor_lock_clauses,
+critical_flags
+
+TYPES:
+- critical_flags: JSON ARRAY OF OBJECTS (schema below)
+- eligibility_restrictions, vendor_lock_clauses: JSON ARRAYS OF STRINGS
+- has_restrictive_eligibility, single_vendor: booleans
+- all other fields: plain STRING
+
+BREVITY RULES — apply to every field except critical_flags:
+- location: city name only
+- project_description: one sentence, max 25 words
+- technical_scope: max 4 comma-separated keyword phrases
+- hardware_requirements: comma-separated model/platform names only, no descriptions
+- software_requirements: comma-separated tool/stack names only, no descriptions
+- deliverables: stage name + quantity only (e.g. "Design ×1, Build ×4, Ops Support ×1yr")
+- implementation_timeline: max 4 milestones, format "label: date/duration" each
+- submission_timeline: deadline datetime only
+- total_value / emd_value / pbg_value: amount with currency; "Not stated" if absent
+- vendor_qualification: comma-separated criteria titles only, no prose
+- eligibility_restrictions: array of short title strings, no body text
+- vendor_lock_clauses: array of short title strings, named OEM included, no body text
+
+critical_flags SCHEMA — array of objects, exactly one of three tier formats:
+
+  T1a — OEM Authorization Poison Pill
+    A clause requiring the bidder to hold a STATUS granted and controlled by a named OEM
+    (system integrator authorization, dealership, partner/channel certification).
+    The named OEM decides who qualifies — the bidder cannot self-certify.
+    { "tier": "T1a", "label": "<ALL CAPS TITLE>",
+      "clause": "<clause verbatim or near-verbatim, named OEM and required status included>" }
+
+  T1b — Mandated Supply Poison Pill
+    Named HW or SW the tender explicitly mandates from a specific manufacturer.
+    One object per manufacturer. models: model numbers only, comma-separated, no brand prefix.
+    { "tier": "T1b", "label": "MANDATED SUPPLY — <MANUFACTURER NAME>",
+      "models": "<model1, model2, ...>" }
+
+  T2 — Gate (title only)
+    All other bid-relevant gates: process/capability certifications (AS9100D, CEMILAC,
+    DO-178C, ISO, CMMI), experience/turnover thresholds, locality/registration requirements,
+    staffing, contractual obligations (IPR, NDA, EMD, LD, PBG, bid format).
+    Achievable through the bidder's own effort — no named OEM controls access.
+    { "tier": "T2", "label": "<ALL CAPS TITLE — include key threshold or value if present>" }
+
+critical_flags rules:
+- Capture EVERY clause that could block or constrain a bid. Miss nothing.
+- A clause already in eligibility_restrictions or vendor_lock_clauses MUST also appear here.
+- Do NOT judge whether the bidder meets any condition. Do NOT recommend. Facts only.
+- If none exist, return [].
+"""
 
 
 def _now() -> str:
@@ -141,9 +196,14 @@ def _raw_sonnet(content: list[dict], nudge: str = "") -> str:
     client = anthropic.Anthropic(api_key=config.require_api_key())
     sys_prompt = PROMPT + (f"\n\n{nudge}" if nudge else "")
     resp = client.messages.create(
-        model=config.SUMMARY_MODEL, max_tokens=2048,
+        model=config.SUMMARY_MODEL, max_tokens=config.SUMMARY_MAX_TOKENS,
         system=[{"type": "text", "text": sys_prompt}],
         messages=[{"role": "user", "content": content}])
+    if resp.stop_reason == "max_tokens":
+        # Truncated JSON would fail to parse with a misleading "not parseable" error and
+        # burn every retry on the same wall. Surface the real cause instead.
+        raise RuntimeError(
+            f"summary output hit max_tokens ({config.SUMMARY_MAX_TOKENS}); raise SUMMARY_MAX_TOKENS")
     return resp.content[0].text
 
 
@@ -202,35 +262,77 @@ def _persist(parent: sqlite3.Connection, portal: str, source_pk: str, *, summary
 def render_markdown(summary: BidSummary) -> str:
     """Render the stored JSON to markdown for display (the DB keeps JSON; this is a view)."""
     s = summary
-    L = [f"## {s.buyer or 'Tender'} — summary", ""]
+    L: list[str] = []
+
+    # ── alerts ──────────────────────────────────────────────────────────────────────
     if s.unparsed_documents:
-        L += ["> **⚠ Unreadable document(s)** — could not be opened locally (legacy/binary "
-              "format; not sent to the AI). This summary may be incomplete; manual review needed:",
+        L += ["> ⚠ **Unreadable document(s)** — could not be opened (legacy/binary format; not "
+              "sent to the AI). Summary may be incomplete; manual review needed:",
               *[f"> - {d}" for d in s.unparsed_documents], ""]
     if s.single_vendor:
         fav = "IN OUR FAVOUR ✅" if s.single_vendor_favourable else "restricted to another vendor ❌"
-        L += [f"> **Single-vendor tender** — {fav}  (restricted to: {s.single_vendor_name or 'unspecified'})", ""]
-    def sec(t, v):
-        if v:
-            L.append(f"**{t}:** {v}")
-    sec("Location", s.location)
-    sec("Project", s.project_description)
-    sec("Technical scope", s.technical_scope)
-    sec("Hardware", s.hardware_requirements)
-    sec("Software", s.software_requirements)
-    sec("Deliverables", s.deliverables)
-    sec("Implementation timeline", s.implementation_timeline)
-    sec("Submission timeline", s.submission_timeline)
-    sec("Total value", s.total_value)
-    sec("EMD", s.emd_value)
-    sec("PBG / bid security", s.pbg_value)
-    sec("Vendor qualification", s.vendor_qualification)
-    if s.vendor_lock_clauses:
-        L += ["", "**Vendor-lock (poison pills):**"] + [f"- {c}" for c in s.vendor_lock_clauses]
-    if s.eligibility_restrictions:
-        L += ["", "**Eligibility restrictions:**"] + [f"- {c}" for c in s.eligibility_restrictions]
+        L += [f"> 🔒 **Single-vendor tender** — {fav} "
+              f"(restricted to: {s.single_vendor_name or 'unspecified'})", ""]
     if s.coverage == "partial":
-        L += ["", "_⚠ partial coverage — oversized bundle, primary document(s) only; manual review._"]
+        L += ["> ⚠ **Partial coverage** — oversized bundle; primary document(s) only. Manual review advised.", ""]
+
+    # ── overview ────────────────────────────────────────────────────────────────────
+    L += ["### Overview", ""]
+    if s.location:
+        L += [f"**Location:** {s.location}", ""]
+    if s.project_description:
+        L += [f"**Project:** {s.project_description}", ""]
+
+    # ── scope ───────────────────────────────────────────────────────────────────────
+    scope_items = [
+        ("Technical Scope", s.technical_scope),
+        ("Hardware Requirements", s.hardware_requirements),
+        ("Software Requirements", s.software_requirements),
+        ("Deliverables", s.deliverables),
+    ]
+    if any(v for _, v in scope_items):
+        L += ["### Scope & Requirements", ""]
+        for label, val in scope_items:
+            if val:
+                L += [f"**{label}**", "", val, ""]
+
+    # ── timeline ────────────────────────────────────────────────────────────────────
+    timeline_items = [
+        ("Implementation Timeline", s.implementation_timeline),
+        ("Submission Deadline", s.submission_timeline),
+    ]
+    if any(v for _, v in timeline_items):
+        L += ["### Timeline", ""]
+        for label, val in timeline_items:
+            if val:
+                L += [f"**{label}:** {val}", ""]
+
+    # ── financials ──────────────────────────────────────────────────────────────────
+    fin_items = [
+        ("Contract Value", s.total_value),
+        ("EMD / Bid Security", s.emd_value),
+        ("Performance Bank Guarantee", s.pbg_value),
+    ]
+    if any(v for _, v in fin_items):
+        L += ["### Financials", ""]
+        for label, val in fin_items:
+            if val:
+                L += [f"**{label}:** {val}", ""]
+
+    # ── eligibility ─────────────────────────────────────────────────────────────────
+    if s.vendor_qualification or s.eligibility_restrictions:
+        L += ["### Eligibility & Qualification", ""]
+        if s.vendor_qualification:
+            L += [s.vendor_qualification, ""]
+        if s.eligibility_restrictions:
+            L += [f"- {r}" for r in s.eligibility_restrictions]
+            L += [""]
+
+    # ── vendor lock ─────────────────────────────────────────────────────────────────
+    if s.vendor_lock_clauses:
+        L += ["### Vendor-Lock Clauses", ""]
+        L += [f"- {c}" for c in s.vendor_lock_clauses]
+
     return "\n".join(L)
 
 
@@ -344,8 +446,7 @@ def summarize_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
                 "status": "failed", "error": str(e), "sonnet": True}
 
     summary.unparsed_documents = unparsed
-    if coverage == "partial":
-        summary.coverage = "partial"
+    summary.coverage = coverage   # Python controls this — never let Sonnet self-assign 'partial'
     if summary.single_vendor:  # Sonnet backstop caught one local detection missed
         summary.single_vendor_favourable = _favourable(summary.single_vendor_name)
     _persist(parent, portal, source_pk, summary=summary, status="ok",

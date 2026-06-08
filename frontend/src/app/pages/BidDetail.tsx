@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router";
 import {
   ArrowLeft,
+  Ban,
   Building2,
   Calendar,
   MapPin,
   CheckCircle,
   XCircle,
+  RotateCcw,
   Sparkles,
   AlertTriangle,
   Loader2,
@@ -14,7 +16,8 @@ import {
 import { Button } from "../components/ui/button";
 import { portalApi, ApiRequestError } from "../lib/api";
 import { formatClosingDate } from "../lib/format";
-import type { BidDetail as BidDetailType, BidSummary, PortalId } from "../lib/types";
+import { startGenerating, stopGenerating, isGenerating, getOtherGenerating, subscribe } from "../lib/generationState";
+import type { BidDetail as BidDetailType, BidSummary, CriticalFlag, T1aFlag, T1bFlag, PortalId } from "../lib/types";
 import { RatingDisplay } from "../components/RatingDisplay";
 import { MarkdownContent } from "../components/MarkdownContent";
 
@@ -29,46 +32,89 @@ export function BidDetail() {
   const [summary, setSummary] = useState<BidSummary | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [otherBidGenerating, setOtherBidGenerating] = useState<string | null>(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [disposing, setDisposing] = useState(false);
 
+  const _genKey = `${portal}:${decodedBidKey}`;
+
+  const _syncOtherGenerating = () => {
+    setOtherBidGenerating(getOtherGenerating(_genKey));
+  };
+
   useEffect(() => {
     if (!portal || !decodedBidKey) return;
     setLoading(true);
+    _syncOtherGenerating();
     portalApi
       .bidDetail(portal, decodedBidKey)
       .then((data) => {
         setBid(data);
         setSummary(data.summary);
+        if (!data.summary?.available && isGenerating(_genKey)) {
+          setGenerating(true);
+        }
       })
       .catch(() => setBid(null))
       .finally(() => setLoading(false));
-  }, [portal, decodedBidKey]);
+  }, [portal, decodedBidKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep otherBidGenerating in sync via module-level subscription.
+  useEffect(() => {
+    const unsub = subscribe(_syncOtherGenerating);
+    return unsub;
+  }, [portal, decodedBidKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll every 3s while THIS bid is generating, until the summary appears or fails.
+  useEffect(() => {
+    if (!generating || summary?.available) return;
+    const timer = setInterval(async () => {
+      try {
+        const data = await portalApi.bidDetail(portal, decodedBidKey);
+        if (data.summary?.available) {
+          setSummary(data.summary);
+          setGenerating(false);
+          stopGenerating(_genKey);
+        } else if (data.summary?.status === "failed") {
+          setSummary(data.summary);
+          setGenerating(false);
+          setGenerateError("Summary generation failed. Please try again.");
+          stopGenerating(_genKey);
+        }
+      } catch { /* ignore poll errors */ }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [generating, summary?.available, portal, decodedBidKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGenerateSummary = async () => {
-    if (!portal || !decodedBidKey) return;
+    if (!portal || !decodedBidKey || !bid) return;
+    // Only claim the global banner if no other bid is currently generating.
+    const ownsBanner = !getOtherGenerating("");
+    startGenerating(_genKey, bid.bidId);
     setGenerating(true);
     setGenerateError(null);
     try {
-      const { summary: newSummary } = await portalApi.generateSummary(portal, decodedBidKey);
+      const newSummary = await portalApi.generateSummary(portal, decodedBidKey);
       setSummary(newSummary);
     } catch (e) {
-      if (e instanceof ApiRequestError && e.code === "summarization_busy") {
-        setGenerateError(
-          "Summarization is busy (nightly run in progress). Try again shortly.",
-        );
-      } else if (e instanceof ApiRequestError && e.code === "bid_closed") {
-        setGenerateError("This bid is closed — summarization is not available.");
+      if (e instanceof ApiRequestError) {
+        if (e.code === "bid_closed") {
+          setGenerateError("This bid is closed — summarization is not available.");
+        } else {
+          setGenerateError(e.message || "Unable to generate summary. Try again later.");
+        }
       } else {
         setGenerateError("Unable to generate summary. Try again later.");
       }
     } finally {
       setGenerating(false);
+      stopGenerating(_genKey);
+      void ownsBanner; // referenced to satisfy linter; banner is managed by Layout subscription
     }
   };
 
-  const handleDisposition = async (action: "accepted" | "rejected") => {
+  const handleDisposition = async (action: "accepted" | "rejected" | "reset") => {
     if (!portal || !decodedBidKey || !bid) return;
     setDisposing(true);
     try {
@@ -127,6 +173,17 @@ export function BidDetail() {
               Reject
             </Button>
           </div>
+        )}
+        {bid.userState === "rejected" && (
+          <Button
+            variant="secondary"
+            onClick={() => handleDisposition("reset")}
+            disabled={disposing}
+            className="gap-2 shrink-0"
+          >
+            {disposing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+            Reset to New
+          </Button>
         )}
       </div>
 
@@ -214,6 +271,13 @@ export function BidDetail() {
                   Generating summary, this may take up to a minute…
                 </p>
               </div>
+            ) : otherBidGenerating ? (
+              <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-800">
+                  Summary for <span className="font-semibold">{otherBidGenerating}</span> is in progress. Please wait until it completes.
+                </p>
+              </div>
             ) : (
               <p className="text-sm text-gray-600">
                 {isClosed
@@ -224,13 +288,16 @@ export function BidDetail() {
             <Button
               variant="primary"
               onClick={handleGenerateSummary}
-              disabled={isClosed || generating}
+              disabled={isClosed || generating || !!otherBidGenerating}
               className="gap-2"
             >
               Generate Summary
             </Button>
             {generateError && (
-              <p className="text-sm text-red-600">{generateError}</p>
+              <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{generateError}</p>
+              </div>
             )}
           </div>
         )}
@@ -264,6 +331,10 @@ export function BidDetail() {
 }
 
 function SummaryBlock({ summary }: { summary: BidSummary }) {
+  const flags = summary.criticalFlags ?? [];
+  const poisonPills = flags.filter((f): f is T1aFlag | T1bFlag => f.tier === "T1a" || f.tier === "T1b");
+  const gates = flags.filter((f) => f.tier === "T2");
+
   return (
     <div className="space-y-4">
       {summary.unparsedDocuments.length > 0 && (
@@ -286,6 +357,53 @@ function SummaryBlock({ summary }: { summary: BidSummary }) {
           Note: this summary may be incomplete (partial document coverage).
         </p>
       )}
+
+      {flags.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+            🚩 Critical Flags
+          </h3>
+
+          {poisonPills.length > 0 && (
+            <div className="space-y-2">
+              {poisonPills.map((flag, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-300 rounded-lg"
+                >
+                  <Ban className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-red-900">{flag.label}</p>
+                    {flag.tier === "T1a" && (
+                      <p className="text-sm text-red-800 mt-0.5">{(flag as T1aFlag).clause}</p>
+                    )}
+                    {flag.tier === "T1b" && (
+                      <p className="text-sm text-red-800 mt-0.5">
+                        Models: {(flag as T1bFlag).models}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {gates.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {gates.map((flag, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium bg-amber-50 border border-amber-300 text-amber-900 rounded-full"
+                >
+                  <AlertTriangle className="w-3 h-3" />
+                  {flag.label}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {summary.markdown && <MarkdownContent content={summary.markdown} />}
     </div>
   );

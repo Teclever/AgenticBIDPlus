@@ -13,7 +13,7 @@ import datetime
 import sqlite3
 
 _ADAPTER_PK = {"hal": ("tender_number", "line_number"), "isro": ("tender_id",), "gem": ("bid_number",)}
-_VALID_ACTIONS = {"accepted", "rejected", "disputed"}
+_VALID_ACTIONS = {"accepted", "rejected", "disputed", "reset"}
 
 
 def _now() -> str:
@@ -63,3 +63,25 @@ def dispose(parent: sqlite3.Connection, portal: str, bid_key: str, action: str,
         (user_id, portal, bid_key, action, now))
     parent.commit()
     return {"userState": action}
+
+
+def reset_disposition(parent: sqlite3.Connection, portal: str, bid_key: str,
+                      user_id: int) -> dict:
+    """Reset a rejected/accepted bid back to 'new', clearing the disposition overlay."""
+    pk = _ADAPTER_PK[portal]
+    vals = _split(portal, bid_key)
+    where = " AND ".join(f"{c}=?" for c in pk)
+    table = f"{portal}_bids"
+    now = _now()
+    cur = parent.execute(
+        f"UPDATE {table} SET user_state='new', disposed_by=NULL, disposed_at=NULL WHERE {where}",
+        (*vals,))
+    if cur.rowcount == 0:
+        parent.rollback()
+        raise LookupError(f"{portal}: no bid {bid_key!r}")
+    parent.execute(
+        "INSERT INTO activity_log (user_id, portal, bid_key, action, detail, created_at) "
+        "VALUES (?, ?, ?, 'reset', NULL, ?)",
+        (user_id, portal, bid_key, now))
+    parent.commit()
+    return {"userState": "new"}

@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { Outlet, Link, useNavigate } from "react-router";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import TecleverLogo from "../../imports/TECLEVER_Logo.jpg";
-import { authApi, notificationsApi } from "../lib/api";
+import { authApi, notificationsApi, systemAlertsApi } from "../lib/api";
+import { getAnyGenerating, subscribe as subscribeGenerating } from "../lib/generationState";
 import { useAuth } from "../context/AuthContext";
-import { NotificationPanel } from "./NotificationPanel";
+import { SystemAlertPanel } from "./SystemAlertPanel";
 
 export function Layout() {
   const navigate = useNavigate();
   const { setUser } = useAuth();
   const [notifCount, setNotifCount] = useState(0);
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
+  const [alertPanelOpen, setAlertPanelOpen] = useState(false);
+  const [generatingBid, setGeneratingBid] = useState<{ bidId: string } | null>(null);
 
   const refreshNotifCount = useCallback(async () => {
     try {
@@ -22,11 +25,33 @@ export function Layout() {
     }
   }, []);
 
+  const refreshAlertCount = useCallback(async () => {
+    try {
+      const { items } = await systemAlertsApi.list(false);
+      setAlertCount(items.length);
+    } catch {
+      setAlertCount(0);
+    }
+  }, []);
+
+  const checkGeneratingBid = useCallback(() => {
+    setGeneratingBid(getAnyGenerating());
+  }, []);
+
   useEffect(() => {
     refreshNotifCount();
-    const interval = setInterval(refreshNotifCount, 60_000);
-    return () => clearInterval(interval);
-  }, [refreshNotifCount]);
+    refreshAlertCount();
+    checkGeneratingBid();
+    const interval = setInterval(() => {
+      refreshNotifCount();
+      refreshAlertCount();
+    }, 60_000);
+    const unsub = subscribeGenerating(checkGeneratingBid);
+    return () => {
+      clearInterval(interval);
+      unsub();
+    };
+  }, [refreshNotifCount, refreshAlertCount, checkGeneratingBid]);
 
   const handleLogout = async () => {
     try {
@@ -37,9 +62,8 @@ export function Layout() {
     }
   };
 
-  const handleBellClick = () => {
-    setPanelOpen(true);
-    setNotifCount(0);
+  const handleShieldClick = () => {
+    setAlertPanelOpen(true);
   };
 
   return (
@@ -68,7 +92,17 @@ export function Layout() {
             </div>
             <div className="flex items-center gap-4">
               <button
-                onClick={handleBellClick}
+                onClick={handleShieldClick}
+                className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="System alerts"
+              >
+                <ShieldAlert className="w-5 h-5" />
+                {alertCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                )}
+              </button>
+              <Link
+                to="/notifications"
                 className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors"
                 aria-label="Notifications"
               >
@@ -76,7 +110,7 @@ export function Layout() {
                 {notifCount > 0 && (
                   <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
                 )}
-              </button>
+              </Link>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2">
                 <LogOut className="w-4 h-4" />
                 <span className="hidden sm:inline">Logout</span>
@@ -85,14 +119,20 @@ export function Layout() {
           </div>
         </div>
       </header>
+      {generatingBid && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-2 text-sm text-blue-800">
+          <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+          <span>Generating AI summary for <span className="font-semibold">{generatingBid.bidId}</span>…</span>
+        </div>
+      )}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
 
-      <NotificationPanel
-        open={panelOpen}
-        onClose={() => setPanelOpen(false)}
-        onQueueChange={refreshNotifCount}
+      <SystemAlertPanel
+        open={alertPanelOpen}
+        onClose={() => setAlertPanelOpen(false)}
+        onAlertsChange={refreshAlertCount}
       />
     </div>
   );

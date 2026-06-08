@@ -125,7 +125,7 @@ def _col_ddl(name: str, type_: str, default: str | None) -> str:
 def connect_parent() -> sqlite3.Connection:
     """Open (creating if needed) ``parent.db`` in WAL mode under the runtime dir."""
     config.PARENT_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(config.PARENT_DB_PATH))
+    conn = sqlite3.connect(str(config.PARENT_DB_PATH), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     return conn
@@ -150,6 +150,25 @@ def ensure_shared(parent: sqlite3.Connection) -> None:
         "CREATE TABLE IF NOT EXISTS system_alerts ("
         " id INTEGER PRIMARY KEY, raised_at TEXT, run_id INTEGER, reason TEXT,"
         " cleared_at TEXT, cleared_by INTEGER)"
+    )
+    # Additive migration: add typed-alert columns if absent (safe on existing DBs).
+    _have = {r[1] for r in parent.execute("PRAGMA table_info(system_alerts)")}
+    for _col, _decl in (
+        ("alert_type",      "TEXT DEFAULT 'CYCLE_FAILED'"),
+        ("portal",          "TEXT"),
+        ("bid_refs",        "TEXT"),           # JSON array of source_pks
+        ("status",          "TEXT DEFAULT 'active'"),
+        ("retry_count",     "INTEGER DEFAULT 0"),
+        ("last_retry_at",   "TEXT"),
+        ("last_retry_by",   "INTEGER"),
+        ("last_retry_error","TEXT"),
+    ):
+        if _col not in _have:
+            parent.execute(f"ALTER TABLE system_alerts ADD COLUMN {_col} {_decl}")
+    # Back-fill status for rows written before this migration (cleared_at set → cleared).
+    parent.execute(
+        "UPDATE system_alerts SET status='cleared' "
+        "WHERE cleared_at IS NOT NULL AND status='active'"
     )
 
 

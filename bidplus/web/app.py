@@ -209,6 +209,10 @@ def list_bids(portal: str,
             dt = mapping.lifecycle.parse_closing(r[f["closing"]])
             if dt and today <= dt.date() <= win:
                 keep.append(r)
+        if search:
+            s = search.lower()
+            cols_search = [c for c in (f["title"], f["buyer"], *f["pk"]) if c]
+            keep = [r for r in keep if any(s in str(r[c] or "").lower() for c in cols_search)]
         total = len(keep)
         start = (page - 1) * pageSize
         items = [mapping.list_item(_row_dict(r), portal) for r in keep[start:start + pageSize]]
@@ -260,8 +264,8 @@ def generate_summary(portal: str, bidKey: str, user: dict = Depends(current_user
             summarize.summarize_bid(portal, key, db, fetch=True)
     except locks.LockBusy:
         raise HTTPException(409, {"code": "summarization_busy",
-                                  "message": "Summarization is busy (nightly run in progress). "
-                                             "Try again shortly."})
+                                  "message": "AI summarization is already in progress. "
+                                             "Try again in a moment."})
     except HTTPException:
         raise
     except Exception as e:  # missing API key, fetch failure, etc.
@@ -274,11 +278,14 @@ def generate_summary(portal: str, bidKey: str, user: dict = Depends(current_user
 def disposition(portal: str, bidKey: str, body: DispositionBody,
                 user: dict = Depends(current_user), db: sqlite3.Connection = Depends(get_db)):
     _check_portal(portal)
-    if body.action not in ("accepted", "rejected"):
+    key = unquote(bidKey)
+    if body.action not in ("accepted", "rejected", "reset"):
         raise HTTPException(422, {"code": "bad_request",
-                                  "message": "action must be 'accepted' or 'rejected'"})
+                                  "message": "action must be 'accepted', 'rejected', or 'reset'"})
     try:
-        return dispositions.dispose(db, portal, unquote(bidKey), body.action, user["id"])
+        if body.action == "reset":
+            return dispositions.reset_disposition(db, portal, key, user["id"])
+        return dispositions.dispose(db, portal, key, body.action, user["id"])
     except LookupError as e:
         raise HTTPException(404, {"code": "not_found", "message": str(e)})
 
@@ -367,29 +374,121 @@ def activity(page: int = Query(1, ge=1), pageSize: int = Query(50, ge=1, le=200)
     items = [{
         "id": r["id"], "user": r["username"], "portal": r["portal"],
         "bidId": _activity_bid_id(r["portal"], r["bid_key"]),
+        "bidKey": r["bid_key"],
         "action": r["action"], "detail": r["detail"], "createdAt": r["created_at"],
     } for r in rows]
     return {"items": items, "page": page, "pageSize": pageSize, "total": total}
 
 
-# ── system alert banner ──────────────────────────────────────────────────────────────
+# ── system alerts ────────────────────────────────────────────────────────────────────
 
-@app.get("/api/system-alert")
-def system_alert(user: dict = Depends(current_user), db: sqlite3.Connection = Depends(get_db)):
-    rows = runs.active_alerts(db)
+class RetryAlertsBody(BaseModel):
+    alertType: str
+    portal: str | None = None
+
+
+def _serialize_alert(r) -> dict:
+    import json as _json
+    return {
+        "id": r["id"],
+        "alertType": r["alert_type"] or "CYCLE_FAILED",
+        "portal": r["portal"],
+        "bidRefs": _json.loads(r["bid_refs"] or "[]"),
+        "reason": r["reason"],
+        "status": r["status"] or "active",
+        "retryCount": r["retry_count"] or 0,
+        "raisedAt": r["raised_at"],
+        "clearedAt": r["cleared_at"],
+        "lastRetryAt": r["last_retry_at"],
+        "lastRetryError": r["last_retry_error"],
+    }
+
+
+@app.get("/api/system-alerts")
+def system_alerts(includeCleared: bool = Query(False),
+                  user: dict = Depends(current_user),
+                  db: sqlite3.Connection = Depends(get_db)):
+    rows = runs.list_alerts(db, include_cleared=includeCleared)
+    return {"items": [_serialize_alert(r) for r in rows]}
+
+
+@app.post("/api/system-alerts/retry")
+def retry_alerts(body: RetryAlertsBody, user: dict = Depends(current_user),
+                 db: sqlite3.Connection = Depends(get_db)):
+    """Retry all active/retry_failed alerts of the same alertType+portal group.
+
+    On success → cleared. On failure → retry_failed with error. All actions logged.
+    """
+    import json as _json
+    from bidplus import merge as merge_mod, scoring, summarize as summarize_mod
+
+    rows = db.execute(
+        "SELECT * FROM system_alerts WHERE alert_type=? AND status IN ('active','retry_failed')"
+        + (" AND portal=?" if body.portal else ""),
+        ([body.alertType, body.portal] if body.portal else [body.alertType]),
+    ).fetchall()
     if not rows:
-        return None
-    r = rows[0]
-    return {"id": r["id"], "reason": r["reason"], "raisedAt": r["raised_at"]}
+        raise HTTPException(404, {"code": "not_found",
+                                  "message": "No active alerts found for that type/portal."})
 
+    alert_ids = [r["id"] for r in rows]
+    portal = body.portal or (rows[0]["portal"] if rows[0]["portal"] else None)
 
-@app.post("/api/system-alert/{alert_id}/clear", status_code=204)
-def system_alert_clear(alert_id: int, user: dict = Depends(current_user),
-                       db: sqlite3.Connection = Depends(get_db)):
-    db.execute("UPDATE system_alerts SET cleared_at=?, cleared_by=? WHERE id=? AND cleared_at IS NULL",
-               (datetime.datetime.now().isoformat(timespec="seconds"), user["id"], alert_id))
-    db.commit()
-    return Response(status_code=204)
+    try:
+        if body.alertType in ("SCORING_FAILURE", "CREDIT_EXHAUSTED", "INVALID_API_KEY"):
+            if not portal:
+                raise ValueError("portal required for scoring retry")
+            info = scoring.score_portal(portal, db, mode="hard")
+            if info.get("unscored_left", 0) > 0:
+                raise RuntimeError(
+                    f"{info['unscored_left']} bid(s) still unscored after retry"
+                )
+            merge_mod.merge_portal(portal, parent=db)
+        elif body.alertType == "SUMMARY_FAILURE":
+            if not portal:
+                raise ValueError("portal required for summary retry")
+            bid_refs: list[str] = []
+            for r in rows:
+                bid_refs += _json.loads(r["bid_refs"] or "[]")
+            bid_refs = list(dict.fromkeys(bid_refs))  # deduplicate, preserve order
+            failed: list[str] = []
+            from bidplus import locks
+            with locks.summarize_lock(blocking=False):
+                for pk in bid_refs:
+                    try:
+                        res = summarize_mod.summarize_bid(portal, pk, db, fetch=True)
+                        if res.get("status") == "failed":
+                            failed.append(pk)
+                    except Exception as e:
+                        failed.append(pk)
+                        print(f"[retry] {portal} {pk}: {e}")
+            if failed:
+                raise RuntimeError(f"{len(failed)} bid(s) still failed: {', '.join(failed[:5])}")
+        elif body.alertType == "CYCLE_FAILED":
+            # Best-effort: score + merge whatever remains for this portal.
+            if portal:
+                scoring.score_portal(portal, db, mode="hard")
+                merge_mod.merge_portal(portal, parent=db)
+        # success — mark all cleared + log activity
+        runs.clear_alert_group(db, alert_ids, user["id"])
+        dispositions.log_activity(
+            db, user["id"], portal or "system", "alerts",
+            "accepted",  # closest action code available
+            f"Retried+cleared {len(alert_ids)} {body.alertType} alert(s)"
+        )
+        return {"cleared": len(alert_ids), "portal": portal}
+    except locks.LockBusy:
+        raise HTTPException(409, {"code": "summarization_busy",
+                                  "message": "Summarization is busy (nightly run in progress)."})
+    except Exception as e:
+        error = f"{type(e).__name__}: {str(e)[:400]}"
+        runs.fail_alert_group(db, alert_ids, user["id"], error)
+        dispositions.log_activity(
+            db, user["id"], portal or "system", "alerts",
+            "rejected",
+            f"Retry FAILED for {len(alert_ids)} {body.alertType} alert(s): {error}"
+        )
+        raise HTTPException(500, {"code": "retry_failed", "message": error})
 
 
 # ── SPA static serving (must come last so it never shadows /api) ─────────────────────
@@ -399,7 +498,7 @@ def system_alert_clear(alert_id: int, user: dict = Depends(current_user),
 # bundles, then a catch-all route that serves real dist/ files when they exist and falls
 # back to index.html for everything else so React Router handles routing client-side.
 
-_DIST = Path(__file__).resolve().parents[2] / "UIReference" / "Teclever Bid intelligence" / "dist"
+_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 _ASSETS = _DIST / "assets"
 if _ASSETS.is_dir():

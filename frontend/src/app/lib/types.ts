@@ -57,12 +57,32 @@ export interface BidOverview {
   closingDateRaw: string | null;
 }
 
+export interface T1aFlag {
+  tier: "T1a";
+  label: string;
+  clause: string;
+}
+
+export interface T1bFlag {
+  tier: "T1b";
+  label: string;
+  models: string;
+}
+
+export interface T2Flag {
+  tier: "T2";
+  label: string;
+}
+
+export type CriticalFlag = T1aFlag | T1bFlag | T2Flag;
+
 export interface BidSummary {
   available: boolean;
   status: string | null;
   markdown: string | null;
   coverage: string | null;
   unparsedDocuments: string[];
+  criticalFlags: CriticalFlag[];
   model: string | null;
   generatedAt: string | null;
 }
@@ -114,7 +134,24 @@ export interface ActivityItem {
   user: string;
   portal: PortalId;
   bidId: string;
-  action: "accepted" | "rejected" | "disputed";
+  bidKey: string;
+  action: "accepted" | "rejected" | "disputed" | "reset";
   detail: string | null;
   createdAt: string;
+}
+
+export type AlertStatus = "active" | "retry_failed" | "cleared";
+
+export interface SystemAlert {
+  id: number;
+  alertType: string;
+  portal: string | null;
+  bidRefs: string[];
+  reason: string;
+  status: AlertStatus;
+  retryCount: number;
+  raisedAt: string;
+  clearedAt: string | null;
+  lastRetryAt: string | null;
+  lastRetryError: string | null;
 }

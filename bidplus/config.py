@@ -46,6 +46,10 @@ SCORE_LOCAL_EXTRACT = 4
 # --- Summarization module bounds (plan §8b) -------------------------------------------
 SUMMARY_MAX_ATTEMPTS = int(os.environ.get("SUMMARY_MAX_ATTEMPTS", "3"))  # initial + retries
 SUMMARY_TOKEN_BUDGET = int(os.environ.get("SUMMARY_TOKEN_BUDGET", "150000"))
+# Output cap for the structured summary. 4096 truncated rich bids mid-JSON (stop_reason
+# max_tokens) → unparseable. Sonnet 4.6 allows up to 64K out; 16K is a safe non-streaming
+# value (above ~16K the SDK wants streaming to avoid HTTP timeouts) with ample headroom.
+SUMMARY_MAX_TOKENS = int(os.environ.get("SUMMARY_MAX_TOKENS", "16000"))
 
 # --- File retention + overnight budget (S7 nightly sweep) -----------------------------
 RETENTION_DAYS = int(os.environ.get("BIDPLUS_RETENTION_DAYS", "7"))

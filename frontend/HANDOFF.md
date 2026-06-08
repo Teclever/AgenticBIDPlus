@@ -1,7 +1,7 @@
 # Teclever Bid Intelligence — Front-end handoff
 
 **As of:** 2026-06-06  
-**Location:** `UIReference/Teclever Bid intelligence/` (this folder)  
+**Location:** `frontend/` (this folder)  
 **Authoritative UX/API spec:** [`../../webapp-design/WEBAPP_DESIGN.md`](../../webapp-design/WEBAPP_DESIGN.md) · [`../../webapp-design/API.md`](../../webapp-design/API.md)  
 **Backend:** [`../../bidplus/web/`](../../bidplus/web/) (FastAPI, smoke-validated against `parent.db`)  
 **Repo-wide status:** [`../../HANDOFF.md`](../../HANDOFF.md) §15
@@ -17,7 +17,7 @@ It does not replace `WEBAPP_DESIGN.md` (behaviour/copy) or `API.md` (endpoint sh
 The **production web UI** lives here — not a fork. FastAPI serves the built output from exactly:
 
 ```
-UIReference/Teclever Bid intelligence/dist/
+frontend/dist/
 ```
 
 See `bidplus/web/app.py` (`_DIST` path). Do **not** move or copy this project elsewhere.
@@ -93,7 +93,7 @@ Requires **both** processes:
 bash bidplus/scripts/run_web.sh
 
 # Terminal 2
-cd "UIReference/Teclever Bid intelligence"
+cd "frontend"
 npm run dev
 ```
 
@@ -105,7 +105,7 @@ Open the URL Vite prints (often **5173**; may shift to **5174** if 5173 is taken
 ### Rebuild after front-end changes
 
 ```bash
-cd "UIReference/Teclever Bid intelligence"
+cd "frontend"
 npm run build
 # restart run_web.sh (or hard-refresh if it auto-serves new dist)
 ```
