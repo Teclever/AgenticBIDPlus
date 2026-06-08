@@ -173,8 +173,8 @@ def stats(portal: str, user: dict = Depends(current_user),
         # Category 1: score 3–5, not rejected
         if score is not None and score >= 3 and state != "rejected":
             cs1 += 1
-        # Category 2: score 5 or accepted
-        if score == 5 or state == "accepted":
+        # Category 2: accepted, closing soon
+        if state == "accepted":
             cs2 += 1
         # Category 3: accepted
         if state == "accepted":
@@ -227,8 +227,8 @@ def list_bids(portal: str,
                 if score is not None and score >= 3 and state != "rejected":
                     keep.append(r)
             elif filter == "closingactionable":
-                # Category 2: score 5 or accepted
-                if score == 5 or state == "accepted":
+                # Category 2: accepted, closing soon
+                if state == "accepted":
                     keep.append(r)
             else:  # highpriority
                 # Category 3: accepted

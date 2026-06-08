@@ -38,7 +38,7 @@ export const FILTER_LABELS: Record<BidFilter, string> = {
   score5: "Score 5 bids",
   highpriority: "High Priority bids",
   closingsoon: "Closing Soon bids",
-  closingactionable: "Actionable closing bids",
+  closingactionable: "Accepted, closing soon",
 };
 
 export function bidDetailPath(portal: string, bidKey: string): string {

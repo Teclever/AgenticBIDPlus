@@ -146,7 +146,7 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
         >
           {counts.closingSoonActionable}
         </Link>
-        <div className="text-xs text-gray-400 mt-0.5">Score 5 or accepted, within 10 days</div>
+        <div className="text-xs text-gray-400 mt-0.5">Accepted bids, within 10 days</div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">

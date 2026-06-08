@@ -99,8 +99,8 @@ function filterBids(
       result = result.filter((b) => (b.rating ?? -1) >= 3 && b.userState !== "rejected");
       break;
     case "closingactionable":
-      // score 5 OR accepted, closing within 10 days
-      result = result.filter((b) => b.rating === 5 || b.userState === "accepted");
+      // accepted, closing within 10 days (regardless of score)
+      result = result.filter((b) => b.userState === "accepted");
       break;
   }
 
