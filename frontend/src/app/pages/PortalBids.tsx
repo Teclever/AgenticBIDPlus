@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router";
-import { Search, Filter, Calendar, ChevronRight, X, Loader2, Sparkles } from "lucide-react";
+import { Search, Filter, Calendar, ChevronRight, X, Loader2, Sparkles, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { portalApi } from "../lib/api";
 import {
@@ -46,6 +46,7 @@ export function PortalBids() {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [disposingKey, setDisposingKey] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -92,6 +93,28 @@ export function PortalBids() {
     if (filter === "all") next.delete("filter");
     else next.set("filter", filter);
     setSearchParams(next);
+  };
+
+  const handleDisposition = async (
+    bidKey: string,
+    action: "accepted" | "rejected",
+    e: React.MouseEvent,
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setDisposingKey(bidKey);
+    try {
+      const { userState } = await portalApi.disposition(portal, bidKey, action);
+      setBids((prev) =>
+        prev.map((b) =>
+          b.bidKey === bidKey
+            ? { ...b, userState: userState as BidListItem["userState"] }
+            : b,
+        ),
+      );
+    } finally {
+      setDisposingKey(null);
+    }
   };
 
   if (!portal || !PORTAL_NAMES[portal]) {
@@ -223,6 +246,7 @@ export function PortalBids() {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">AI</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
                     <th className="px-4 py-3" />
+                    <th className="px-4 py-3" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -252,6 +276,30 @@ export function PortalBids() {
                           : <Sparkles className="w-4 h-4 text-gray-300" title="No AI summary yet" />}
                       </td>
                       <td className="px-4 py-4"><StatusBadge status={bid.userState} /></td>
+                      <td className="px-4 py-3">
+                        {bid.userState === "new" && bid.method === "model" && (
+                          <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => handleDisposition(bid.bidKey, "accepted", e)}
+                              disabled={disposingKey === bid.bidKey}
+                              title="Accept"
+                              className="p-1.5 rounded-md text-green-600 hover:bg-green-50 disabled:opacity-40 transition-colors"
+                            >
+                              {disposingKey === bid.bidKey
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <CheckCircle className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={(e) => handleDisposition(bid.bidKey, "rejected", e)}
+                              disabled={disposingKey === bid.bidKey}
+                              title="Reject"
+                              className="p-1.5 rounded-md text-red-500 hover:bg-red-50 disabled:opacity-40 transition-colors"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-4"><ChevronRight className="w-5 h-5 text-gray-400" /></td>
                     </tr>
                   ))}
@@ -300,6 +348,28 @@ export function PortalBids() {
                         {formatClosingDate(bid.closingDate, bid.closingDateRaw)}
                       </div>
                     </div>
+                    {bid.userState === "new" && bid.method === "model" && (
+                      <div className="flex gap-2 pt-2 border-t border-gray-100">
+                        <button
+                          onClick={(e) => handleDisposition(bid.bidKey, "accepted", e)}
+                          disabled={disposingKey === bid.bidKey}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-40 transition-colors"
+                        >
+                          {disposingKey === bid.bidKey
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <CheckCircle className="w-4 h-4" />}
+                          Accept
+                        </button>
+                        <button
+                          onClick={(e) => handleDisposition(bid.bidKey, "rejected", e)}
+                          disabled={disposingKey === bid.bidKey}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 disabled:opacity-40 transition-colors"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Reject
+                        </button>
+                      </div>
+                    )}
                   </Link>
                 ))}
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">

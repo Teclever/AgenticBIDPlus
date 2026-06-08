@@ -33,8 +33,6 @@ export function BidDetail() {
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);  // initialised from generationState in the load effect
   const [otherBidGenerating, setOtherBidGenerating] = useState<string | null>(null);
-  const [showAcceptModal, setShowAcceptModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
   const [disposing, setDisposing] = useState(false);
 
   const _genKey = `${portal}:${decodedBidKey}`;
@@ -121,8 +119,6 @@ export function BidDetail() {
     try {
       const { userState } = await portalApi.disposition(portal, decodedBidKey, action);
       setBid({ ...bid, userState: userState as BidDetailType["userState"] });
-      setShowAcceptModal(false);
-      setShowRejectModal(false);
     } finally {
       setDisposing(false);
     }
@@ -165,11 +161,11 @@ export function BidDetail() {
         </div>
         {showDisposition && (
           <div className="flex gap-3 shrink-0">
-            <Button variant="primary" onClick={() => setShowAcceptModal(true)} className="gap-2">
-              <CheckCircle className="w-4 h-4" />
+            <Button variant="primary" onClick={() => handleDisposition("accepted")} disabled={disposing} className="gap-2">
+              {disposing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
               Accept
             </Button>
-            <Button variant="danger" onClick={() => setShowRejectModal(true)} className="gap-2">
+            <Button variant="danger" onClick={() => handleDisposition("rejected")} disabled={disposing} className="gap-2">
               <XCircle className="w-4 h-4" />
               Reject
             </Button>
@@ -303,29 +299,6 @@ export function BidDetail() {
         )}
       </section>
 
-      {showAcceptModal && (
-        <ConfirmModal
-          title="Accept Bid"
-          message={`Are you sure you want to accept bid ${bid.bidId}?`}
-          confirmText="Accept"
-          confirmVariant="primary"
-          loading={disposing}
-          onConfirm={() => handleDisposition("accepted")}
-          onCancel={() => setShowAcceptModal(false)}
-        />
-      )}
-
-      {showRejectModal && (
-        <ConfirmModal
-          title="Reject Bid"
-          message={`Are you sure you want to reject bid ${bid.bidId}?`}
-          confirmText="Reject"
-          confirmVariant="danger"
-          loading={disposing}
-          onConfirm={() => handleDisposition("rejected")}
-          onCancel={() => setShowRejectModal(false)}
-        />
-      )}
     </div>
   );
 }
@@ -429,37 +402,3 @@ function InfoField({
   );
 }
 
-function ConfirmModal({
-  title,
-  message,
-  confirmText,
-  confirmVariant,
-  loading,
-  onConfirm,
-  onCancel,
-}: {
-  title: string;
-  message: string;
-  confirmText: string;
-  confirmVariant: "primary" | "danger";
-  loading?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl max-w-md w-full p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-        <p className="text-gray-600 mb-6">{message}</p>
-        <div className="flex gap-3 justify-end">
-          <Button variant="ghost" onClick={onCancel} disabled={loading}>
-            Cancel
-          </Button>
-          <Button variant={confirmVariant} onClick={onConfirm} disabled={loading}>
-            {loading ? "Saving…" : confirmText}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
