@@ -407,7 +407,15 @@ def notifications_viewed(user: dict = Depends(current_user),
 @app.post("/api/notifications/auto-filtered/save-all")
 def notifications_save_all(user: dict = Depends(current_user),
                            db: sqlite3.Connection = Depends(get_db)):
-    accepted = sum(governance.accept(db, portal, None)["accepted"] for portal in PORTALS)
+    now = datetime.datetime.now().isoformat(timespec="seconds")
+    accepted = 0
+    for portal in PORTALS:
+        accepted += governance.accept(db, portal, None)["accepted"]
+        db.execute(
+            f"UPDATE {portal}_bids SET user_state='rejected', disposed_by=?, disposed_at=? "
+            "WHERE auto_rejected=1 AND (user_state IS NULL OR user_state='new')",
+            (user["id"], now))
+    db.commit()
     return {"accepted": accepted}
 
 
