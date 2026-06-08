@@ -2,6 +2,8 @@ type Listener = () => void;
 
 // key → bidId (key = "portal:bidKey")
 const generating = new Map<string, string>();
+// key → error message (survives navigation within the session)
+const errors = new Map<string, string>();
 const listeners: Listener[] = [];
 
 function notify() {
@@ -10,12 +12,27 @@ function notify() {
 
 export function startGenerating(key: string, bidId: string): void {
   generating.set(key, bidId);
+  errors.delete(key); // clear any prior error when a new attempt starts
   notify();
 }
 
 export function stopGenerating(key: string): void {
   generating.delete(key);
   notify();
+}
+
+export function setGenerationError(key: string, message: string): void {
+  errors.set(key, message);
+  notify();
+}
+
+export function clearGenerationError(key: string): void {
+  errors.delete(key);
+  notify();
+}
+
+export function getGenerationError(key: string): string | null {
+  return errors.get(key) ?? null;
 }
 
 export function isGenerating(key: string): boolean {

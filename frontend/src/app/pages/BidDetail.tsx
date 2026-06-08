@@ -16,7 +16,7 @@ import {
 import { Button } from "../components/ui/button";
 import { portalApi, ApiRequestError } from "../lib/api";
 import { formatClosingDate } from "../lib/format";
-import { startGenerating, stopGenerating, isGenerating, getOtherGenerating, subscribe } from "../lib/generationState";
+import { startGenerating, stopGenerating, isGenerating, getOtherGenerating, getGenerationError, setGenerationError, clearGenerationError, subscribe } from "../lib/generationState";
 import type { BidDetail as BidDetailType, BidSummary, CriticalFlag, T1aFlag, T1bFlag, PortalId } from "../lib/types";
 import { RatingDisplay } from "../components/RatingDisplay";
 import { MarkdownContent } from "../components/MarkdownContent";
@@ -31,7 +31,7 @@ export function BidDetail() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<BidSummary | null>(null);
   const [generating, setGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);  // initialised from generationState in the load effect
   const [otherBidGenerating, setOtherBidGenerating] = useState<string | null>(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -47,6 +47,8 @@ export function BidDetail() {
     if (!portal || !decodedBidKey) return;
     setLoading(true);
     _syncOtherGenerating();
+    // Restore any error that survived navigation
+    setGenerateError(getGenerationError(_genKey));
     portalApi
       .bidDetail(portal, decodedBidKey)
       .then((data) => {
@@ -91,22 +93,21 @@ export function BidDetail() {
     if (!portal || !decodedBidKey || !bid) return;
     // Only claim the global banner if no other bid is currently generating.
     const ownsBanner = !getOtherGenerating("");
-    startGenerating(_genKey, bid.bidId);
+    startGenerating(_genKey, bid.bidId); // also clears prior error in generationState
     setGenerating(true);
     setGenerateError(null);
     try {
       const newSummary = await portalApi.generateSummary(portal, decodedBidKey);
+      clearGenerationError(_genKey);
       setSummary(newSummary);
     } catch (e) {
-      if (e instanceof ApiRequestError) {
-        if (e.code === "bid_closed") {
-          setGenerateError("This bid is closed — summarization is not available.");
-        } else {
-          setGenerateError(e.message || "Unable to generate summary. Try again later.");
-        }
-      } else {
-        setGenerateError("Unable to generate summary. Try again later.");
-      }
+      const msg = e instanceof ApiRequestError
+        ? (e.code === "bid_closed"
+            ? "This bid is closed — summarization is not available."
+            : e.message || "Unable to generate summary. Try again later.")
+        : "Unable to generate summary. Try again later.";
+      setGenerateError(msg);
+      setGenerationError(_genKey, msg); // persist across navigation
     } finally {
       setGenerating(false);
       stopGenerating(_genKey);
@@ -271,6 +272,11 @@ export function BidDetail() {
                   Generating summary, this may take up to a minute…
                 </p>
               </div>
+            ) : generateError ? (
+              <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{generateError}</p>
+              </div>
             ) : otherBidGenerating ? (
               <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0 mt-0.5" />
@@ -293,12 +299,6 @@ export function BidDetail() {
             >
               Generate Summary
             </Button>
-            {generateError && (
-              <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
-                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-700">{generateError}</p>
-              </div>
-            )}
           </div>
         )}
       </section>
