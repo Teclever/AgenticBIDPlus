@@ -23,7 +23,7 @@ const PORTAL_NAMES: Record<PortalId, string> = {
 };
 
 const VALID_FILTERS = new Set<string>([
-  "all", "new", "score3plus", "score4plus", "score5", "highpriority", "closingsoon",
+  "all", "new", "score1to3", "score4", "score5", "highpriority", "closingsoon", "closingactionable",
 ]);
 
 export function PortalBids() {
@@ -185,7 +185,7 @@ export function PortalBids() {
             <div className="pt-3 border-t border-gray-200">
               <label className="block text-sm font-medium text-gray-700 mb-2">Quick Filters</label>
               <div className="flex flex-wrap gap-2">
-                {(["all", "new", "score3plus", "score4plus", "score5", "closingsoon", "highpriority"] as BidFilter[]).map((f) => (
+                {(["all", "new", "score1to3", "score4", "score5", "closingsoon", "closingactionable", "highpriority"] as BidFilter[]).map((f) => (
                   <button
                     key={f}
                     onClick={() => setQuickFilter(f)}

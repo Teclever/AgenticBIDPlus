@@ -4,7 +4,7 @@ import { Building, Rocket, Plane } from "lucide-react";
 import { portalApi, ApiRequestError, isAuthError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { formatWindowDate } from "../lib/format";
-import type { PortalId, PortalStats } from "../lib/types";
+import type { BidFilter, PortalId, PortalStats } from "../lib/types";
 import { Button } from "../components/ui/button";
 
 const PORTALS: { id: PortalId; name: string; fullName: string; icon: React.ReactNode; color: "blue" | "indigo" | "purple" }[] = [
@@ -58,11 +58,6 @@ export function Dashboard() {
     loadStats();
   }, [user, authLoading, loadStats]);
 
-  const allStats = PORTALS.map((p) => statsMap[p.id]?.counts).filter(Boolean) as PortalStats["counts"][];
-  const globalMax = Math.max(
-    1,
-    ...allStats.flatMap((s) => [s.score3plus, s.score4plus, s.score5, s.highPriority, s.closingSoon]),
-  );
   const statsReady = PORTALS.every((p) => statsMap[p.id] !== null);
 
   if (authLoading || (loading && !statsReady)) {
@@ -106,7 +101,6 @@ export function Dashboard() {
             key={portal.id}
             {...portal}
             stats={statsMap[portal.id]!}
-            globalMax={globalMax}
           />
         ))}
       </div>
@@ -121,10 +115,9 @@ interface PortalCardProps {
   icon: React.ReactNode;
   color: "blue" | "indigo" | "purple";
   stats: PortalStats;
-  globalMax: number;
 }
 
-function PortalCard({ id, name, fullName, icon, color, stats, globalMax }: PortalCardProps) {
+function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps) {
   const colorClasses = {
     blue: { icon: "text-blue-600 bg-blue-100", accent: "text-blue-600" },
     indigo: { icon: "text-indigo-600 bg-indigo-100", accent: "text-indigo-600" },
@@ -146,12 +139,14 @@ function PortalCard({ id, name, fullName, icon, color, stats, globalMax }: Porta
       </div>
 
       <div className="mb-6">
-        <div className="text-xs text-gray-500 mb-1">Bids Closing By {windowLabel}</div>
-        <div className="flex items-baseline gap-2">
-          <span className={`text-2xl font-bold ${colorClasses[color].accent}`}>
-            {counts.bidsClosingBy}
-          </span>
-        </div>
+        <div className="text-xs text-gray-500 mb-1">Actionable bids closing by {windowLabel}</div>
+        <Link
+          to={`/portal/${id}?filter=closingactionable`}
+          className={`text-2xl font-bold hover:underline ${colorClasses[color].accent}`}
+        >
+          {counts.closingSoonActionable}
+        </Link>
+        <div className="text-xs text-gray-400 mt-0.5">Score 5 or accepted, within 10 days</div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -166,25 +161,17 @@ function PortalCard({ id, name, fullName, icon, color, stats, globalMax }: Porta
       </Link>
 
       <div className="pt-6 border-t border-gray-100">
-        <span className="text-xs text-gray-500">Opportunity Distribution</span>
-        <div className="h-16 flex items-end gap-1 mb-6 mt-10">
-          <BarLink portalId={id} filter="score3plus" value={counts.score3plus} globalMax={globalMax} className="bg-gray-200 hover:bg-blue-200" />
-          <BarLink portalId={id} filter="score4plus" value={counts.score4plus} globalMax={globalMax} className="bg-blue-300 hover:bg-blue-400" />
-          <BarLink portalId={id} filter="score5" value={counts.score5} globalMax={globalMax} className="bg-blue-500 hover:bg-blue-600 text-white" />
-          <BarLink portalId={id} filter="highpriority" value={counts.highPriority} globalMax={globalMax} className="bg-green-400 hover:bg-green-500" />
-          <BarLink portalId={id} filter="closingsoon" value={counts.closingSoon} globalMax={globalMax} className="bg-orange-400 hover:bg-orange-500" />
+        <span className="text-xs text-gray-500 font-medium">Opportunity Distribution</span>
+        <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
+          <FilterChipLink portalId={id} filter="score1to3" label="Score 1–3" value={counts.scoreBelow4} colorClass="bg-gray-100 hover:bg-gray-200 text-gray-700" />
+          <FilterChipLink portalId={id} filter="score4" label="Score 4" value={counts.scoreExact4} colorClass="bg-blue-50 hover:bg-blue-100 text-blue-700" />
+          <FilterChipLink portalId={id} filter="score5" label="Score 5" value={counts.scoreExact5} colorClass="bg-blue-100 hover:bg-blue-200 text-blue-800" />
         </div>
-        <div className="flex justify-between text-xs text-gray-400">
-          <span>3+</span><span>4+</span><span>5</span><span title="High Priority">HP</span><span title="Closing Soon">CS</span>
+        <div className="grid grid-cols-2 gap-2">
+          <FilterChipLink portalId={id} filter="highpriority" label="High Priority" value={counts.highPriority} colorClass="bg-green-50 hover:bg-green-100 text-green-700" />
+          <FilterChipLink portalId={id} filter="closingsoon" label="Closing Soon" value={counts.closingSoon} colorClass="bg-orange-50 hover:bg-orange-100 text-orange-700" />
         </div>
-        <div className="flex justify-between text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 bg-green-400 rounded-full" /> HP = High Priority
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="w-2 h-2 bg-orange-400 rounded-full" /> CS = Closing Soon
-          </span>
-        </div>
+        <p className="text-xs text-gray-400 mt-2">Closing Soon = score 3–5, not rejected, within 10 days</p>
       </div>
     </div>
   );
@@ -204,20 +191,18 @@ function StatLink({ to, label, value }: { to: string; label: string; value: numb
   );
 }
 
-function BarLink({
-  portalId, filter, value, globalMax, className,
+function FilterChipLink({
+  portalId, filter, label, value, colorClass,
 }: {
-  portalId: string; filter: string; value: number; globalMax: number; className: string;
+  portalId: string; filter: BidFilter; label: string; value: number; colorClass: string;
 }) {
   return (
     <Link
       to={`/portal/${portalId}?filter=${filter}`}
-      className={`flex-1 rounded-t transition-colors group relative ${className}`}
-      style={{ height: `${Math.max((value / globalMax) * 100, 5)}%` }}
+      className={`rounded-lg px-3 py-2 transition-colors text-center border border-transparent hover:border-current ${colorClass}`}
     >
-      <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-xs font-medium whitespace-nowrap">
-        {value}
-      </div>
+      <div className="text-lg font-bold leading-tight">{value.toLocaleString()}</div>
+      <div className="text-xs mt-0.5 opacity-80">{label}</div>
     </Link>
   );
 }

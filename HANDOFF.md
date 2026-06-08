@@ -296,40 +296,54 @@ S6 is built in **three channels**, all now wired. **Ch1 + Ch2 committed (`cc73a2
 
 ---
 
-## 16. Web app (frontend) — IN PROGRESS (2026-06-06)
+## 16. Web app (frontend) — IN PROGRESS (2026-06-08)
 
 **Frontend agent** built the React UI inside `frontend/` (renamed from `UIReference/Teclever Bid intelligence/` on 2026-06-08).
 `npm run build` succeeds; `dist/` is live at `frontend/dist/`. FastAPI serves it at
-`http://localhost:8000`. Login is working end-to-end against the real `parent.db`.
+`http://localhost:8000` (Mac dev) and `http://192.168.2.193:8000` (deploy box via `bidplus-web.service`).
+Login is working end-to-end against the real `parent.db`.
 
-**Three known issues under active fix:**
-1. **Dashboard all 0s** — root cause: stats fetch calls missing `credentials: "include"`. API returns
-   correct data when authenticated (GEM total 11,333 / score5 22 / highPriority 186). Frontend
-   receives `401 unauthenticated` and silently zero-fills.
-2. **No pagination UI** — API correctly returns `{items, page, pageSize, total}` and supports
-   `?page=N&pageSize=N`. Frontend is not rendering prev/next controls.
-3. **Generate Summary behaviour** — understood: triggers a real Sonnet call (up to ~60s);
-   two staged bids exist (`GEM/2026/B/7489616`, `GEM/2026/B/7605377`); frontend needs spinner +
-   three response-state handlers (200 → render markdown, 409 → "busy", else → error).
+**Current status — all three original issues resolved:**
+1. ~~**Dashboard all 0s**~~ — **FIXED**: `credentials: "include"` added to all stats fetches; API
+   returns correct data (GEM total 11,327 / score-5 26 / highPriority 186 on deploy box after migration).
+2. ~~**No pagination UI**~~ — **BUILT**: `Pagination.tsx` wired; API `{items, page, pageSize, total}` consumed.
+3. ~~**Generate Summary — silent error loss**~~ — **FIXED (2026-06-08, `455358f`)**: errors
+   persisted across navigation via `generationState.ts` `errors` Map; hydrated on component mount;
+   error shown in spinner slot (never below button where it was missed). Live-tested on HAL bid
+   (`TENDER NOTICE/NCP/21/26-27`): first-boot 500 surfaced correctly; subsequent call succeeded.
 
-**CORS middleware** was added to `app.py` by the frontend agent (allows Vite dev-server on 5173/5174
-— `allow_credentials=True`). This is intentional and committed.
+**What still needs browser verification:**
+- Score-4 "Retrieve information" flow (local extract, no Sonnet; fast path)
+- 409 lock-busy path (open two bids simultaneously)
+- Disposition Accept/Reject → activity log row
+- Notifications Save all / dispute / disputed row
+- System alert banner (API exists; UI component **not yet built** — lowest priority)
+- Mobile breakpoints
 
-**Deployed user:** `karthikeyan@teclever.com` (password reset during diagnosis on 2026-06-06 —
-set a fresh one via `python -m bidplus.users edit karthikeyan@teclever.com`).
+**CORS middleware** in `app.py` allows Vite dev-server on 5173/5174 (`allow_credentials=True`). Intentional and committed.
 
-**Run commands:**
+**Deployed user:** `karthikeyan@teclever.com` (created on deploy box via `python -m bidplus.users add`).
+
+**Frontend-specific handoff doc:** `frontend/HANDOFF.md` — read this before touching the React code; it covers stack, screens, known footguns, run commands, and the data-accuracy sanity-check query.
+
+**Run commands (Mac dev):**
 ```bash
-# FastAPI (already running with --reload)
+# FastAPI
 export BIDPLUS_RUNTIME_DIR=~/bidplus-runtime
 ~/bidplus-runtime/venv/bin/uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000 --reload
 
-# Frontend dev server (MSW mock, VITE_ENABLE_MSW=true)
+# Frontend dev server (hot reload)
 cd "frontend" && npm run dev
 
 # Production build → FastAPI serves dist/
 cd "frontend" && npm run build
 ```
+
+**Recent commits (frontend):**
+- `455358f` fix(ui): propagate generate-summary errors across navigation
+- `b04f044` chore(timer): shift nightly run to 1am IST
+- `4749a23` chore(deploy): rename frontend/, add web systemd unit, update docs
+- `07dc647` feat(webapp): frontend build + doc/memory sync
 
 ---
 

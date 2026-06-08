@@ -25,12 +25,12 @@ function halStats() {
     counts: {
       total: 139,
       new: 28,
-      score3plus: 45,
-      score4plus: 18,
-      score5: 8,
+      scoreBelow4: 19,
+      scoreExact4: 10,
+      scoreExact5: 8,
       highPriority: 14,
       closingSoon: 6,
-      bidsClosingBy: 5,
+      closingSoonActionable: 5,
     },
   };
 }
@@ -42,12 +42,12 @@ function isroStats() {
     counts: {
       total: 155,
       new: 32,
-      score3plus: 52,
-      score4plus: 20,
-      score5: 9,
+      scoreBelow4: 23,
+      scoreExact4: 11,
+      scoreExact5: 9,
       highPriority: 16,
       closingSoon: 7,
-      bidsClosingBy: 6,
+      closingSoonActionable: 6,
     },
   };
 }
@@ -78,20 +78,26 @@ function filterBids(
     case "new":
       result = result.filter((b) => b.userState === "new");
       break;
-    case "score3plus":
-      result = result.filter((b) => (b.rating ?? -1) >= 3);
+    case "score1to3":
+      result = result.filter((b) => { const r = b.rating ?? -1; return r >= 1 && r <= 3; });
       break;
-    case "score4plus":
-      result = result.filter((b) => (b.rating ?? -1) >= 4);
+    case "score4":
+      result = result.filter((b) => b.rating === 4);
       break;
     case "score5":
       result = result.filter((b) => b.rating === 5);
       break;
     case "highpriority":
-      result = result.filter((b) => (b.rating ?? -1) >= 4 && b.userState === "new");
+      // accepted, closing within 10 days
+      result = result.filter((b) => b.userState === "accepted");
       break;
     case "closingsoon":
-      result = result.filter((b) => b.userState === "new");
+      // score 3–5, not rejected, closing within 10 days
+      result = result.filter((b) => (b.rating ?? -1) >= 3 && b.userState !== "rejected");
+      break;
+    case "closingactionable":
+      // score 5 OR accepted, closing within 10 days
+      result = result.filter((b) => b.rating === 5 || b.userState === "accepted");
       break;
   }
 

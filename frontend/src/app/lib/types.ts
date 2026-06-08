@@ -18,12 +18,12 @@ export interface PortalStats {
   counts: {
     total: number;
     new: number;
-    score3plus: number;
-    score4plus: number;
-    score5: number;
+    scoreBelow4: number;
+    scoreExact4: number;
+    scoreExact5: number;
     highPriority: number;
     closingSoon: number;
-    bidsClosingBy: number;
+    closingSoonActionable: number;
   };
 }
 
@@ -113,11 +113,12 @@ export interface Paginated<T> {
 export type BidFilter =
   | "all"
   | "new"
-  | "score3plus"
-  | "score4plus"
+  | "score1to3"
+  | "score4"
   | "score5"
   | "highpriority"
-  | "closingsoon";
+  | "closingsoon"
+  | "closingactionable";
 
 export interface NotificationItem {
   portal: PortalId;

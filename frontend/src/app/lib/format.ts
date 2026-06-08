@@ -32,11 +32,12 @@ export function formatDateTime(iso: string): { date: string; time: string } {
 export const FILTER_LABELS: Record<BidFilter, string> = {
   all: "All bids",
   new: "New bids",
-  score3plus: "Score 3+ bids",
-  score4plus: "Score 4+ bids",
+  score1to3: "Score 1–3 bids",
+  score4: "Score 4 bids",
   score5: "Score 5 bids",
   highpriority: "High Priority bids",
   closingsoon: "Closing Soon bids",
+  closingactionable: "Actionable closing bids",
 };
 
 export function bidDetailPath(portal: string, bidKey: string): string {

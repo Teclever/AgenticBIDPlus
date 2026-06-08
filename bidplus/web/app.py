@@ -42,7 +42,7 @@ app.add_middleware(
 )
 
 PORTALS = mapping.PORTALS
-CLOSING_WINDOW_DAYS = 7
+CLOSING_WINDOW_DAYS = 10
 
 _STATUS_CODE = {400: "bad_request", 401: "unauthenticated", 403: "forbidden",
                 404: "not_found", 409: "conflict", 422: "unprocessable"}
@@ -153,25 +153,35 @@ def stats(portal: str, user: dict = Depends(current_user),
     counts = {
         "total": c("1=1"),
         "new": c("user_state='new'"),
-        "score3plus": c("pass1_score >= 3"),
-        "score4plus": c("pass1_score >= 4"),
-        "score5": c("pass1_score = 5"),
-        "highPriority": c("pass1_score >= 4 AND user_state='new'"),
+        "scoreBelow4": c("pass1_score >= 1 AND pass1_score <= 3"),
+        "scoreExact4": c("pass1_score = 4"),
+        "scoreExact5": c("pass1_score = 5"),
+        # closingSoon / closingSoonActionable / highPriority added below (need date parsing)
     }
     win = _window_date()
     today = datetime.date.today()
-    cs = cb = 0
+    cs1 = cs2 = cs3 = 0
     for r in db.execute(
-        f"SELECT pass1_score, {closing_col} AS cdate FROM {table} "
-        "WHERE user_state='new' AND COALESCE(bid_status,'') <> 'CLOSED'"
+        f"SELECT pass1_score, user_state, {closing_col} AS cdate FROM {table} "
+        "WHERE COALESCE(bid_status,'') <> 'CLOSED'"
     ):
         dt = mapping.lifecycle.parse_closing(r["cdate"])
-        if dt and today <= dt.date() <= win:   # upcoming only — past-closing is effectively closed
-            cs += 1
-            if r["pass1_score"] in (4, 5):
-                cb += 1
-    counts["closingSoon"] = cs
-    counts["bidsClosingBy"] = cb
+        if not (dt and today <= dt.date() <= win):
+            continue
+        score = r["pass1_score"]
+        state = r["user_state"] or "new"
+        # Category 1: score 3–5, not rejected
+        if score is not None and score >= 3 and state != "rejected":
+            cs1 += 1
+        # Category 2: score 5 or accepted
+        if score == 5 or state == "accepted":
+            cs2 += 1
+        # Category 3: accepted
+        if state == "accepted":
+            cs3 += 1
+    counts["closingSoon"] = cs1
+    counts["closingSoonActionable"] = cs2
+    counts["highPriority"] = cs3
     return {"portal": portal, "windowDate": win.isoformat(), "counts": counts}
 
 
@@ -180,10 +190,10 @@ def stats(portal: str, user: dict = Depends(current_user),
 _FILTER_WHERE = {
     "all": None,
     "new": "user_state='new'",
-    "score3plus": "pass1_score >= 3",
-    "score4plus": "pass1_score >= 4",
+    "score1to3": "pass1_score >= 1 AND pass1_score <= 3",
+    "score4": "pass1_score = 4",
     "score5": "pass1_score = 5",
-    "highpriority": "pass1_score >= 4 AND user_state='new'",
+    # closingsoon / closingactionable / highpriority are date-based → handled in list_bids
 }
 
 
@@ -197,18 +207,32 @@ def list_bids(portal: str,
     f = mapping.PORTAL_FIELDS[portal]
     order = "ORDER BY pass1_score IS NULL, pass1_score DESC"
 
-    # closing-soon depends on per-portal date parsing → Python pipeline (bounded by 'new').
-    if filter == "closingsoon":
+    # Date-based filters require per-portal closing-date parsing — handled here, return early.
+    if filter in ("closingsoon", "closingactionable", "highpriority"):
         win = _window_date()
         today = datetime.date.today()
-        rows = [r for r in db.execute(
-            f"SELECT * FROM {table} WHERE user_state='new' "
-            "AND COALESCE(bid_status,'') <> 'CLOSED' " + order)]
+        rows = db.execute(
+            f"SELECT * FROM {table} WHERE COALESCE(bid_status,'') <> 'CLOSED' " + order
+        ).fetchall()
         keep = []
         for r in rows:
             dt = mapping.lifecycle.parse_closing(r[f["closing"]])
-            if dt and today <= dt.date() <= win:
-                keep.append(r)
+            if not (dt and today <= dt.date() <= win):
+                continue
+            score = r["pass1_score"]
+            state = r["user_state"] or "new"
+            if filter == "closingsoon":
+                # Category 1: score 3–5, not rejected
+                if score is not None and score >= 3 and state != "rejected":
+                    keep.append(r)
+            elif filter == "closingactionable":
+                # Category 2: score 5 or accepted
+                if score == 5 or state == "accepted":
+                    keep.append(r)
+            else:  # highpriority
+                # Category 3: accepted
+                if state == "accepted":
+                    keep.append(r)
         if search:
             s = search.lower()
             cols_search = [c for c in (f["title"], f["buyer"], *f["pk"]) if c]

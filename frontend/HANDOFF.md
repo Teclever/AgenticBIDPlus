@@ -1,6 +1,6 @@
 # Teclever Bid Intelligence — Front-end handoff
 
-**As of:** 2026-06-06  
+**As of:** 2026-06-08  
 **Location:** `frontend/` (this folder)  
 **Authoritative UX/API spec:** [`../../webapp-design/WEBAPP_DESIGN.md`](../../webapp-design/WEBAPP_DESIGN.md) · [`../../webapp-design/API.md`](../../webapp-design/API.md)  
 **Backend:** [`../../bidplus/web/`](../../bidplus/web/) (FastAPI, smoke-validated against `parent.db`)  
@@ -123,9 +123,9 @@ testing against the real API.
 | Screen | Route | Status | Notes |
 |--------|-------|--------|-------|
 | **Login** | `/login` | **Working** | Teclever email label, disabled Sign In until fields filled, error dialog, no footer/forgot-password. Post-login calls `refresh()` (`/api/auth/me`) before navigate. |
-| **Dashboard** | `/` | **Partial** | Three portal cards wired to `GET /api/portals/{id}/stats`. Login works; stats have been flaky (empty cards, zeros) when session cookie not sent — see §6. **Data accuracy needs review** (bucket definitions vs operator expectation). |
-| **Bid list** | `/portal/:portalId` | **Built, needs validation** | API pagination (`page`/`pageSize=50`), filter banner, Filtered badge, mobile cards. Header shows `total` from API. |
-| **Bid detail** | `/portal/:portalId/bid/:bidKey` | **Built, needs validation** | Single column, Generate Summary, Accept/Reject, markdown summary. HAL `bidKey` URL-encoded (`tender\|line`). |
+| **Dashboard** | `/` | **Working (UI updated 2026-06-08)** | Three portal cards wired to `GET /api/portals/{id}/stats`. Bar chart replaced with clickable filter chips. Actionable closing count is now a link. See §6.2 for bucket definitions. |
+| **Bid list** | `/portal/:portalId` | **Built, needs validation** | API pagination (`page`/`pageSize=50`), filter banner, Filtered badge, mobile cards. Header shows `total` from API. New filter keys active: `score1to3`, `score4`, `closingactionable`. |
+| **Bid detail** | `/portal/:portalId/bid/:bidKey` | **Working — error fix landed (2026-06-08)** | Single column, Generate Summary, Accept/Reject, markdown summary. Error display fixed: errors now persist across navigation in `generationState.ts`; shown in spinner slot (not below button). Exercised live on HAL bid. HAL `bidKey` URL-encoded (`tender\|line`). |
 | **Activity log** | `/activity` | **Built, needs validation** | Paginated `GET /api/activity`. |
 | **Notifications** | Bell overlay | **Built, needs validation** | Save all, dispute modal, per-user red dot. |
 | **System alert banner** | — | **Not built** | API exists (`GET /api/system-alert`); lowest priority per `API.md` §7. |
@@ -138,7 +138,7 @@ testing against the real API.
 - **401 / unauthenticated:** redirect to `/login` (central `apiFetch` + Dashboard `navigate` fallback).
 - **Filtered bids:** always shown (rating 0 + badge + `eliminatedBy`); never hidden from lists.
 - **Notification Save all:** `POST /api/notifications/auto-filtered/save-all` — primary queue clear.
-- **Generate Summary:** spinner + disabled button; handles 200 / 409 `summarization_busy` / generic error.
+- **Generate Summary:** spinner + disabled button; handles 200 / 409 `summarization_busy` / generic error. Error message persists across navigation (stored in module-level `generationState.errors` Map; hydrated on component mount). Error displayed in the spinner slot (same visual position), never lost on navigate-away-then-back.
 - **Accept/Reject:** only when `userState === "new"` AND `method === "model"`.
 
 ---
@@ -168,9 +168,22 @@ Historical fixes already in tree:
 The operator has flagged that **displayed numbers sometimes do not look right**. Treat as
 **open investigation** — verify API vs UI separately:
 
+**Stats API field names (updated 2026-06-08):**
+
+| `counts` field | Definition | Filter key |
+|----------------|------------|------------|
+| `scoreBelow4` | score 1–3 (mutually exclusive) | `score1to3` |
+| `scoreExact4` | score = 4 (mutually exclusive) | `score4` |
+| `scoreExact5` | score = 5 (mutually exclusive) | `score5` |
+| `highPriority` | `user_state='accepted'`, closing within 10 days | `highpriority` |
+| `closingSoon` | score 3–5, not rejected, closing within 10 days | `closingsoon` |
+| `closingSoonActionable` | score 5 OR accepted, closing within 10 days | `closingactionable` |
+
+Window is **10 days** (changed from 7). `closingSoonActionable` replaces the old `bidsClosingBy` field and is the headline clickable number on each dashboard card.
+
 | Area | What to check |
 |------|----------------|
-| **Dashboard buckets** | `GET /api/portals/{portal}/stats` — definitions in `WEBAPP_DESIGN.md` §16.9 / `API.md` §2. `closingSoon` / `bidsClosingBy` use `lifecycle.parse_closing` over per-portal date columns; `new` = all rows with `user_state='new'` (may equal `total` if nothing dispositioned yet). |
+| **Dashboard buckets** | Verify field names above against `GET /api/portals/{portal}/stats` response; `new` = all rows with `user_state='new'` (may equal `total` if nothing dispositioned yet). |
 | **Bid list `total`** | Paginated `total` from API vs rows on screen (50 per page). Header count is **full filtered total**, not page length. |
 | **Ratings / Filtered** | `pass1_score` + `pass1_method='keyword'` → rating 0 + Filtered badge; distinct from model-scored 0. |
 | **Summaries** | Score-5 overnight vs score-4 local extract vs on-demand Sonnet — `summary.available` / `summary.markdown`. |
@@ -200,14 +213,45 @@ looks wrong → `bidplus/web/app.py` / `parent.db` / merge state.
 
 ### 6.3 Not yet exercised end-to-end in browser
 
-- **Generate Summary** with real Sonnet (cost + network; lock / 409 path wired).
+- **Generate Summary** — partially exercised (2026-06-08): live test on HAL bid (`TENDER NOTICE/NCP/21/26-27`). First attempt got a 500 (transient HAL Playwright first-boot issue — browser profile now exists; subsequent calls succeed). Error display fix verified. **Score-4 "Retrieve information" flow** (local-only, no Sonnet) and **409 lock-busy path** still not exercised in browser.
 - **Notifications** Save all / dispute against live `auto_rejected` queue.
 - **Disposition** Accept/Reject → activity log row.
-- **System alert** sticky banner.
+- **System alert** sticky banner (API exists: `GET /api/system-alert`; UI component not built — lowest priority).
 - **Mobile** layouts at all breakpoints.
-- **HAL / ISRO** bid list and detail with live data (most dev testing used GEM).
+- **ISRO** bid list and detail with live data (HAL partially tested; most dev testing used GEM).
 
-### 6.4 Legacy prototype artefacts
+### 6.4 Generate Summary — error propagation fix (2026-06-08)
+
+**Root cause (now fixed):** React component state is destroyed on unmount. When the user
+navigated away while a summary was generating (or after it errored), the error message was lost.
+
+**Fix — two files:**
+
+- **`src/app/lib/generationState.ts`** — extended with a module-level `errors: Map<string, string>`.
+  New exports: `setGenerationError(key, msg)`, `clearGenerationError(key)`, `getGenerationError(key)`.
+  `startGenerating()` now clears the prior error for the key.
+
+- **`src/app/pages/BidDetail.tsx`** — load `useEffect` hydrates `generateError` from
+  `getGenerationError(_genKey)` on mount. `handleGenerateSummary` calls `clearGenerationError` on
+  success and `setGenerationError` on failure. The error banner was also **moved** from below the
+  Generate button into the spinner ternary slot (same visual position as the spinner), so it is
+  never off-screen or hidden by scroll.
+
+**Error display order in the summary section (no summary yet):**
+
+```
+generating             → spinner banner (blue)
+generateError          → error banner (red)
+otherBidGenerating     → "another bid generating" banner (blue)
+(none)                 → "No summary yet" text
+```
+
+**Committed:** `455358f` · **Deployed to box:** rsync of `dist/` (dist is gitignored; rsync is the
+deploy path — `git pull` on the box only needed for source, not for the running app).
+
+---
+
+### 6.5 Legacy prototype artefacts
 
 - `src/app/lib/mockData.ts` — original Figma mock data; **not used** by wired screens.
 - `src/app/components/ui/Button` imports in old paths — canonical file is `button.tsx`.
@@ -216,16 +260,24 @@ looks wrong → `bidplus/web/app.py` / `parent.db` / merge state.
 
 ## 7. Recommended next steps (priority order)
 
-1. **Stabilise dashboard on port 8000** — log in, confirm three cards show non-zero totals
-   matching the Python sanity check above.
-2. **Data audit** — for each portal, spot-check dashboard buckets vs manual SQL on `parent.db`
-   (`gem_bids`, `hal_bids`, `isro_bids`); file discrepancies against API or merge logic.
-3. **Bid list** — confirm pagination, filters (`closingsoon`, `highpriority`), Filtered rows visible.
-4. **Bid detail** — open a score-5 bid with summary, a score-4 bid (Generate Summary), a filtered bid.
-5. **Notifications** — bell queue, Save all, dispute one bid; confirm activity log `disputed` row.
-6. **Generate Summary** — test `GEM/2026/B/7605377` or `GEM/2026/B/7489616` (staged docs on disk).
-7. **System alert banner** — last, per spec.
-8. **Commit** front-end + `run_web.sh` + CORS changes when operator is satisfied.
+> **Deploy box is live at `http://192.168.2.193:8000`** (served by `bidplus-web.service`).
+> First nightly run fires at **01:00 IST tonight (2026-06-09)** — that is the S6/S7 DONE-WHEN gate.
+
+1. **Verify dashboard on the deploy box** — log in at `http://192.168.2.193:8000`; confirm three
+   portal cards show non-zero totals. Use the Python sanity-check in §6.2 if cards look wrong.
+2. **Data audit** — for each portal, spot-check dashboard buckets vs manual SQL on the box's
+   `parent.db` (`gem_bids`, `hal_bids`, `isro_bids`); discrepancies point to API or merge logic.
+3. **Bid list** — confirm pagination (`page`/`pageSize=50`), filters (`score1to3`, `score4`, `score5`,
+   `closingsoon`, `closingactionable`, `highpriority`), and Filtered badge rows visible.
+4. **Bid detail: score-4 "Retrieve information"** — pick a score-4 bid; click Generate Summary; confirm
+   it runs `local_extract_bid` (no Sonnet, fast), returns `summary.available=true` immediately.
+5. **Bid detail: Generate Summary 409 path** — start a summary, immediately open a second bid in
+   another tab, confirm the "another bid generating" banner appears.
+6. **Disposition** — Accept/Reject a bid on a score-5 or score-4 bid; confirm activity log row.
+7. **Notifications** — bell queue, Save all, dispute one filtered bid; confirm `disputed` activity row.
+8. **System alert banner** — lowest priority (API: `GET /api/system-alert`; UI panel not yet built).
+9. **Post nightly run (2026-06-09 ~01:00 IST)** — verify score-5 summaries appeared, Pass 2 ran,
+   lifecycle sweep closed expired bids, budget report is within 9am.
 
 ---
 
@@ -262,5 +314,7 @@ composite `bidKey` · Generate Summary 409 handling · closing window = `stats.w
 | Date | Change |
 |------|--------|
 | 2026-06-06 | Initial front-end handoff — implementation in `UIReference/…`, login working, dashboard/stats auth issues debugged, pagination + API wiring landed, data accuracy flagged for review |
+| 2026-06-08 | Folder renamed `frontend/` (was `UIReference/Teclever Bid intelligence/`). Deploy box provisioned and running at `192.168.2.193:8000`. Timer fixed to 01:00 IST (`b04f044`). Generate Summary error propagation bug fixed (`455358f`): errors persist across navigation via `generationState.ts` errors Map; error shown in spinner slot. Live test on HAL bid confirmed fix. |
+| 2026-06-08 | **Stats API field rename + Dashboard UI overhaul.** Backend renamed all stats `counts` fields (old `score3plus/score4plus/bidsClosingBy` → new `scoreBelow4/scoreExact4/scoreExact5/closingSoonActionable`; window 7→10 days). Frontend updated: `types.ts` counts interface, `BidFilter` type (new `score1to3`, `score4`, `closingactionable` keys), `FILTER_LABELS`, `VALID_FILTERS`. Dashboard card bar chart replaced with a clickable 3+2 filter chip grid (score chips in row 1; HP/CS in row 2). Actionable closing count (`closingSoonActionable`) is now a `<Link>` to `?filter=closingactionable`. MSW fixtures and `filterBids` handler updated to match new semantics. Build clean. |
 
 *Update this file when validation state changes or new screens ship.*
