@@ -188,7 +188,7 @@ function StatLink({ to, label, value, accent }: { to: string; label: string; val
       }`}
     >
       <div className={`text-2xl font-bold ${accent ? "text-green-700 group-hover:text-green-800" : "text-gray-900 group-hover:text-blue-600"}`}>
-        {value.toLocaleString()}
+        {(value ?? 0).toLocaleString()}
       </div>
       <div className="text-xs text-gray-500">{label}</div>
     </Link>
@@ -206,8 +206,8 @@ function FilterChipLink({
       className={`rounded-lg px-2 py-2 transition-colors text-center border border-transparent hover:border-current ${colorClass}`}
     >
       <div className="text-xs font-semibold opacity-80 mb-1">{label}</div>
-      <div className="text-sm font-bold leading-tight">{newCount.toLocaleString()} <span className="text-xs font-normal opacity-70">new</span></div>
-      <div className="text-xs leading-tight mt-0.5 opacity-80">{acceptedCount.toLocaleString()} acc</div>
+      <div className="text-sm font-bold leading-tight">{(newCount ?? 0).toLocaleString()} <span className="text-xs font-normal opacity-70">new</span></div>
+      <div className="text-xs leading-tight mt-0.5 opacity-80">{(acceptedCount ?? 0).toLocaleString()} acc</div>
     </Link>
   );
 }
