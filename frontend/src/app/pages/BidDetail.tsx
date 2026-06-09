@@ -46,7 +46,7 @@ export function BidDetail() {
   const [disposing, setDisposing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  const downloadAbortRef = useRef<AbortController | null>(null);
+  const downloadGenRef = useRef(0); // incremented on bid change; used to ignore stale callbacks
 
   const _genKey = `${portal}:${decodedBidKey}`;
 
@@ -56,7 +56,7 @@ export function BidDetail() {
 
   useEffect(() => {
     if (!portal || !decodedBidKey) return;
-    downloadAbortRef.current?.abort(); // cancel any in-flight download from previous bid
+    downloadGenRef.current++;          // invalidate any pending download callbacks from previous bid
     setLoading(true);
     setBid(null);
     setDisposing(false);
@@ -355,20 +355,20 @@ export function BidDetail() {
         <h2 className="text-base font-semibold text-gray-900 mb-3">Documents</h2>
         <button
           onClick={async () => {
-            const controller = new AbortController();
-            downloadAbortRef.current = controller;
+            const gen = ++downloadGenRef.current;
             setDownloading(true);
             setDownloadError(null);
             try {
               const res = await fetch(
                 portalApi.documentDownloadUrl(portal as PortalId, decodedBidKey),
-                { credentials: "include", signal: controller.signal },
+                { credentials: "include" },
               );
               if (!res.ok) {
                 const body = await res.json().catch(() => ({}));
                 throw new Error(body?.error?.message || `Download failed (${res.status})`);
               }
               const blob = await res.blob();
+              // Trigger save-to-disk regardless of whether user navigated away
               const disposition = res.headers.get("Content-Disposition") ?? "";
               const filename = disposition.match(/filename="?([^";\n]+)"?/)?.[1] ?? "documents";
               const url = URL.createObjectURL(blob);
@@ -378,10 +378,12 @@ export function BidDetail() {
               a.click();
               URL.revokeObjectURL(url);
             } catch (e) {
-              if ((e as Error).name === "AbortError") return; // navigated away — silent
-              setDownloadError(e instanceof Error ? e.message : "Download failed. Try again.");
+              // Only show the error if the user is still on this bid
+              if (downloadGenRef.current === gen) {
+                setDownloadError(e instanceof Error ? e.message : "Download failed. Try again.");
+              }
             } finally {
-              if (!controller.signal.aborted) setDownloading(false);
+              if (downloadGenRef.current === gen) setDownloading(false);
             }
           }}
           disabled={downloading}
