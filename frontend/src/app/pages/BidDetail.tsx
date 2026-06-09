@@ -348,7 +348,7 @@ export function BidDetail() {
       <section className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-3">Documents</h2>
         <a
-          href={portalApi.documentZipUrl(portal as PortalId, decodedBidKey)}
+          href={portalApi.documentDownloadUrl(portal as PortalId, decodedBidKey)}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
         >
           <Download className="w-4 h-4" />

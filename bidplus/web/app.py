@@ -352,9 +352,10 @@ def list_documents(portal: str, bidKey: str, user: dict = Depends(current_user))
     return {"documents": docs}
 
 
-@app.get("/api/portals/{portal}/bids/{bidKey:path}/documents/zip")
-def download_zip(portal: str, bidKey: str, user: dict = Depends(current_user)):
-    """Return a ZIP of all bid documents. Auto-fetches from the portal if not cached locally."""
+@app.get("/api/portals/{portal}/bids/{bidKey:path}/documents/download")
+def download_documents(portal: str, bidKey: str, user: dict = Depends(current_user)):
+    """Download bid documents. Auto-fetches from the portal if not cached locally.
+    Single file → direct download. Multiple files (e.g. HAL) → ZIP."""
     _check_portal(portal)
     key = unquote(bidKey)
     staging = _staging_dir(portal, key)
@@ -369,6 +370,10 @@ def download_zip(portal: str, bidKey: str, user: dict = Depends(current_user)):
     if not docs:
         raise HTTPException(404, {"code": "not_found",
                                   "message": "No documents found for this bid."})
+    if len(docs) == 1:
+        file_path = staging / docs[0]["filename"]
+        return FileResponse(str(file_path), filename=docs[0]["filename"],
+                            media_type="application/octet-stream")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for d in docs:

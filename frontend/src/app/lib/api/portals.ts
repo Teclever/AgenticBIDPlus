@@ -83,11 +83,8 @@ export const portalApi = {
     }
   },
 
-  documentDownloadUrl: (portal: PortalId, bidKey: string, filename: string): string =>
-    `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/document?f=${encodeURIComponent(filename)}`,
-
-  documentZipUrl: (portal: PortalId, bidKey: string): string =>
-    `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/documents/zip`,
+  documentDownloadUrl: (portal: PortalId, bidKey: string): string =>
+    `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/documents/download`,
 
   disposition: async (portal: PortalId, bidKey: string, action: "accepted" | "rejected" | "reset") => {
     try {
