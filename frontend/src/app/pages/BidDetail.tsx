@@ -5,6 +5,7 @@ import {
   Ban,
   Building2,
   Calendar,
+  Download,
   MapPin,
   CheckCircle,
   XCircle,
@@ -344,9 +345,24 @@ export function BidDetail() {
         )}
       </section>
 
+      <section className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-3">Documents</h2>
+        <a
+          href={portalApi.documentZipUrl(portal as PortalId, decodedBidKey)}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Download documents
+        </a>
+        <p className="mt-2 text-xs text-gray-400">
+          Fetches from the portal if not cached locally. May take a moment for large bids.
+        </p>
+      </section>
+
     </div>
   );
 }
+
 
 function SummaryBlock({ summary }: { summary: BidSummary }) {
   const flags = summary.criticalFlags ?? [];

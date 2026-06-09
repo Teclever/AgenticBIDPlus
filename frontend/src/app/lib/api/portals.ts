@@ -1,4 +1,4 @@
-import type { BidDetail, BidFilter, BidListItem, BidSummary, Paginated, PortalId, PortalStats } from "../types";
+import type { BidDetail, BidFilter, BidListItem, BidSummary, DocumentItem, Paginated, PortalId, PortalStats } from "../types";
 import { apiClient, axiosErrorToApiError } from "./client";
 import type { AxiosError } from "axios";
 import type { ApiError } from "../types";
@@ -60,6 +60,34 @@ export const portalApi = {
       throw axiosErrorToApiError(e as AxiosError<ApiError>);
     }
   },
+
+  listDocuments: async (portal: PortalId, bidKey: string): Promise<{ documents: DocumentItem[] }> => {
+    try {
+      const res = await apiClient.get<{ documents: DocumentItem[] }>(
+        `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/documents`,
+      );
+      return res.data;
+    } catch {
+      return { documents: [] };
+    }
+  },
+
+  fetchDocuments: async (portal: PortalId, bidKey: string): Promise<{ documents: DocumentItem[] }> => {
+    try {
+      const res = await apiClient.post<{ documents: DocumentItem[] }>(
+        `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/documents/fetch`,
+      );
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
+  documentDownloadUrl: (portal: PortalId, bidKey: string, filename: string): string =>
+    `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/document?f=${encodeURIComponent(filename)}`,
+
+  documentZipUrl: (portal: PortalId, bidKey: string): string =>
+    `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/documents/zip`,
 
   disposition: async (portal: PortalId, bidKey: string, action: "accepted" | "rejected" | "reset") => {
     try {

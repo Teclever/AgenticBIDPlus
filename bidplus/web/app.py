@@ -10,13 +10,15 @@ Run:  uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000
 from __future__ import annotations
 
 import datetime
+import io
 import sqlite3
+import zipfile
 from pathlib import Path
 from urllib.parse import unquote
 
 from fastapi import Body, Depends, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -313,6 +315,89 @@ def get_generating(user: dict = Depends(current_user)):
     return {"active": _active_job}
 
 
+# ── document helpers ────────────────────────────────────────────────────────────────
+
+def _staging_dir(portal: str, key: str) -> Path:
+    safe = key.replace("/", "_")
+    return config.portal_dir(portal) / "bids" / safe
+
+
+def _list_docs(staging: Path) -> list[dict]:
+    """Non-.txt files in the staging dir, sorted by name."""
+    if not staging.is_dir():
+        return []
+    return [
+        {"filename": p.name, "sizeKb": round(p.stat().st_size / 1024, 1)}
+        for p in sorted(staging.iterdir())
+        if p.is_file() and not p.name.startswith(".") and p.suffix.lower() != ".txt"
+    ]
+
+
+def _make_adapter(portal: str):
+    return {
+        "gem":  lambda: __import__("bidplus.adapters.gem",  fromlist=["GeMAdapter"]).GeMAdapter(),
+        "hal":  lambda: __import__("bidplus.adapters.hal",  fromlist=["HALAdapter"]).HALAdapter(),
+        "isro": lambda: __import__("bidplus.adapters.isro", fromlist=["ISROAdapter"]).ISROAdapter(),
+    }[portal]()
+
+
+# These three GET routes MUST be registered before GET /{bidKey:path} so Starlette
+# doesn't swallow the fixed suffixes into the greedy path parameter.
+
+@app.get("/api/portals/{portal}/bids/{bidKey:path}/documents")
+def list_documents(portal: str, bidKey: str, user: dict = Depends(current_user)):
+    _check_portal(portal)
+    key = unquote(bidKey)
+    docs = _list_docs(_staging_dir(portal, key))
+    return {"documents": docs}
+
+
+@app.get("/api/portals/{portal}/bids/{bidKey:path}/documents/zip")
+def download_zip(portal: str, bidKey: str, user: dict = Depends(current_user)):
+    """Return a ZIP of all bid documents. Auto-fetches from the portal if not cached locally."""
+    _check_portal(portal)
+    key = unquote(bidKey)
+    staging = _staging_dir(portal, key)
+    docs = _list_docs(staging)
+    if not docs:
+        try:
+            _make_adapter(portal).fetch_documents(key)
+        except Exception as e:
+            raise HTTPException(500, {"code": "fetch_error",
+                                      "message": f"Could not download documents: {e}"})
+        docs = _list_docs(staging)
+    if not docs:
+        raise HTTPException(404, {"code": "not_found",
+                                  "message": "No documents found for this bid."})
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for d in docs:
+            zf.write(staging / d["filename"], d["filename"])
+    buf.seek(0)
+    zip_name = f"{key.replace('|', '_').replace('/', '_')}_docs.zip"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_name}"'},
+    )
+
+
+@app.get("/api/portals/{portal}/bids/{bidKey:path}/document")
+def download_document(portal: str, bidKey: str, f: str = Query(...),
+                      user: dict = Depends(current_user)):
+    _check_portal(portal)
+    key = unquote(bidKey)
+    if "/" in f or "\\" in f or ".." in f:
+        raise HTTPException(400, {"code": "bad_request", "message": "Invalid filename."})
+    staging = _staging_dir(portal, key)
+    file_path = (staging / f).resolve()
+    if not str(file_path).startswith(str(staging.resolve())):
+        raise HTTPException(400, {"code": "bad_request", "message": "Invalid filename."})
+    if not file_path.is_file():
+        raise HTTPException(404, {"code": "not_found", "message": f"File {f!r} not found."})
+    return FileResponse(str(file_path), filename=f, media_type="application/octet-stream")
+
+
 # ── bid detail + actions ─────────────────────────────────────────────────────────────
 
 @app.get("/api/portals/{portal}/bids/{bidKey:path}")
@@ -366,6 +451,18 @@ def disposition(portal: str, bidKey: str, body: DispositionBody,
         return dispositions.dispose(db, portal, key, body.action, user["id"])
     except LookupError as e:
         raise HTTPException(404, {"code": "not_found", "message": str(e)})
+
+
+@app.post("/api/portals/{portal}/bids/{bidKey:path}/documents/fetch")
+def fetch_documents(portal: str, bidKey: str, user: dict = Depends(current_user)):
+    """Download (or re-download) bid documents on demand, then return the file list."""
+    _check_portal(portal)
+    key = unquote(bidKey)
+    try:
+        _make_adapter(portal).fetch_documents(key)
+    except Exception as e:
+        raise HTTPException(500, {"code": "fetch_error", "message": str(e)})
+    return {"documents": _list_docs(_staging_dir(portal, key))}
 
 
 # ── notifications (auto-filtered review) ──────────────────────────────────────────────

@@ -175,6 +175,11 @@ export interface ScrapeRun {
   portals: PortalRunSummary[];
 }
 
+export interface DocumentItem {
+  filename: string;
+  sizeKb: number;
+}
+
 export interface SystemAlert {
   id: number;
   alertType: string;
