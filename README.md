@@ -7,8 +7,9 @@ AI-powered bid intelligence platform for HAL, ISRO, and GeM government procureme
 - Scrapes bids nightly from three portals (HAL via Playwright, ISRO and GeM via HTTP)
 - Filters irrelevant bids through a two-pass keyword eliminator before any AI call
 - Scores every bid 1–5 with Claude Haiku (Pass 1)
+- Detects Single Tender bids from document text; auto-rejects non-Teclever, promotes Teclever to score 5
 - Generates structured AI summaries for high-scoring bids with Claude Sonnet (Pass 2)
-- Serves a web UI for reviewing, accepting, and rejecting bids
+- Serves a web UI for reviewing, accepting, and rejecting bids with inline Accept/Reject and next-bid navigation
 
 ## Architecture
 
@@ -90,14 +91,25 @@ npm run dev          # proxies /api → localhost:8000
 | `launcher sweep` | Lifecycle sweep only (mark CLOSED, retention, orphan reap) |
 | `launcher run-status` | Check if a cycle is running; print active alerts |
 | `launcher merge` | Merge tool DBs into parent.db |
+| `launcher singletender-backfill` | Scan existing .txt files for Single Tender field; update DB (no downloads) |
 | `launcher governance-delta` | Generate AI keyword governance proposals |
 
 ## Scoring
 
 - **Score 0** — eliminated by keyword filter before Haiku (`pass1_method='keyword'`)
-- **Score 1–3** — below threshold; shown but not auto-summarised
-- **Score 4** — local document extraction (no Sonnet)
-- **Score 5** — full Sonnet summary generated overnight
+- **Score 1–3** — below threshold; shown but not auto-summarised. Single Tender detected on manual "Generate Summary".
+- **Score 4** — local document extraction (no Sonnet). Single Tender detected; Teclever/masked upgraded to score 5.
+- **Score 5** — full Sonnet summary generated overnight. Single Tender detected during Pass 2.
+
+### Single Tender rules
+
+Detected from `Single Tender Applicable: Yes` + `List of Seller Organization for participation` in the bid PDF.
+
+| Org | Action |
+|-----|--------|
+| Teclever (any case/spacing) | `pass1_score = 5` → Sonnet summary auto-runs |
+| Masked / unreadable (`***`) | `pass1_score = 5` → Sonnet summary auto-runs |
+| Readable, not Teclever | `auto_rejected = 1`, `user_state = 'rejected'` |
 
 ## Documentation
 

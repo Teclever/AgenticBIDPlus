@@ -1,6 +1,6 @@
 # Teclever Bid Portal — Development Handoff
 
-**As of:** 2026-06-08  
+**As of:** 2026-06-09  
 **Repo:** `BidAnalysisPortal/` (git root)  
 **Authoritative rules:** [`AGENTS.md`](AGENTS.md) · full design [`MASTER_ACTION_PLAN_V3.md`](MASTER_ACTION_PLAN_V3.md) · deploy [`DEPLOY_WORKFLOW.md`](DEPLOY_WORKFLOW.md)
 
@@ -296,61 +296,108 @@ S6 is built in **three channels**, all now wired. **Ch1 + Ch2 committed (`cc73a2
 
 ---
 
-## 16. Web app (frontend) — IN PROGRESS (2026-06-08)
+## 16. Web app (frontend) — ACTIVE (2026-06-09)
 
-**Frontend agent** built the React UI inside `frontend/` (renamed from `UIReference/Teclever Bid intelligence/` on 2026-06-08).
-`npm run build` succeeds; `dist/` is live at `frontend/dist/`. FastAPI serves it at
-`http://localhost:8000` (Mac dev) and `http://192.168.2.193:8000` (deploy box via `bidplus-web.service`).
-Login is working end-to-end against the real `parent.db`.
+**Frontend** lives in `frontend/`; FastAPI serves `dist/` at `http://192.168.2.193:8000`
+(deploy box, `bidplus-web.service`) and `http://localhost:8000` (Mac dev).
+First nightly run completed 2026-06-09 01:00 IST: 3,492 new bids (HAL 23, ISRO 15, GeM 3,454),
+3,492 scored, 24 AI-summarised.
 
-**Current status — all three original issues resolved:**
-1. ~~**Dashboard all 0s**~~ — **FIXED**: `credentials: "include"` added to all stats fetches; API
-   returns correct data (GEM total 11,327 / score-5 26 / highPriority 186 on deploy box after migration).
-2. ~~**No pagination UI**~~ — **BUILT**: `Pagination.tsx` wired; API `{items, page, pageSize, total}` consumed.
-3. ~~**Generate Summary — silent error loss**~~ — **FIXED (2026-06-08, `455358f`)**: errors
-   persisted across navigation via `generationState.ts` `errors` Map; hydrated on component mount;
-   error shown in spinner slot (never below button where it was missed). Live-tested on HAL bid
-   (`TENDER NOTICE/NCP/21/26-27`): first-boot 500 surfaced correctly; subsequent call succeeded.
+### Current feature state (2026-06-09)
 
-**What still needs browser verification:**
-- Score-4 "Retrieve information" flow (local extract, no Sonnet; fast path)
-- 409 lock-busy path (open two bids simultaneously)
-- Disposition Accept/Reject → activity log row
-- Notifications Save all / dispute / disputed row
-- System alert banner (API exists; UI component **not yet built** — lowest priority)
-- Mobile breakpoints
+| Feature | Status |
+|---------|--------|
+| Login | Working. Enter key submits; double-submit guarded. |
+| Dashboard | Working. Opportunity Distribution chips show **new / accepted** separately per score band (rejected excluded). Top stat tiles = New / Accepted (green). Single Tender amber chip shown when count > 0. |
+| Bid list | Working. Sort = newest-first (`first_seen_date DESC`). Inline Accept/Reject buttons. Single Tender badge (green ★ Teclever / amber generic). Filter persistence via explicit return URL. |
+| Bid detail | Working. Accept/Reject navigates to next bid in the filtered list (generation-counter pattern; no cancellation on navigate). Documents section with on-demand download (auto-fetches from portal if not cached; single file direct, multiple files ZIP). Single Tender banner (green/amber with org name). |
+| Notifications | Working. Save-all bulk-rejects auto_rejected bids alongside clearing the governance queue. |
+| System Alerts | Working. Panel shows nightly run history with per-portal breakdown (auto-scored / AI-scored / summarised). Alerts section below. |
+| Activity log | Built, needs further browser validation. |
+| Single Tender filter | Working. `?filter=singletender` → `WHERE is_single_tender=1`. |
 
-**CORS middleware** in `app.py` allows Vite dev-server on 5173/5174 (`allow_credentials=True`). Intentional and committed.
+### DB schema additions (2026-06-09)
 
-**Deployed user:** `karthikeyan@teclever.com` (created on deploy box via `python -m bidplus.users add`).
+All additive migrations, safe on existing databases.
 
-**Frontend-specific handoff doc:** `frontend/HANDOFF.md` — read this before touching the React code; it covers stack, screens, known footguns, run commands, and the data-accuracy sanity-check query.
+| Table | New columns | Added by |
+|-------|-------------|----------|
+| `scrape_runs` | `keyword_scored_count INTEGER`, `model_scored_count INTEGER` | `merge.ensure_shared` |
+| `{portal}_bids` (all 3) | `is_single_tender INTEGER DEFAULT 0`, `single_tender_org TEXT` | `merge.ensure_shared` + `_OVERLAY` |
+
+### Single Tender detection (`bidplus/summarize.py`)
+
+Detection runs on `.txt` extraction files. Regex matches `single tender applicable … yes`
+(liberal, bilingual). Org extracted from `list of seller org … participation` field.
+
+| Org classification | Action |
+|--------------------|--------|
+| Matches `teclever` (case-insensitive) | `pass1_score=5` → Sonnet summary auto-runs |
+| Masked (`***` or empty) | `pass1_score=5` → Sonnet summary auto-runs |
+| Readable, not Teclever | `auto_rejected=1`, `user_state='rejected'` |
+
+**Timing:** automatically during Pass 2 for score 4/5 bids; on manual "Generate Summary"
+for score 1-3 bids. Backfill command: `launcher singletender-backfill` (scans existing
+`.txt` files, no re-downloads). First run on deploy box: 1 bid found and processed
+(GEM/2026/B/7601663 — non-Teclever org, auto-rejected).
+
+### Document download (`/api/portals/{portal}/bids/{key}/documents/download`)
+
+- GET endpoint auto-fetches from portal if staging dir is empty.
+- Single file → `FileResponse` (direct). Multiple files → ZIP stream.
+- Frontend: `fetch()` with `credentials: include`; generation counter prevents stale
+  state updates if user navigates away mid-download; file still saves to Downloads folder.
+
+### Eliminator terms updated on deploy box (2026-06-09, DB only — not in git)
+
+| List | Action | Terms |
+|------|--------|-------|
+| Neg phrase | Added 13 | air duct, beml drawing, beml drg, cleaning tool, conning tool, honing sticks, in finish condition, insurance service, mim route, mt spare, mt spares, through mim, video conferencing |
+| Neg word | Added 4 | hammer, toluene, trolley, trolleys |
+| Neg phrase | Deactivated 1 | fuel pump |
+| Pos phrase | Added 3 | engine test bed, test bed, test stand |
+| Pos token | Added 1 | vibration |
+| Skipped | Already active | shop floor |
+
+Note: `conning tool` added as specified (may be revisited for `coining tool`); `fuel pump`
+deactivated pending review.
+
+### Users on deploy box
+
+`karthikeyan@teclever.com`, `sambath@teclever.com`, `radhika.s@teclever.com`,
+`radhika.s@teclever.com` (password changed to `pop345ins`)
+
+**Frontend-specific handoff doc:** `frontend/HANDOFF.md`
 
 **Run commands (Mac dev):**
 ```bash
-# FastAPI
 export BIDPLUS_RUNTIME_DIR=~/bidplus-runtime
 ~/bidplus-runtime/venv/bin/uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000 --reload
-
-# Frontend dev server (hot reload)
-cd "frontend" && npm run dev
-
-# Production build → FastAPI serves dist/
-cd "frontend" && npm run build
+cd frontend && npm run dev   # hot reload; proxies /api → 8000
+cd frontend && npm run build # production
 ```
 
-**Recent commits:**
-- `4ea56be` feat(ui): cross-user generation banner via server poll + login Enter key fix
-- `57dd471` feat(web): cross-user generation endpoint + filter/closing-window redesign + governance bid-text prompt
-- `a906125` feat(web): mutually exclusive score buckets + closing-window redesign
-- `455358f` fix(ui): propagate generate-summary errors across navigation
+**Recent commits (chronological):**
+```
+7344c5a  docs: add README
+4d2dcf5  feat(runs): split scored_count into keyword_scored + model_scored
+c77cb9d  feat(ui): dashboard new/accepted split, filter persistence, next-bid navigation
+2980f83  fix(dashboard): defensive ?? 0 on new score-band counts
+9e9278f  fix(bid-detail): clear stale state on bid change, fix back button destination
+72b5e7a  fix(bid-detail): skip current bid key in navigateToNext
+65a78b0  feat(docs): single Download documents button in bid detail
+35d96d9  fix(docs): single file → direct download, multiple files → ZIP
+861301f  fix(docs): proper error handling for document download
+1e08ba7  fix(docs): cancel in-flight download on navigation
+91458eb  fix(docs): let download complete even after navigation
+d21a3eb  feat(single-tender): detect, highlight, filter Single Tender bids
+```
 
-**Governance loop (`bidplus/governance.py`) — fully implemented, not yet exercised on real data:**
+**Governance loop (`bidplus/governance.py`) — fully implemented:**
 - `promote()` / `accept()` wired to web `/dispute` + `/save-all` endpoints
-- `ingest_ready()` runs automatically at the start of every nightly `launcher run`
-- `generate_delta()` triggered manually via `launcher governance-delta` (prints "DUE" reminder after each nightly run when threshold is met)
-- Delta prompt now includes `bid_text` (first 600 chars of actual bid) alongside `eliminated_by` + human `reason` — gives Sonnet enough context to propose precise positive rescue terms
-- Full loop fires once ~35 promotions accumulate or weekly, whichever first; Excel lands in `$BIDPLUS_RUNTIME_DIR/list_review/pending/` for operator review before any list changes apply
+- `ingest_ready()` runs at the start of every `launcher run`
+- `generate_delta()` via `launcher governance-delta`
+- Full loop fires once ~35 promotions accumulate or weekly
 
 ---
 

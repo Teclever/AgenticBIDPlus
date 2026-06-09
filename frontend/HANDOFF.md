@@ -1,6 +1,6 @@
 # Teclever Bid Intelligence — Front-end handoff
 
-**As of:** 2026-06-08  
+**As of:** 2026-06-09  
 **Location:** `frontend/` (this folder)  
 **Authoritative UX/API spec:** [`../../webapp-design/WEBAPP_DESIGN.md`](../../webapp-design/WEBAPP_DESIGN.md) · [`../../webapp-design/API.md`](../../webapp-design/API.md)  
 **Backend:** [`../../bidplus/web/`](../../bidplus/web/) (FastAPI, smoke-validated against `parent.db`)  
@@ -122,25 +122,28 @@ testing against the real API.
 
 | Screen | Route | Status | Notes |
 |--------|-------|--------|-------|
-| **Login** | `/login` | **Working** | Teclever email label, disabled Sign In until fields filled, error dialog, no footer/forgot-password. Post-login calls `refresh()` (`/api/auth/me`) before navigate. **Enter key submits** from the password field (`onKeyDown`); double-submit guarded by `submitting` flag. |
-| **Dashboard** | `/` | **Working (UI updated 2026-06-08)** | Three portal cards wired to `GET /api/portals/{id}/stats`. Bar chart replaced with clickable filter chips. Actionable closing count is now a link. See §6.2 for bucket definitions. |
-| **Bid list** | `/portal/:portalId` | **Built, needs validation** | API pagination (`page`/`pageSize=50`), filter banner, Filtered badge, mobile cards. Header shows `total` from API. New filter keys active: `score1to3`, `score4`, `closingactionable`. |
-| **Bid detail** | `/portal/:portalId/bid/:bidKey` | **Working — error fix landed (2026-06-08)** | Single column, Generate Summary, Accept/Reject, markdown summary. Error display fixed: errors now persist across navigation in `generationState.ts`; shown in spinner slot (not below button). Exercised live on HAL bid. HAL `bidKey` URL-encoded (`tender\|line`). |
+| **Login** | `/login` | **Working** | Teclever email label, disabled Sign In until fields filled, error dialog. Enter key submits; double-submit guarded. |
+| **Dashboard** | `/` | **Working (updated 2026-06-09)** | Three portal cards. Opportunity Distribution chips show **new / accepted** separately per score band (rejected excluded). Top stat tiles = New / Accepted. Single Tender amber chip (when > 0). Closing Soon note corrected. |
+| **Bid list** | `/portal/:portalId` | **Working** | Sorted newest-first. Inline Accept/Reject buttons on each row. Single Tender badge (green ★ for Teclever, amber for others). Filter `singletender` added. `rfilter/rpage/ridx` passed to detail links for next-bid navigation. |
+| **Bid detail** | `/portal/:portalId/bid/:bidKey` | **Working (updated 2026-06-09)** | Accept/Reject navigates to next bid in filtered list; generation-counter prevents stale state. Back arrow returns to filtered list (or browser history if no return context). Documents section with on-demand download. Single Tender banner (green/amber + org name). |
 | **Activity log** | `/activity` | **Built, needs validation** | Paginated `GET /api/activity`. |
-| **Notifications** | Bell overlay | **Built, needs validation** | Save all, dispute modal, per-user red dot. |
-| **System alert banner** | — | **Not built** | API exists (`GET /api/system-alert`); lowest priority per `API.md` §7. |
+| **Notifications** | Bell overlay | **Working** | Save-all now also bulk-rejects auto_rejected bids. Dispute modal, per-user red dot. |
+| **System Alerts** | Shield icon overlay | **Working (2026-06-09)** | Nightly run history at top (per-portal auto-scored / AI-scored / summarised). Active/cleared alerts below. |
 
 ---
 
 ## 5. Global behaviour (implemented)
 
 - **Auth:** httpOnly cookie `bidplus_session`; every API call uses `credentials: "include"`.
-- **401 / unauthenticated:** redirect to `/login` (central `apiFetch` + Dashboard `navigate` fallback).
-- **Filtered bids:** always shown (rating 0 + badge + `eliminatedBy`); never hidden from lists.
-- **Notification Save all:** `POST /api/notifications/auto-filtered/save-all` — primary queue clear.
-- **Generate Summary:** spinner + disabled button; handles 200 / 409 `summarization_busy` / generic error. Error message persists across navigation (stored in module-level `generationState.errors` Map; hydrated on component mount). Error displayed in the spinner slot (same visual position), never lost on navigate-away-then-back.
-- **Cross-user generation banner:** `Layout.tsx` polls `GET /api/generating` every 5 s and calls `setServerGenerating(active)`. The banner (`generationBid` state) is driven by `getAnyGenerating()` — local optimistic state first, server state fallback. Banner is a clickable `<Link>` to the bid's detail page; shows "View bid →" on the right.
-- **Accept/Reject:** only when `userState === "new"` AND `method === "model"`.
+- **401 / unauthenticated:** redirect to `/login`.
+- **Filtered bids:** always shown (rating 0 + badge + `eliminatedBy`); never hidden.
+- **Notification Save all:** `POST /api/notifications/auto-filtered/save-all` — clears governance queue AND bulk-sets `user_state='rejected'` on all `auto_rejected=1 AND user_state='new'` bids.
+- **Generate Summary:** spinner + disabled button; handles 200 / 409 `summarization_busy` / error. Error persists across navigation via `generationState.ts` `errors` Map; shown in spinner slot.
+- **Cross-user generation banner:** `Layout.tsx` polls `GET /api/generating` every 5 s. Banner is a clickable `<Link>` to the bid detail page.
+- **Accept/Reject:** only when `userState === "new"` AND `method === "model"`. After disposition, fetches same filtered page and navigates to first bid that isn't the disposed one (handles filters that don't exclude rejected bids). Generation counter: stale callbacks after navigation are silently discarded.
+- **Back navigation:** `BidDetail` back arrow navigates to `/portal/${id}?filter=${rFilter}` when return context params (`rfilter`, `rpage`, `ridx`) are present; falls back to `navigate(-1)` otherwise.
+- **Document download:** `fetch()` with `credentials: include` hits `GET /bids/{key}/documents/download`. Backend auto-fetches from portal if staging dir is empty; single file → direct; multiple → ZIP. Download continues after user navigates away; error only shown if user is still on same bid (generation counter in `downloadGenRef`).
+- **Single Tender badge / banner:** `SingleTenderBadge` in `PortalBids.tsx` (green ★ for Teclever org, amber for others). Coloured banner in `BidDetail.tsx`.
 
 ---
 
@@ -169,16 +172,22 @@ Historical fixes already in tree:
 The operator has flagged that **displayed numbers sometimes do not look right**. Treat as
 **open investigation** — verify API vs UI separately:
 
-**Stats API field names (updated 2026-06-08):**
+**Stats API field names (updated 2026-06-09):**
 
 | `counts` field | Definition | Filter key |
 |----------------|------------|------------|
-| `scoreBelow4` | score 1–3 (mutually exclusive) | `score1to3` |
-| `scoreExact4` | score = 4 (mutually exclusive) | `score4` |
-| `scoreExact5` | score = 5 (mutually exclusive) | `score5` |
-| `highPriority` | `user_state='accepted'`, closing within 10 days | `highpriority` |
-| `closingSoon` | score 3–5, not rejected, closing within 10 days | `closingsoon` |
-| `closingSoonActionable` | score 5 OR accepted, closing within 10 days | `closingactionable` |
+| `new` | `user_state='new'` | `new` |
+| `accepted` | `user_state='accepted'` | — |
+| `scoreBelow4New` | score 1–3, user_state='new' | `score1to3` |
+| `scoreBelow4Accepted` | score 1–3, user_state='accepted' | `score1to3` |
+| `scoreExact4New` | score 4, user_state='new' | `score4` |
+| `scoreExact4Accepted` | score 4, user_state='accepted' | `score4` |
+| `scoreExact5New` | score 5, user_state='new' | `score5` |
+| `scoreExact5Accepted` | score 5, user_state='accepted' | `score5` |
+| `singleTender` | `is_single_tender=1` | `singletender` |
+| `highPriority` | `user_state='accepted'`, closing ≤10 days | `highpriority` |
+| `closingSoon` | score 3–5, not rejected, closing ≤10 days | `closingsoon` |
+| `closingSoonActionable` | accepted, closing ≤10 days | `closingactionable` |
 
 Window is **10 days** (changed from 7). `closingSoonActionable` replaces the old `bidsClosingBy` field and is the headline clickable number on each dashboard card.
 
@@ -346,6 +355,11 @@ composite `bidKey` · Generate Summary 409 handling · closing window = `stats.w
 | 2026-06-08 | Folder renamed `frontend/` (was `UIReference/Teclever Bid intelligence/`). Deploy box provisioned and running at `192.168.2.193:8000`. Timer fixed to 01:00 IST (`b04f044`). Generate Summary error propagation bug fixed (`455358f`): errors persist across navigation via `generationState.ts` errors Map; error shown in spinner slot. Live test on HAL bid confirmed fix. |
 | 2026-06-08 | **Stats API field rename + Dashboard UI overhaul.** Backend renamed all stats `counts` fields (old `score3plus/score4plus/bidsClosingBy` → new `scoreBelow4/scoreExact4/scoreExact5/closingSoonActionable`; window 7→10 days). Three closing categories: `closingSoon` (score 3–5, not rejected), `closingSoonActionable` (score 5 or accepted), `highPriority` (accepted — now date-based). Frontend: `types.ts`, `BidFilter` type, `FILTER_LABELS`, `VALID_FILTERS` updated; Dashboard bar chart replaced with clickable chip grid; actionable count links to `?filter=closingactionable`. |
 | 2026-06-08 | **Score 0 filter added.** Backend: `filtered` key → `pass1_score = 0` (all score-0 bids — both keyword-eliminated and model-scored 0). Frontend: `BidFilter`, `FILTER_LABELS` ("Score 0 bids"), `VALID_FILTERS`, quick-filter chip list, MSW handler. The "Filtered" badge on each card still distinguishes sub-types visually. |
-| 2026-06-08 | **Cross-user generation banner + Login Enter key fix.** `generationState.ts` extended with `ServerState`/`serverGenerating`/`setServerGenerating`/`getAnyGenerating()`/`getOtherGenerating()` cross-user logic. `api/system.ts` adds `generatingApi.get()` (silent-fail). `Layout.tsx` polls `GET /api/generating` every 5 s, subscribes to generation state, banner upgraded to a clickable `<Link>` to the bid detail page. `Login.tsx`: password field `onKeyDown` submits on Enter; `submitting` flag prevents double-submit. MSW handler stubs `GET /api/generating → {active: null}`. |
+| 2026-06-08 | **Cross-user generation banner + Login Enter key fix.** `generationState.ts` extended with cross-user logic. `api/system.ts` adds `generatingApi.get()`. `Layout.tsx` polls every 5 s; banner is a clickable `<Link>`. Login Enter-key submit. |
+| 2026-06-09 | **Nightly run history in System Alerts panel.** `RunCard` component shows per-portal rows with auto-scored / AI-scored / summarised breakdown. `scrape_runs` gained `keyword_scored_count` + `model_scored_count` (additive migration); backfilled via SSH for the 2026-06-09 nightly run. |
+| 2026-06-09 | **Dashboard Opportunity Distribution redesign.** Score chips show `new` + `accepted` separately (rejected excluded). Top stat tiles changed from Total/New → New/Accepted (green accent). Single Tender amber chip (when > 0). `PortalStats.counts` extended with 6 new fields + `singleTender`. |
+| 2026-06-09 | **Filter persistence + next-bid navigation.** Back button uses explicit return URL (`/portal/${id}?filter=${rFilter}`) when return context is set. `PortalBids` encodes `rfilter/rpage/ridx` into every bid-detail link. After Accept/Reject, `navigateToNext` fetches the same filtered page and skips the just-disposed bid key (handles filters like `score1to3` that keep rejected bids in the list). Generation counter (`downloadGenRef`) prevents stale state updates after navigation. |
+| 2026-06-09 | **Document download.** `GET /api/portals/{portal}/bids/{key}/documents/download` auto-fetches from portal if staging dir is empty; single file → direct, multiple → ZIP. Frontend uses `fetch()` with generation counter: download completes even after navigation, errors only shown if user still on same bid. |
+| 2026-06-09 | **Single Tender detection.** New DB columns `is_single_tender` + `single_tender_org` (all portal tables). Detection in `summarize.py` via liberal regex; Teclever → score 5 + Sonnet; masked → score 5 + Sonnet; other → auto-rejected. `launcher singletender-backfill` scans existing `.txt` files. Frontend: `singletender` filter, `SingleTenderBadge` (green ★ Teclever / amber generic) in list rows and mobile cards, coloured banner in BidDetail. Dashboard: amber Single Tender chip. |
 
 *Update this file when validation state changes or new screens ship.*
