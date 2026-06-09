@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router";
+import { useParams, useNavigate, useSearchParams } from "react-router";
 import {
   ArrowLeft,
   Ban,
@@ -15,17 +15,26 @@ import {
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { portalApi, ApiRequestError } from "../lib/api";
-import { formatClosingDate } from "../lib/format";
+import { formatClosingDate, bidDetailPath } from "../lib/format";
 import { startGenerating, stopGenerating, isGenerating, getOtherGenerating, getGenerationError, setGenerationError, clearGenerationError, subscribe } from "../lib/generationState";
-import type { BidDetail as BidDetailType, BidSummary, CriticalFlag, T1aFlag, T1bFlag, PortalId } from "../lib/types";
+import type { BidDetail as BidDetailType, BidFilter, BidSummary, CriticalFlag, T1aFlag, T1bFlag, PortalId } from "../lib/types";
 import { RatingDisplay } from "../components/RatingDisplay";
 import { MarkdownContent } from "../components/MarkdownContent";
+
+const PAGE_SIZE = 50;
 
 export function BidDetail() {
   const { portalId, bidKey } = useParams<{ portalId: string; bidKey: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const portal = portalId as PortalId;
   const decodedBidKey = bidKey ? decodeURIComponent(bidKey) : "";
+
+  // Return context — set by PortalBids when navigating into a bid
+  const rFilter = (searchParams.get("rfilter") ?? "all") as BidFilter;
+  const rPage   = parseInt(searchParams.get("rpage") ?? "1", 10);
+  const rIdx    = parseInt(searchParams.get("ridx")  ?? "-1", 10);
+  const hasReturnCtx = rIdx >= 0;
 
   const [bid, setBid] = useState<BidDetailType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,13 +122,37 @@ export function BidDetail() {
     }
   };
 
+  const navigateToNext = async () => {
+    if (!hasReturnCtx) {
+      navigate(-1);
+      return;
+    }
+    try {
+      const data = await portalApi.bids(portal, { filter: rFilter, page: rPage, pageSize: PAGE_SIZE });
+      if (data.items.length === 0) {
+        navigate(`/portal/${portal}?filter=${rFilter}`);
+        return;
+      }
+      const nextIdx = Math.min(rIdx, data.items.length - 1);
+      const next = data.items[nextIdx];
+      navigate(`${bidDetailPath(portal, next.bidKey)}?rfilter=${rFilter}&rpage=${rPage}&ridx=${nextIdx}`);
+    } catch {
+      navigate(`/portal/${portal}?filter=${rFilter}`);
+    }
+  };
+
   const handleDisposition = async (action: "accepted" | "rejected" | "reset") => {
     if (!portal || !decodedBidKey || !bid) return;
     setDisposing(true);
     try {
       const { userState } = await portalApi.disposition(portal, decodedBidKey, action);
-      setBid({ ...bid, userState: userState as BidDetailType["userState"] });
-    } finally {
+      if (action === "reset") {
+        setBid({ ...bid, userState: userState as BidDetailType["userState"] });
+        setDisposing(false);
+      } else {
+        await navigateToNext(); // component will unmount on navigation
+      }
+    } catch {
       setDisposing(false);
     }
   };
@@ -132,7 +165,7 @@ export function BidDetail() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600">Bid not found</p>
-        <Button onClick={() => navigate(`/portal/${portal}`)} className="mt-4">
+        <Button onClick={() => navigate(-1)} className="mt-4">
           Back to list
         </Button>
       </div>
@@ -141,14 +174,15 @@ export function BidDetail() {
 
   const showDisposition =
     bid.userState === "new" && bid.method === "model";
-  const summaryAvailable = summary?.available && summary.markdown;
+  const summaryAvailable = summary?.available && summary.status === "ok" && summary.markdown;
+  const summaryFailed = !!summary?.status && summary.status !== "ok";
   const isClosed = bid.bidStatus === "CLOSED";
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <button
-          onClick={() => navigate(`/portal/${portal}`)}
+          onClick={() => navigate(-1)}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors self-start"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -267,6 +301,16 @@ export function BidDetail() {
                 <p className="text-sm text-blue-900">
                   Generating summary, this may take up to a minute…
                 </p>
+              </div>
+            ) : summaryFailed ? (
+              <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">Summary generation failed</p>
+                  <p className="text-sm text-red-700 mt-0.5">
+                    The bid documents could not be fetched or parsed. You can try generating again, or check the source documents on the portal.
+                  </p>
+                </div>
               </div>
             ) : generateError ? (
               <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">

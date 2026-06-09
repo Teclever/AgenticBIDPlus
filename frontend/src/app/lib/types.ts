@@ -18,9 +18,13 @@ export interface PortalStats {
   counts: {
     total: number;
     new: number;
-    scoreBelow4: number;
-    scoreExact4: number;
-    scoreExact5: number;
+    accepted: number;
+    scoreBelow4New: number;
+    scoreBelow4Accepted: number;
+    scoreExact4New: number;
+    scoreExact4Accepted: number;
+    scoreExact5New: number;
+    scoreExact5Accepted: number;
     highPriority: number;
     closingSoon: number;
     closingSoonActionable: number;

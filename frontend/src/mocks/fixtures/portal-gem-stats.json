@@ -4,9 +4,13 @@
   "counts": {
     "total": 11333,
     "new": 420,
-    "scoreBelow4": 148,
-    "scoreExact4": 39,
-    "scoreExact5": 23,
+    "accepted": 12,
+    "scoreBelow4New": 120,
+    "scoreBelow4Accepted": 5,
+    "scoreExact4New": 32,
+    "scoreExact4Accepted": 4,
+    "scoreExact5New": 18,
+    "scoreExact5Accepted": 3,
     "highPriority": 40,
     "closingSoon": 18,
     "closingSoonActionable": 12

@@ -250,11 +250,11 @@ export function PortalBids() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {bids.map((bid) => (
+                  {bids.map((bid, idx) => (
                     <tr
                       key={bid.bidKey}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(bidDetailPath(portal, bid.bidKey))}
+                      onClick={() => navigate(`${bidDetailPath(portal, bid.bidKey)}?rfilter=${activeFilter}&rpage=${page}&ridx=${idx}`)}
                     >
                       <td className="px-4 py-4 text-blue-600 font-medium text-sm">{bid.bidId}</td>
                       <td className="px-4 py-4 text-sm text-gray-900">{bid.buyer}</td>
@@ -322,10 +322,10 @@ export function PortalBids() {
           <div className="lg:hidden space-y-4">
             {bids.length > 0 ? (
               <>
-                {bids.map((bid) => (
+                {bids.map((bid, idx) => (
                   <Link
                     key={bid.bidKey}
-                    to={bidDetailPath(portal, bid.bidKey)}
+                    to={`${bidDetailPath(portal, bid.bidKey)}?rfilter=${activeFilter}&rpage=${page}&ridx=${idx}`}
                     className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-shadow"
                   >
                     <div className="flex items-start justify-between mb-3">

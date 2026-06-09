@@ -150,12 +150,26 @@ def stats(portal: str, user: dict = Depends(current_user),
     def c(where: str) -> int:
         return int(db.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}").fetchone()[0])
 
+    score_row = db.execute(f"""
+        SELECT
+          SUM(CASE WHEN pass1_score>=1 AND pass1_score<=3 AND COALESCE(user_state,'new')='new'      THEN 1 ELSE 0 END),
+          SUM(CASE WHEN pass1_score>=1 AND pass1_score<=3 AND user_state='accepted'                  THEN 1 ELSE 0 END),
+          SUM(CASE WHEN pass1_score=4                      AND COALESCE(user_state,'new')='new'      THEN 1 ELSE 0 END),
+          SUM(CASE WHEN pass1_score=4                      AND user_state='accepted'                  THEN 1 ELSE 0 END),
+          SUM(CASE WHEN pass1_score=5                      AND COALESCE(user_state,'new')='new'      THEN 1 ELSE 0 END),
+          SUM(CASE WHEN pass1_score=5                      AND user_state='accepted'                  THEN 1 ELSE 0 END)
+        FROM {table}
+    """).fetchone()
     counts = {
         "total": c("1=1"),
         "new": c("user_state='new'"),
-        "scoreBelow4": c("pass1_score >= 1 AND pass1_score <= 3"),
-        "scoreExact4": c("pass1_score = 4"),
-        "scoreExact5": c("pass1_score = 5"),
+        "accepted": c("user_state='accepted'"),
+        "scoreBelow4New":      score_row[0] or 0,
+        "scoreBelow4Accepted": score_row[1] or 0,
+        "scoreExact4New":      score_row[2] or 0,
+        "scoreExact4Accepted": score_row[3] or 0,
+        "scoreExact5New":      score_row[4] or 0,
+        "scoreExact5Accepted": score_row[5] or 0,
         # closingSoon / closingSoonActionable / highPriority added below (need date parsing)
     }
     win = _window_date()

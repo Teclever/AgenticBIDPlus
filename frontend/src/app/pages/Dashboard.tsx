@@ -150,8 +150,8 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <StatLink to={`/portal/${id}?filter=all`} label="Total Bids" value={counts.total} />
-        <StatLink to={`/portal/${id}?filter=new`} label="New Bids" value={counts.new} />
+        <StatLink to={`/portal/${id}?filter=new`} label="New" value={counts.new} />
+        <StatLink to={`/portal/${id}?filter=all`} label="Accepted" value={counts.accepted} accent />
       </div>
 
       <Link to={`/portal/${id}`}>
@@ -163,9 +163,9 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
       <div className="pt-6 border-t border-gray-100">
         <span className="text-xs text-gray-500 font-medium">Opportunity Distribution</span>
         <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
-          <FilterChipLink portalId={id} filter="score1to3" label="Score 1–3" value={counts.scoreBelow4} colorClass="bg-gray-100 hover:bg-gray-200 text-gray-700" />
-          <FilterChipLink portalId={id} filter="score4" label="Score 4" value={counts.scoreExact4} colorClass="bg-blue-50 hover:bg-blue-100 text-blue-700" />
-          <FilterChipLink portalId={id} filter="score5" label="Score 5" value={counts.scoreExact5} colorClass="bg-blue-100 hover:bg-blue-200 text-blue-800" />
+          <FilterChipLink portalId={id} filter="score1to3" label="Score 1–3" newCount={counts.scoreBelow4New} acceptedCount={counts.scoreBelow4Accepted} colorClass="bg-gray-100 hover:bg-gray-200 text-gray-700" />
+          <FilterChipLink portalId={id} filter="score4" label="Score 4" newCount={counts.scoreExact4New} acceptedCount={counts.scoreExact4Accepted} colorClass="bg-blue-50 hover:bg-blue-100 text-blue-700" />
+          <FilterChipLink portalId={id} filter="score5" label="Score 5" newCount={counts.scoreExact5New} acceptedCount={counts.scoreExact5Accepted} colorClass="bg-blue-100 hover:bg-blue-200 text-blue-800" />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <FilterChipLink portalId={id} filter="highpriority" label="High Priority" value={counts.highPriority} colorClass="bg-green-50 hover:bg-green-100 text-green-700" />
@@ -177,13 +177,17 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
   );
 }
 
-function StatLink({ to, label, value }: { to: string; label: string; value: number }) {
+function StatLink({ to, label, value, accent }: { to: string; label: string; value: number; accent?: boolean }) {
   return (
     <Link
       to={to}
-      className="bg-gray-50 hover:bg-blue-50 border border-gray-200 hover:border-blue-300 rounded-lg px-3 py-2 transition-all hover:scale-105 group"
+      className={`border rounded-lg px-3 py-2 transition-all hover:scale-105 group ${
+        accent
+          ? "bg-green-50 hover:bg-green-100 border-green-200 hover:border-green-300"
+          : "bg-gray-50 hover:bg-blue-50 border-gray-200 hover:border-blue-300"
+      }`}
     >
-      <div className="text-2xl font-bold text-gray-900 group-hover:text-blue-600">
+      <div className={`text-2xl font-bold ${accent ? "text-green-700 group-hover:text-green-800" : "text-gray-900 group-hover:text-blue-600"}`}>
         {value.toLocaleString()}
       </div>
       <div className="text-xs text-gray-500">{label}</div>
@@ -192,17 +196,18 @@ function StatLink({ to, label, value }: { to: string; label: string; value: numb
 }
 
 function FilterChipLink({
-  portalId, filter, label, value, colorClass,
+  portalId, filter, label, newCount, acceptedCount, colorClass,
 }: {
-  portalId: string; filter: BidFilter; label: string; value: number; colorClass: string;
+  portalId: string; filter: BidFilter; label: string; newCount: number; acceptedCount: number; colorClass: string;
 }) {
   return (
     <Link
       to={`/portal/${portalId}?filter=${filter}`}
-      className={`rounded-lg px-3 py-2 transition-colors text-center border border-transparent hover:border-current ${colorClass}`}
+      className={`rounded-lg px-2 py-2 transition-colors text-center border border-transparent hover:border-current ${colorClass}`}
     >
-      <div className="text-lg font-bold leading-tight">{value.toLocaleString()}</div>
-      <div className="text-xs mt-0.5 opacity-80">{label}</div>
+      <div className="text-xs font-semibold opacity-80 mb-1">{label}</div>
+      <div className="text-sm font-bold leading-tight">{newCount.toLocaleString()} <span className="text-xs font-normal opacity-70">new</span></div>
+      <div className="text-xs leading-tight mt-0.5 opacity-80">{acceptedCount.toLocaleString()} acc</div>
     </Link>
   );
 }
