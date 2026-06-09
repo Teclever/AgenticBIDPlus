@@ -70,6 +70,8 @@ _OVERLAY = [
     ("summary_generated_at", "TEXT", None),
     ("summary_coverage", "TEXT", "'full'"),
     ("has_restrictive_eligibility", "INTEGER", "0"),
+    ("is_single_tender", "INTEGER", "0"),
+    ("single_tender_org", "TEXT", None),
     ("user_state", "TEXT", "'new'"),
     ("human_disposition", "TEXT", None),
     ("human_reason", "TEXT", None),
@@ -180,6 +182,19 @@ def ensure_shared(parent: sqlite3.Connection) -> None:
         "UPDATE system_alerts SET status='cleared' "
         "WHERE cleared_at IS NOT NULL AND status='active'"
     )
+
+    # Additive migration: single-tender columns on all portal tables (safe on existing DBs).
+    for _portal in ("gem", "hal", "isro"):
+        _ptable = f"{_portal}_bids"
+        _pt_have = {r[1] for r in parent.execute(f"PRAGMA table_info({_ptable})")}
+        if not _pt_have:
+            continue  # table doesn't exist yet — _ensure_table will add it fresh
+        for _col, _decl in (
+            ("is_single_tender", "INTEGER DEFAULT 0"),
+            ("single_tender_org", "TEXT"),
+        ):
+            if _col not in _pt_have:
+                parent.execute(f"ALTER TABLE {_ptable} ADD COLUMN {_col} {_decl}")
 
 
 def _ensure_table(parent: sqlite3.Connection, portal: str,

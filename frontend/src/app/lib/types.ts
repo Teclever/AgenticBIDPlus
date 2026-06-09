@@ -28,6 +28,7 @@ export interface PortalStats {
     highPriority: number;
     closingSoon: number;
     closingSoonActionable: number;
+    singleTender: number;
   };
 }
 
@@ -45,6 +46,8 @@ export interface BidListItem {
   bidStatus: "OPEN" | "EXTENDED" | "CLOSED";
   hasRestrictiveEligibility: boolean;
   summaryAvailable: boolean;
+  isSingleTender: boolean;
+  singleTenderOrg: string | null;
   closingDate: string | null;
   closingDateRaw: string;
 }
@@ -103,6 +106,8 @@ export interface BidDetail {
   userState: "new" | "accepted" | "rejected";
   bidStatus: "OPEN" | "EXTENDED" | "CLOSED";
   hasRestrictiveEligibility: boolean;
+  isSingleTender: boolean;
+  singleTenderOrg: string | null;
   overview: BidOverview;
   summary: BidSummary;
 }
@@ -123,7 +128,8 @@ export type BidFilter =
   | "score5"
   | "highpriority"
   | "closingsoon"
-  | "closingactionable";
+  | "closingactionable"
+  | "singletender";
 
 export interface NotificationItem {
   portal: PortalId;

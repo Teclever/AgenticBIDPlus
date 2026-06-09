@@ -171,6 +171,15 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
           <FilterChipLink portalId={id} filter="highpriority" label="High Priority" value={counts.highPriority} colorClass="bg-green-50 hover:bg-green-100 text-green-700" />
           <FilterChipLink portalId={id} filter="closingsoon" label="Closing Soon" value={counts.closingSoon} colorClass="bg-orange-50 hover:bg-orange-100 text-orange-700" />
         </div>
+        {(counts.singleTender ?? 0) > 0 && (
+          <Link
+            to={`/portal/${id}?filter=singletender`}
+            className="mt-2 flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors"
+          >
+            <span className="text-xs font-semibold text-amber-800">Single Tender bids</span>
+            <span className="text-sm font-bold text-amber-900">{counts.singleTender}</span>
+          </Link>
+        )}
         <p className="text-xs text-gray-400 mt-2">Closing Soon = score 3–5, not rejected, within 10 days</p>
       </div>
     </div>

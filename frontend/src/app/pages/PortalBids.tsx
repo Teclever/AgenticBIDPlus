@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router";
-import { Search, Filter, Calendar, ChevronRight, X, Loader2, Sparkles, CheckCircle, XCircle } from "lucide-react";
+import { Search, Filter, Calendar, ChevronRight, X, Loader2, Sparkles, CheckCircle, XCircle, Star } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { portalApi } from "../lib/api";
 import {
@@ -23,7 +23,7 @@ const PORTAL_NAMES: Record<PortalId, string> = {
 };
 
 const VALID_FILTERS = new Set<string>([
-  "all", "new", "filtered", "score1to3", "score4", "score5", "highpriority", "closingsoon", "closingactionable",
+  "all", "new", "filtered", "score1to3", "score4", "score5", "highpriority", "closingsoon", "closingactionable", "singletender",
 ]);
 
 export function PortalBids() {
@@ -208,7 +208,7 @@ export function PortalBids() {
             <div className="pt-3 border-t border-gray-200">
               <label className="block text-sm font-medium text-gray-700 mb-2">Quick Filters</label>
               <div className="flex flex-wrap gap-2">
-                {(["all", "new", "filtered", "score1to3", "score4", "score5", "closingsoon", "closingactionable", "highpriority"] as BidFilter[]).map((f) => (
+                {(["all", "new", "filtered", "score1to3", "score4", "score5", "closingsoon", "closingactionable", "highpriority", "singletender"] as BidFilter[]).map((f) => (
                   <button
                     key={f}
                     onClick={() => setQuickFilter(f)}
@@ -275,7 +275,12 @@ export function PortalBids() {
                           ? <Sparkles className="w-4 h-4 text-teal-500" title="AI summary available" />
                           : <Sparkles className="w-4 h-4 text-gray-300" title="No AI summary yet" />}
                       </td>
-                      <td className="px-4 py-4"><StatusBadge status={bid.userState} /></td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1">
+                          <StatusBadge status={bid.userState} />
+                          {bid.isSingleTender && <SingleTenderBadge org={bid.singleTenderOrg} />}
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         {bid.userState === "new" && bid.method === "model" && (
                           <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -333,7 +338,10 @@ export function PortalBids() {
                         <div className="text-blue-600 font-semibold mb-1 text-sm">{bid.bidId}</div>
                         <div className="text-sm text-gray-900 font-medium">{bid.buyer}</div>
                       </div>
-                      <StatusBadge status={bid.userState} />
+                      <div className="flex flex-col items-end gap-1">
+                        <StatusBadge status={bid.userState} />
+                        {bid.isSingleTender && <SingleTenderBadge org={bid.singleTenderOrg} />}
+                      </div>
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2 mb-3">{bid.title}</p>
                     <div className="flex items-center justify-between">
@@ -412,6 +420,23 @@ function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] ?? "bg-gray-100 text-gray-700"}`}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  );
+}
+
+function SingleTenderBadge({ org }: { org: string | null }) {
+  const isTeclever = /teclever/i.test(org ?? "");
+  if (isTeclever) {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">
+        <Star className="w-3 h-3 fill-green-600 text-green-600" />
+        Single Tender – Teclever
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+      Single Tender
     </span>
   );
 }

@@ -327,6 +327,42 @@ def cmd_gate(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_singletender_backfill(_args: argparse.Namespace) -> int:
+    """Scan existing staging-dir .txt files for Single Tender fields and update parent.db.
+    No downloads — only processes bids that already have .txt files on disk."""
+    from bidplus import merge as merge_mod
+    from bidplus import summarize as sum_mod
+    from bidplus.web import mapping as mapping_mod
+
+    parent = merge_mod.connect_parent()
+    merge_mod.ensure_shared(parent)
+
+    total_found = 0
+    for portal in config.PORTALS:
+        rows = parent.execute(
+            f"SELECT * FROM {portal}_bids WHERE COALESCE(is_single_tender, 0) = 0"
+        ).fetchall()
+        found = 0
+        for row in rows:
+            row_dict = {k: row[k] for k in row.keys()}
+            source_pk = mapping_mod.bid_key(row_dict, portal)
+            text = sum_mod._read_staging_text(portal, source_pk)
+            if not text:
+                continue
+            is_st, org = sum_mod._detect_single_tender(text)
+            if not is_st:
+                continue
+            cls = sum_mod._st_class(org)
+            sum_mod._apply_single_tender_db(parent, portal, source_pk, org, cls)
+            found += 1
+            print(f"  [{portal}] {source_pk}: class={cls} org={org!r}")
+        print(f"[singletender-backfill] {portal}: {found} single tender bids detected and updated")
+        total_found += found
+
+    print(f"[singletender-backfill] total: {total_found}")
+    return 0
+
+
 def cmd_run_status(_args: argparse.Namespace) -> int:
     """Report whether a cycle is in progress (finished_at IS NULL) + sticky alerts.
 
@@ -646,6 +682,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Source PK — HAL: <tender_number> <line_number>; ISRO: <tender_id>; GeM: <bid_number>.",
     )
     p_explain.set_defaults(func=cmd_explain)
+
+    p_st_backfill = sub.add_parser(
+        "singletender-backfill",
+        help="Scan existing .txt files for Single Tender field and update parent.db (no downloads).",
+    )
+    p_st_backfill.set_defaults(func=cmd_singletender_backfill)
 
     return parser
 

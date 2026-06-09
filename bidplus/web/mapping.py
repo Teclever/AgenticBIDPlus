@@ -80,6 +80,8 @@ def list_item(row: dict, portal: str) -> dict:
         "bidStatus": row.get("bid_status") or "OPEN",
         "hasRestrictiveEligibility": bool(row.get("has_restrictive_eligibility")),
         "summaryAvailable": bool(row.get("summary_json")),
+        "isSingleTender": bool(row.get("is_single_tender")),
+        "singleTenderOrg": row.get("single_tender_org"),
         "closingDate": _iso_closing(closing_raw),
         "closingDateRaw": closing_raw,
     }
@@ -128,6 +130,8 @@ def detail(row: dict, portal: str) -> dict:
         "userState": row.get("user_state") or "new",
         "bidStatus": row.get("bid_status") or "OPEN",
         "hasRestrictiveEligibility": bool(row.get("has_restrictive_eligibility")),
+        "isSingleTender": bool(row.get("is_single_tender")),
+        "singleTenderOrg": row.get("single_tender_org"),
         "overview": {
             "title": _val(row, f["title"]),
             "buyer": _val(row, f["buyer"]),

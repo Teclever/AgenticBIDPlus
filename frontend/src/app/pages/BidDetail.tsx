@@ -13,6 +13,7 @@ import {
   Sparkles,
   AlertTriangle,
   Loader2,
+  Star,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { portalApi, ApiRequestError } from "../lib/api";
@@ -225,6 +226,31 @@ export function BidDetail() {
           </Button>
         )}
       </div>
+
+      {bid.isSingleTender && (() => {
+        const isTeclever = /teclever/i.test(bid.singleTenderOrg ?? "");
+        return (
+          <div className={`flex items-start gap-3 px-4 py-3 rounded-xl border ${
+            isTeclever
+              ? "bg-green-50 border-green-300"
+              : "bg-amber-50 border-amber-300"
+          }`}>
+            {isTeclever
+              ? <Star className="w-5 h-5 text-green-600 shrink-0 mt-0.5 fill-green-500" />
+              : <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />}
+            <div>
+              <p className={`font-semibold ${isTeclever ? "text-green-900" : "text-amber-900"}`}>
+                {isTeclever ? "Single Tender – Teclever" : "Single Tender bid"}
+              </p>
+              {bid.singleTenderOrg && (
+                <p className={`text-sm mt-0.5 ${isTeclever ? "text-green-800" : "text-amber-800"}`}>
+                  Seller: {bid.singleTenderOrg}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {bid.hasRestrictiveEligibility && (
         <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-300 rounded-xl">

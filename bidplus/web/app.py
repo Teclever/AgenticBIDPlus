@@ -166,6 +166,7 @@ def stats(portal: str, user: dict = Depends(current_user),
         "total": c("1=1"),
         "new": c("user_state='new'"),
         "accepted": c("user_state='accepted'"),
+        "singleTender": c("is_single_tender=1"),
         "scoreBelow4New":      score_row[0] or 0,
         "scoreBelow4Accepted": score_row[1] or 0,
         "scoreExact4New":      score_row[2] or 0,
@@ -210,6 +211,7 @@ _FILTER_WHERE = {
     "score1to3": "pass1_score >= 1 AND pass1_score <= 3",
     "score4": "pass1_score = 4",
     "score5": "pass1_score = 5",
+    "singletender": "is_single_tender = 1",
     # closingsoon / closingactionable / highpriority are date-based → handled in list_bids
 }
 

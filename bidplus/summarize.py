@@ -336,6 +336,78 @@ def render_markdown(summary: BidSummary) -> str:
     return "\n".join(L)
 
 
+# ── single tender detection ───────────────────────────────────────────────────────
+
+_ST_APPLICABLE_RE = re.compile(
+    r"single[\s\-–]*tender[\s\-–]*applicable\s*[:\-]?\s*(yes|हाँ|हां|ha\b)",
+    re.IGNORECASE,
+)
+_ST_ORG_RE = re.compile(
+    r"(?:list\s+of\s+seller\s+org(?:anization)?[^\n]{0,40}?participation"
+    r"|seller\s+org(?:anization)?[^\n]{0,40}?participation)"
+    r"\s*[:\-]?\s*(.{3,150}?)(?:\n|$)",
+    re.IGNORECASE,
+)
+_TECLEVER_RE = re.compile(r"teclever", re.IGNORECASE)
+_MASKED_RE   = re.compile(r"\*{2,}|x{5,}|\?{3,}", re.IGNORECASE)
+
+
+def _detect_single_tender(text: str) -> tuple[bool, str | None]:
+    """Scan extracted text for 'Single Tender Applicable: Yes'.
+    Returns (is_single_tender, org_name_or_None)."""
+    if not _ST_APPLICABLE_RE.search(text):
+        return False, None
+    m = _ST_ORG_RE.search(text)
+    org = m.group(1).strip() if m else None
+    return True, org
+
+
+def _st_class(org: str | None) -> str:
+    """Classify org: 'teclever' | 'masked' | 'other'."""
+    if not org or _MASKED_RE.search(org):
+        return "masked"
+    if _TECLEVER_RE.search(org):
+        return "teclever"
+    return "other"
+
+
+def _apply_single_tender_db(parent: sqlite3.Connection, portal: str,
+                             source_pk: str, org: str | None, cls: str) -> None:
+    """Persist single tender detection results and apply scoring/rejection overrides."""
+    pk = _ADAPTER_PK[portal]
+    vals = source_pk.split("|") if len(pk) > 1 else [source_pk]
+    where = " AND ".join(f"{c}=?" for c in pk)
+    if cls == "other":
+        parent.execute(
+            f"UPDATE {portal}_bids SET is_single_tender=1, single_tender_org=?, "
+            f"auto_rejected=1, user_state='rejected', disposed_at=? WHERE {where}",
+            (org, _now(), *vals),
+        )
+    else:
+        # Teclever or masked → score 5 so it runs through Sonnet automatically
+        parent.execute(
+            f"UPDATE {portal}_bids SET is_single_tender=1, single_tender_org=?, "
+            f"pass1_score=5 WHERE {where}",
+            (org or "***", *vals),
+        )
+    parent.commit()
+
+
+def _read_staging_text(portal: str, source_pk: str) -> str:
+    """Read all .txt extraction files from the staging dir (raw, for detection)."""
+    staging = config.bid_staging_dir(portal, source_pk)
+    if not staging.is_dir():
+        return ""
+    parts: list[str] = []
+    for p in sorted(staging.iterdir()):
+        if p.is_file() and p.suffix == ".txt":
+            try:
+                parts.append(p.read_text(errors="replace"))
+            except Exception:
+                pass
+    return "\n".join(parts)
+
+
 # ── shared fetch + extract ─────────────────────────────────────────────────────────
 
 def _adapter(portal: str):
@@ -369,11 +441,20 @@ def _persist_local(parent: sqlite3.Connection, portal: str, source_pk: str,
 
 def local_extract_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
                       fetch: bool = True) -> dict:
-    """Score-4 path (decision #28 / plan §S6): fetch docs + local regex/heuristic extraction,
-    write `local_extract_json` + `local_extracted=1` + the eligibility pre-flag. NO Sonnet call,
-    NO summary_json. Pass 2 is deferred to a web-app "Retrieve information" click on the staged
-    files. Records any legacy/unreadable docs so the operator sees them in the preview too."""
+    """Score-4 path: fetch docs + local extraction. Promotes to Sonnet if single tender
+    Teclever/masked is detected. Rejects immediately if single tender non-Teclever."""
     ex = _fetch_and_extract(portal, source_pk, fetch)
+    # Single tender detection (uses raw .txt text, not extraction-cleaned text)
+    raw = _read_staging_text(portal, source_pk)
+    is_st, st_org = _detect_single_tender(raw)
+    if is_st:
+        cls = _st_class(st_org)
+        _apply_single_tender_db(parent, portal, source_pk, st_org, cls)
+        if cls == "other":
+            return {"portal": portal, "bid_id": source_pk, "path": "single_tender_rejected",
+                    "org": st_org, "sonnet": False, "single_tender": True}
+        # Teclever or masked: score upgraded to 5, run Sonnet immediately
+        return summarize_bid(portal, source_pk, parent, fetch=False)
     unparsed = [d.doc_name for d in ex.unsupported_docs]
     preflag = bool(ex.local_fields.get("eligibility_preflag")) or ex.single_vendor
     payload = dict(ex.local_fields)
@@ -391,11 +472,18 @@ def local_extract_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
 
 def summarize_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
                   fetch: bool = True, call_fn=None) -> dict:
-    """Summarize one bid. Single-vendor → local record (no Sonnet). Nothing readable →
-    local 'unreadable docs' record (no Sonnet). Else → Sonnet + Pydantic. Persists only the
-    summary to the parent DB. Returns a small status dict."""
+    """Summarize one bid. Includes single tender detection before Sonnet."""
     call_fn = call_fn or _raw_sonnet
     ex = _fetch_and_extract(portal, source_pk, fetch)
+    # Single tender detection — run first so non-Teclever bids skip Sonnet entirely
+    raw = _read_staging_text(portal, source_pk)
+    is_st, st_org = _detect_single_tender(raw)
+    if is_st:
+        cls = _st_class(st_org)
+        _apply_single_tender_db(parent, portal, source_pk, st_org, cls)
+        if cls == "other":
+            return {"portal": portal, "bid_id": source_pk, "path": "single_tender_rejected",
+                    "org": st_org, "sonnet": False, "single_tender": True}
     unparsed = [d.doc_name for d in ex.unsupported_docs]
 
     # (1) Single-vendor — decided locally, NO Sonnet call.
