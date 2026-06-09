@@ -44,6 +44,8 @@ export function BidDetail() {
   const [generateError, setGenerateError] = useState<string | null>(null);  // initialised from generationState in the load effect
   const [otherBidGenerating, setOtherBidGenerating] = useState<string | null>(null);
   const [disposing, setDisposing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const _genKey = `${portal}:${decodedBidKey}`;
 
@@ -54,8 +56,9 @@ export function BidDetail() {
   useEffect(() => {
     if (!portal || !decodedBidKey) return;
     setLoading(true);
-    setBid(null);       // clear stale data from previous bid immediately
-    setDisposing(false); // reset in-flight disposition state on bid change
+    setBid(null);
+    setDisposing(false);
+    setDownloadError(null);
     _syncOtherGenerating();
     // Restore any error that survived navigation
     setGenerateError(getGenerationError(_genKey));
@@ -347,16 +350,48 @@ export function BidDetail() {
 
       <section className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-base font-semibold text-gray-900 mb-3">Documents</h2>
-        <a
-          href={portalApi.documentDownloadUrl(portal as PortalId, decodedBidKey)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+        <button
+          onClick={async () => {
+            setDownloading(true);
+            setDownloadError(null);
+            try {
+              const res = await fetch(
+                portalApi.documentDownloadUrl(portal as PortalId, decodedBidKey),
+                { credentials: "include" },
+              );
+              if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                throw new Error(body?.error?.message || `Download failed (${res.status})`);
+              }
+              const blob = await res.blob();
+              const disposition = res.headers.get("Content-Disposition") ?? "";
+              const filename = disposition.match(/filename="?([^";\n]+)"?/)?.[1] ?? "documents";
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = filename;
+              a.click();
+              URL.revokeObjectURL(url);
+            } catch (e) {
+              setDownloadError(e instanceof Error ? e.message : "Download failed. Try again.");
+            } finally {
+              setDownloading(false);
+            }
+          }}
+          disabled={downloading}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium rounded-lg transition-colors"
         >
-          <Download className="w-4 h-4" />
-          Download documents
-        </a>
-        <p className="mt-2 text-xs text-gray-400">
-          Fetches from the portal if not cached locally. May take a moment for large bids.
-        </p>
+          {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {downloading ? "Downloading…" : "Download documents"}
+        </button>
+        {downloadError && (
+          <p className="mt-2 text-sm text-red-600">{downloadError}</p>
+        )}
+        {!downloadError && (
+          <p className="mt-2 text-xs text-gray-400">
+            Fetches from the portal if not cached locally. May take a moment for large bids.
+          </p>
+        )}
       </section>
 
     </div>
