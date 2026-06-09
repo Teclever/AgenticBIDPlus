@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import {
   ArrowLeft,
@@ -46,6 +46,7 @@ export function BidDetail() {
   const [disposing, setDisposing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const downloadAbortRef = useRef<AbortController | null>(null);
 
   const _genKey = `${portal}:${decodedBidKey}`;
 
@@ -55,9 +56,11 @@ export function BidDetail() {
 
   useEffect(() => {
     if (!portal || !decodedBidKey) return;
+    downloadAbortRef.current?.abort(); // cancel any in-flight download from previous bid
     setLoading(true);
     setBid(null);
     setDisposing(false);
+    setDownloading(false);
     setDownloadError(null);
     _syncOtherGenerating();
     // Restore any error that survived navigation
@@ -352,12 +355,14 @@ export function BidDetail() {
         <h2 className="text-base font-semibold text-gray-900 mb-3">Documents</h2>
         <button
           onClick={async () => {
+            const controller = new AbortController();
+            downloadAbortRef.current = controller;
             setDownloading(true);
             setDownloadError(null);
             try {
               const res = await fetch(
                 portalApi.documentDownloadUrl(portal as PortalId, decodedBidKey),
-                { credentials: "include" },
+                { credentials: "include", signal: controller.signal },
               );
               if (!res.ok) {
                 const body = await res.json().catch(() => ({}));
@@ -373,9 +378,10 @@ export function BidDetail() {
               a.click();
               URL.revokeObjectURL(url);
             } catch (e) {
+              if ((e as Error).name === "AbortError") return; // navigated away — silent
               setDownloadError(e instanceof Error ? e.message : "Download failed. Try again.");
             } finally {
-              setDownloading(false);
+              if (!controller.signal.aborted) setDownloading(false);
             }
           }}
           disabled={downloading}
