@@ -125,18 +125,16 @@ export function BidDetail() {
   };
 
   const navigateToNext = async () => {
-    if (!hasReturnCtx) {
-      navigate(-1);
-      return;
-    }
     try {
       const data = await portalApi.bids(portal, { filter: rFilter, page: rPage, pageSize: PAGE_SIZE });
-      if (data.items.length === 0) {
+      // Filters like score1to3 don't exclude rejected bids, so the acted-on bid may still
+      // appear in the refreshed list. Skip it explicitly and take the first bid after rIdx.
+      const next = data.items.slice(rIdx).find(b => b.bidKey !== decodedBidKey);
+      if (!next) {
         navigate(`/portal/${portal}?filter=${rFilter}`);
         return;
       }
-      const nextIdx = Math.min(rIdx, data.items.length - 1);
-      const next = data.items[nextIdx];
+      const nextIdx = data.items.indexOf(next);
       navigate(`${bidDetailPath(portal, next.bidKey)}?rfilter=${rFilter}&rpage=${rPage}&ridx=${nextIdx}`);
     } catch {
       navigate(`/portal/${portal}?filter=${rFilter}`);
@@ -148,11 +146,12 @@ export function BidDetail() {
     setDisposing(true);
     try {
       const { userState } = await portalApi.disposition(portal, decodedBidKey, action);
-      if (action === "reset") {
+      if (action === "reset" || !hasReturnCtx) {
+        // No list context — update state in place rather than navigating blindly
         setBid({ ...bid, userState: userState as BidDetailType["userState"] });
         setDisposing(false);
       } else {
-        await navigateToNext(); // component will unmount on navigation
+        await navigateToNext();
       }
     } catch {
       setDisposing(false);
