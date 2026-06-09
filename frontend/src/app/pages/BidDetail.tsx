@@ -53,6 +53,8 @@ export function BidDetail() {
   useEffect(() => {
     if (!portal || !decodedBidKey) return;
     setLoading(true);
+    setBid(null);       // clear stale data from previous bid immediately
+    setDisposing(false); // reset in-flight disposition state on bid change
     _syncOtherGenerating();
     // Restore any error that survived navigation
     setGenerateError(getGenerationError(_genKey));
@@ -165,7 +167,7 @@ export function BidDetail() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600">Bid not found</p>
-        <Button onClick={() => navigate(-1)} className="mt-4">
+        <Button onClick={() => navigate(`/portal/${portal}`)} className="mt-4">
           Back to list
         </Button>
       </div>
@@ -182,7 +184,7 @@ export function BidDetail() {
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => hasReturnCtx ? navigate(`/portal/${portal}?filter=${rFilter}`) : navigate(-1)}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors self-start"
         >
           <ArrowLeft className="w-5 h-5" />
