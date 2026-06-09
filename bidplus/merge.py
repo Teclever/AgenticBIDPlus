@@ -143,7 +143,8 @@ def ensure_shared(parent: sqlite3.Connection) -> None:
         "CREATE TABLE IF NOT EXISTS scrape_runs ("
         " id INTEGER PRIMARY KEY, started_at TEXT, finished_at TEXT, tool TEXT,"
         " status TEXT, new_count INTEGER, updated_count INTEGER, closed_count INTEGER,"
-        " scored_count INTEGER, local_extracted_count INTEGER, summarized_count INTEGER,"
+        " scored_count INTEGER, keyword_scored_count INTEGER, model_scored_count INTEGER,"
+        " local_extracted_count INTEGER, summarized_count INTEGER,"
         " summary_failed_count INTEGER, error_summary TEXT, stage_timings_json TEXT)"
     )
     parent.execute(
@@ -151,6 +152,15 @@ def ensure_shared(parent: sqlite3.Connection) -> None:
         " id INTEGER PRIMARY KEY, raised_at TEXT, run_id INTEGER, reason TEXT,"
         " cleared_at TEXT, cleared_by INTEGER)"
     )
+    # Additive migration: add scrape_runs scoring breakdown columns if absent.
+    _sr_have = {r[1] for r in parent.execute("PRAGMA table_info(scrape_runs)")}
+    for _col, _decl in (
+        ("keyword_scored_count", "INTEGER DEFAULT 0"),
+        ("model_scored_count",   "INTEGER DEFAULT 0"),
+    ):
+        if _col not in _sr_have:
+            parent.execute(f"ALTER TABLE scrape_runs ADD COLUMN {_col} {_decl}")
+
     # Additive migration: add typed-alert columns if absent (safe on existing DBs).
     _have = {r[1] for r in parent.execute("PRAGMA table_info(system_alerts)")}
     for _col, _decl in (

@@ -53,11 +53,12 @@ def record_portal(parent: sqlite3.Connection, result: RunResult,
     p2 = pass2 or {}
     parent.execute(
         "INSERT INTO scrape_runs (started_at, finished_at, tool, status, new_count, "
-        "updated_count, closed_count, scored_count, local_extracted_count, "
-        "summarized_count, summary_failed_count, error_summary, stage_timings_json) "
-        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "updated_count, closed_count, scored_count, keyword_scored_count, model_scored_count, "
+        "local_extracted_count, summarized_count, summary_failed_count, error_summary, "
+        "stage_timings_json) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (started_at, finished_at, result.portal, result.status, result.new_count,
          result.updated_count, result.closed_count, result.scored_count,
+         result.keyword_scored_count, result.model_scored_count,
          p2.get("local_extracted", 0), p2.get("summarized", 0), p2.get("summary_failed", 0),
          result.error_summary, json.dumps(merged)),
     )
@@ -88,13 +89,16 @@ def finalize_cycle(parent: sqlite3.Connection, overall_id: int,
     p2 = pass2_totals or {}
     parent.execute(
         "UPDATE scrape_runs SET finished_at=?, status=?, new_count=?, updated_count=?, "
-        "closed_count=?, scored_count=?, local_extracted_count=?, summarized_count=?, "
+        "closed_count=?, scored_count=?, keyword_scored_count=?, model_scored_count=?, "
+        "local_extracted_count=?, summarized_count=?, "
         "summary_failed_count=?, error_summary=?, stage_timings_json=? WHERE id=?",
         (_now(), status,
          sum(r.new_count for r in results),
          sum(r.updated_count for r in results),
          sum(r.closed_count for r in results),
          sum(r.scored_count for r in results),
+         sum(r.keyword_scored_count for r in results),
+         sum(r.model_scored_count for r in results),
          p2.get("local_extracted", 0), p2.get("summarized", 0), p2.get("summary_failed", 0),
          error_summary, json.dumps(timings or {}), overall_id),
     )

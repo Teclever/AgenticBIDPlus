@@ -50,6 +50,8 @@ class RunResult:
     updated_count: int = 0
     closed_count: int = 0
     scored_count: int = 0
+    keyword_scored_count: int = 0
+    model_scored_count: int = 0
     error_summary: str | None = None
     stage_timings: dict[str, float] = field(default_factory=dict)
 

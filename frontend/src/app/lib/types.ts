@@ -149,6 +149,8 @@ export interface PortalRunSummary {
   status: string;
   newCount: number;
   scoredCount: number;
+  keywordScoredCount: number;
+  modelScoredCount: number;
   summarizedCount: number;
   errorSummary: string | null;
 }

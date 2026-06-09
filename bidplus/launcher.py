@@ -171,8 +171,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             s0 = time.monotonic()
             try:
                 score_info = scoring.score_portal(portal, parent, mode=mode)
-                result.scored_count = (score_info.get("model_scored", 0)
-                                       + score_info.get("keyword_eliminated", 0))
+                result.keyword_scored_count = score_info.get("keyword_eliminated", 0)
+                result.model_scored_count = score_info.get("model_scored", 0)
+                result.scored_count = result.keyword_scored_count + result.model_scored_count
                 runs.auto_clear_scoring_alerts(
                     parent, portal, str(adapter.tool_db_path()), pk_cols)
                 if score_info.get("unscored_left", 0) > 0:

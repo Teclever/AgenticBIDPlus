@@ -159,7 +159,11 @@ function RunCard({ run }: { run: ScrapeRun }) {
               <span className="uppercase font-medium w-10">{p.portal}</span>
               <span className="flex gap-2 text-gray-500">
                 <span>{p.newCount} new</span>
-                <span>{p.scoredCount} scored</span>
+                {p.keywordScoredCount > 0 && <span>{p.keywordScoredCount} auto</span>}
+                {p.modelScoredCount > 0 && <span>{p.modelScoredCount} AI scored</span>}
+                {p.keywordScoredCount === 0 && p.modelScoredCount === 0 && p.scoredCount > 0 && (
+                  <span>{p.scoredCount} scored</span>
+                )}
                 {p.summarizedCount > 0 && <span>{p.summarizedCount} summarised</span>}
                 {p.status !== "success" && (
                   <span className="text-amber-600 font-medium capitalize">{p.status}</span>
