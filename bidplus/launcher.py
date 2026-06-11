@@ -363,6 +363,74 @@ def cmd_singletender_backfill(_args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_boost_backfill(_args: argparse.Namespace) -> int:
+    """Promote existing bids matching a boost phrase (e.g. 'test rig') to score 5.
+    Scope: user_state='new' only — closed/accepted/rejected bids are left alone.
+    Writes BOTH the tool DB and parent.db (the merge mirrors tool-owned scoring
+    columns, so a parent-only update would be clobbered on the next merge)."""
+    import sqlite3 as _sqlite3
+
+    from bidplus import eliminator
+    from bidplus import merge as merge_mod
+
+    parent = merge_mod.connect_parent()
+    merge_mod.ensure_shared(parent)
+    eliminator.ensure_boost_seed(parent)
+    terms = eliminator.load_terms(parent)
+    if not terms.boost_phrases:
+        print("[boost-backfill] no active boost phrases — nothing to do")
+        return 0
+    print(f"[boost-backfill] boost phrases: {terms.boost_phrases}")
+
+    total = 0
+    for portal in config.PORTALS:
+        adapter = _ADAPTERS[portal]()
+        spec = adapter._SCORING
+        tool_table, pk_cols, text_col = spec["table"], tuple(spec["pk"]), spec["text"]
+        ptable = f"{portal}_bids"
+        pk_where = " AND ".join(f"{c}=?" for c in pk_cols)
+
+        rows = parent.execute(
+            f"SELECT {', '.join(pk_cols)}, {text_col} AS t, pass1_score, pass1_rationale "
+            f"FROM {ptable} WHERE COALESCE(user_state,'new')='new' "
+            f"AND COALESCE(bid_status,'') <> 'CLOSED' "
+            f"AND pass1_score IS NOT NULL AND pass1_score < 5"
+        ).fetchall()
+
+        matches = []
+        for r in rows:
+            term = eliminator.boost_match(r["t"], terms.boost_phrases)
+            if term:
+                matches.append((r, term))
+        if not matches:
+            print(f"[boost-backfill] {portal}: 0 matches")
+            continue
+
+        tool = _sqlite3.connect(adapter.tool_db_path())
+        try:
+            for r, term in matches:
+                pk_vals = tuple(r[c] for c in pk_cols)
+                rationale = f"[auto-promoted: {term}] {r['pass1_rationale'] or ''}".strip()
+                set_sql = ("SET pass1_score=5, pass1_method='model', "
+                           "pass1_eliminated_by=NULL, auto_rejected=0, pass1_rationale=?")
+                tool.execute(f"UPDATE {tool_table} {set_sql} WHERE {pk_where}",
+                             (rationale, *pk_vals))
+                parent.execute(f"UPDATE {ptable} {set_sql} WHERE {pk_where}",
+                               (rationale, *pk_vals))
+                print(f"  [{portal}] {'|'.join(str(v) for v in pk_vals)}: "
+                      f"score {r['pass1_score']} → 5 ({term})")
+            tool.commit()
+            parent.commit()
+        finally:
+            tool.close()
+        print(f"[boost-backfill] {portal}: {len(matches)} bid(s) promoted to 5")
+        total += len(matches)
+
+    print(f"[boost-backfill] total promoted: {total} "
+          f"(unsummarized ones will be Sonnet-summarized on the next nightly run)")
+    return 0
+
+
 def cmd_run_status(_args: argparse.Namespace) -> int:
     """Report whether a cycle is in progress (finished_at IS NULL) + sticky alerts.
 
@@ -688,6 +756,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Scan existing .txt files for Single Tender field and update parent.db (no downloads).",
     )
     p_st_backfill.set_defaults(func=cmd_singletender_backfill)
+
+    p_boost = sub.add_parser(
+        "boost-backfill",
+        help="Promote existing NEW bids matching a boost phrase (e.g. 'test rig') to score 5.",
+    )
+    p_boost.set_defaults(func=cmd_boost_backfill)
 
     return parser
 

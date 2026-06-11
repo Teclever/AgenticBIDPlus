@@ -124,6 +124,7 @@ class Terms:
     pos_phrases: list = field(default_factory=list)
     pos_tokens: set = field(default_factory=set)
     stop: set = field(default_factory=set)
+    boost_phrases: list = field(default_factory=list)  # auto-promote to score 5
 
 
 def load_terms(parent: sqlite3.Connection) -> Terms:
@@ -143,7 +144,38 @@ def load_terms(parent: sqlite3.Connection) -> Terms:
             t.pos_tokens.add(term)
         elif lt == "stop":
             t.stop.add(term)
+        elif lt == "boost":
+            t.boost_phrases.append(term)
     return t
+
+
+# Seed terms for the score-5 boost list. INSERT OR IGNORE so reruns and
+# governance-added rows are never clobbered; independent of the main seed
+# (which no-ops once the table is populated).
+_BOOST_SEED = ["test rig"]
+
+
+def ensure_boost_seed(parent: sqlite3.Connection) -> None:
+    now = _now()
+    for term in _BOOST_SEED:
+        parent.execute(
+            "INSERT OR IGNORE INTO eliminator_terms "
+            "(list_type, kind, term, is_guarded, active, source, created_at) "
+            "VALUES ('boost','phrase',?,0,1,'seed',?)",
+            (term, now),
+        )
+    parent.commit()
+
+
+def boost_match(text: str, boost_phrases: list) -> str | None:
+    """First boost phrase matching ``text`` (case-insensitive, whitespace/hyphen
+    tolerant, word-boundary anchored, optional plural), or None."""
+    low = text or ""
+    for term in boost_phrases:
+        pat = r"\b" + r"[\s\-]*".join(re.escape(w) for w in term.split()) + r"s?\b"
+        if re.search(pat, low, re.IGNORECASE):
+            return term
+    return None
 
 
 # ── the two-pass gate ──────────────────────────────────────────────────────────────

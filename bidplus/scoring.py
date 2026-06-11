@@ -253,6 +253,7 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
     adapter = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
     spec = adapter._SCORING
     table, pk = spec["table"], spec["pk"]
+    eliminator.ensure_boost_seed(parent)
     terms = eliminator.load_terms(parent)
     promoted = governance.promoted_bid_ids(parent, portal)
     cap_ref = runtime.capability_reference_path().read_text()
@@ -262,9 +263,16 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
     if limit:
         records = records[:limit]
 
+    # Boost-matched bids bypass the eliminator and are forced to score 5 after Haiku.
+    boosted: dict[str, str] = {}
+    for r in records:
+        term = eliminator.boost_match(r.text, terms.boost_phrases)
+        if term:
+            boosted[r.bid_id] = term
+
     survivors, eliminated, would = [], [], 0
     for r in records:
-        if r.bid_id in promoted:          # human-confirmed in-scope → always Haiku
+        if r.bid_id in promoted or r.bid_id in boosted:   # confirmed in-scope → always Haiku
             survivors.append(r)
             continue
         matched = eliminator.eliminate(r.text, terms)
@@ -288,12 +296,16 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
             if res is None:
                 unscored_ids.append(r.bid_id)
                 continue  # left NULL, re-queued next run (never a fake 0)
+            score, rationale = res["pass1_score"], res["pass1_rationale"]
+            if r.bid_id in boosted:
+                score = 5
+                rationale = f"[auto-promoted: {boosted[r.bid_id]}] {rationale or ''}".strip()
             conn.execute(
                 f"UPDATE {table} SET pass1_score=?, pass1_confidence=?, pass1_domain=?, "
                 f"pass1_rationale=?, pass1_method='model', pass1_eliminated_by=NULL, "
                 f"auto_rejected=0 WHERE {pk_where}",
-                (res["pass1_score"], res["pass1_confidence"], res["pass1_domain"],
-                 res["pass1_rationale"], *r.pk),
+                (score, res["pass1_confidence"], res["pass1_domain"],
+                 rationale, *r.pk),
             )
             model_n += 1
         for r, matched in eliminated:
@@ -309,6 +321,6 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
 
     return {"portal": portal, "mode": mode, "candidates": len(records),
             "would_eliminate": would, "model_scored": model_n,
-            "keyword_eliminated": len(eliminated),
+            "keyword_eliminated": len(eliminated), "boosted": len(boosted),
             "unscored_left": len(survivors) - model_n,
             "unscored_ids": unscored_ids}
