@@ -117,16 +117,21 @@ _MAX_SPEC_CHARS = 2000  # chars kept per spec doc (token budget control)
 
 # URLs to skip entirely — not spec content
 _SKIP_URL_RE = re.compile(
-    r'downloadOmppdfile|\.xlsx|\.csv|gtc/pdfByDate|downloadMseMiiDoc|'
+    r'downloadOmppdfile|\.csv|gtc/pdfByDate|downloadMseMiiDoc|'
     r'admin\.gem\.gov\.in|bidsla/|BoqDocument|BoqLineItems|meet\.google',
     re.I
 )
+
+# Document extensions the orchestrator fetch accepts (legacy .xls/.doc are staged too —
+# extraction flags them unreadable, which the operator tallies).
+_DOC_EXT_RE = re.compile(r'\.(pdf|xlsx|xlsm|xls|docx|doc)(\?|$)', re.I)
 
 # Priority order: lower number = fetch first
 # Matches are tested against the full URL
 _SPEC_URL_RANKS = [
     (1, re.compile(r'SpecificationDocument', re.I)),
-    (2, re.compile(r'/(?:SOW|scope[_\-]?of[_\-]?work|tech[_\-]?spec|rfq|specification)[^/]*\.pdf', re.I)),
+    (2, re.compile(r'/(?:SOW|scope[_\-]?of[_\-]?work|tech[_\-]?spec|rfq|specification)[^/]*'
+                   r'\.(?:pdf|xlsx|xlsm|xls|docx|doc)', re.I)),
     (3, re.compile(r'bidplus\.gem\.gov\.in/bidding/bid/documentdownload/', re.I)),
     (4, re.compile(r'bidplus\.gem\.gov\.in/resources/upload_nas/.*?/biddoc/', re.I)),
     (5, re.compile(r'fulfilment\.gem\.gov\.in/contract/slafds.*\.pdf', re.I)),
@@ -137,9 +142,9 @@ def _rank_spec_url(url: str) -> int | None:
     """Return priority rank (1 = highest) or None if URL should be skipped."""
     if _SKIP_URL_RE.search(url):
         return None
-    # Must end in .pdf or be a fulfilment slafds URL (path param ends in .pdf)
+    # Must carry a known document extension or be a fulfilment slafds URL
     lower = url.lower()
-    if not (lower.endswith('.pdf') or ('slafds' in lower and '.pdf' in lower)):
+    if not (_DOC_EXT_RE.search(lower) or ('slafds' in lower and '.pdf' in lower)):
         return None
     for rank, pat in _SPEC_URL_RANKS:
         if pat.search(url):
@@ -192,6 +197,34 @@ def _download_spec_pdf(url: str, session) -> bytes | None:
         return resp.content
     except Exception:
         return None
+
+
+def _download_spec_doc(url: str, session) -> tuple[bytes, str] | None:
+    """
+    Download a spec document of any supported format (S6 orchestrator path).
+    Validates by magic bytes, not extension: PDF (%PDF), modern Office zip (PK),
+    legacy OLE Office (D0 CF 11 E0). HTML/error pages fail all three and are dropped.
+    Returns (content, ".ext") or None.
+    """
+    try:
+        if 'bidplus.gem.gov.in' in url:
+            resp = session.get(url, timeout=20)
+        else:
+            resp = requests.get(url, timeout=20)
+        resp.raise_for_status()
+        content = resp.content
+    except Exception:
+        return None
+
+    m = _DOC_EXT_RE.search(url.lower())
+    url_ext = m.group(1) if m else None
+    if content.startswith(b'%PDF'):
+        return content, '.pdf'
+    if content.startswith(b'PK\x03\x04'):
+        return content, f'.{url_ext}' if url_ext in ('xlsx', 'xlsm', 'docx') else '.xlsx'
+    if content.startswith(b'\xd0\xcf\x11\xe0'):
+        return content, f'.{url_ext}' if url_ext in ('xls', 'doc') else '.xls'
+    return None
 
 
 def _save_spec_pdf(pdf_bytes: bytes, bid_number: str, index: int):

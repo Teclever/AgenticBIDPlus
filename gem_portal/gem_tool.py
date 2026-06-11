@@ -268,7 +268,7 @@ def cmd_fetch_docs(bid_number: str | None, out_dir: str | None) -> None:
     """
     from pathlib import Path
     from modules.csrf_handler import get_session
-    from modules.scorer_pass2 import download_pdf, extract_spec_links, _download_spec_pdf
+    from modules.scorer_pass2 import download_pdf, extract_spec_links, _download_spec_doc
 
     if not bid_number or not out_dir:
         print("Error: fetch-docs requires <bid_number> --out <dir>.", file=sys.stderr)
@@ -303,11 +303,12 @@ def cmd_fetch_docs(bid_number: str | None, out_dir: str | None) -> None:
     links = extract_spec_links(primary, max_docs=None)  # NO cap — all meaningful links
     session, _ = get_session()
     for i, url in enumerate(links, 1):
-        b = _download_spec_pdf(url, session)
-        if not b:
-            print(f"[fetch-docs] spec {i} skipped (download failed / not PDF): {url[:80]}")
+        result = _download_spec_doc(url, session)
+        if not result:
+            print(f"[fetch-docs] spec {i} skipped (download failed / unrecognised format): {url[:80]}")
             continue
-        if _save(b, f"{safe}_spec_{i}.pdf"):
+        b, ext = result
+        if _save(b, f"{safe}_spec_{i}{ext}"):
             saved += 1
         else:
             dups += 1
