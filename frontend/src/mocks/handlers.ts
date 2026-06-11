@@ -58,12 +58,12 @@ function filterBids(
   items: BidListItem[],
   filter: string | null,
   status: string | null,
-  search: string | null,
+  search: string[],
 ): BidListItem[] {
   let result = [...items];
 
-  if (search) {
-    const q = search.toLowerCase();
+  for (const term of search) {
+    const q = term.toLowerCase();
     result = result.filter(
       (b) =>
         b.title.toLowerCase().includes(q) ||
@@ -211,7 +211,7 @@ export const handlers = [
     const url = new URL(request.url);
     const filter = url.searchParams.get("filter");
     const status = url.searchParams.get("status");
-    const search = url.searchParams.get("search");
+    const search = url.searchParams.getAll("search");
     const page = Number(url.searchParams.get("page") ?? 1);
     const pageSize = Number(url.searchParams.get("pageSize") ?? 50);
 
@@ -261,6 +261,14 @@ export const handlers = [
       };
       generatedSummaries.set(decoded, summary);
       return HttpResponse.json({ summary });
+    },
+  ),
+
+  http.post(
+    `${API_BASE}/api/portals/:portal/bids/bulk-disposition`,
+    async ({ request }) => {
+      const body = (await request.json()) as { bidKeys: string[]; action: string };
+      return HttpResponse.json({ updated: body.bidKeys.length, missing: [] });
     },
   ),
 

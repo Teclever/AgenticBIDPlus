@@ -5,6 +5,8 @@ import {
   Ban,
   Building2,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   Download,
   MapPin,
   CheckCircle,
@@ -32,11 +34,18 @@ export function BidDetail() {
   const portal = portalId as PortalId;
   const decodedBidKey = bidKey ? decodeURIComponent(bidKey) : "";
 
-  // Return context — set by PortalBids when navigating into a bid
-  const rFilter = (searchParams.get("rfilter") ?? "all") as BidFilter;
-  const rPage   = parseInt(searchParams.get("rpage") ?? "1", 10);
-  const rIdx    = parseInt(searchParams.get("ridx")  ?? "-1", 10);
-  const hasReturnCtx = rIdx >= 0;
+  // Return context — set by PortalBids when navigating into a bid.
+  // `ret` is the list page's complete query string (filter + status + search + page),
+  // so back / next-bid operate on exactly the list the user was looking at.
+  const retRaw = searchParams.get("ret");
+  const rIdx = parseInt(searchParams.get("ridx") ?? "-1", 10);
+  const hasReturnCtx = retRaw !== null && rIdx >= 0;
+  const retParams = new URLSearchParams(retRaw ?? "");
+  const rFilter = (retParams.get("filter") ?? "all") as BidFilter;
+  const rStatus = retParams.get("status") ?? undefined;
+  const rSearch = retParams.getAll("search");
+  const rPage = Math.max(1, parseInt(retParams.get("page") ?? "1", 10) || 1);
+  const listUrl = `/portal/${portal}${retRaw ? `?${retRaw}` : ""}`;
 
   const [bid, setBid] = useState<BidDetailType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -132,20 +141,57 @@ export function BidDetail() {
     }
   };
 
+  // Fetch the exact list the user came from (filter + status + search + page).
+  const fetchReturnList = () =>
+    portalApi.bids(portal, {
+      filter: rFilter,
+      status: rStatus,
+      search: rSearch.length ? rSearch : undefined,
+      page: rPage,
+      pageSize: PAGE_SIZE,
+    });
+
+  const detailUrl = (key: string, idx: number) =>
+    `${bidDetailPath(portal, key)}?ret=${encodeURIComponent(retRaw ?? "")}&ridx=${idx}`;
+
   const navigateToNext = async () => {
     try {
-      const data = await portalApi.bids(portal, { filter: rFilter, page: rPage, pageSize: PAGE_SIZE });
-      // Filters like score1to3 don't exclude rejected bids, so the acted-on bid may still
-      // appear in the refreshed list. Skip it explicitly and take the first bid after rIdx.
+      const data = await fetchReturnList();
+      // Some filters keep the acted-on bid in the list (e.g. score1to3 after a reject);
+      // others drop it (status=new). Skip the current key explicitly either way.
       const next = data.items.slice(rIdx).find(b => b.bidKey !== decodedBidKey);
       if (!next) {
-        navigate(`/portal/${portal}?filter=${rFilter}`);
+        navigate(listUrl);
         return;
       }
-      const nextIdx = data.items.indexOf(next);
-      navigate(`${bidDetailPath(portal, next.bidKey)}?rfilter=${rFilter}&rpage=${rPage}&ridx=${nextIdx}`);
+      navigate(detailUrl(next.bidKey, data.items.indexOf(next)));
     } catch {
-      navigate(`/portal/${portal}?filter=${rFilter}`);
+      navigate(listUrl);
+    }
+  };
+
+  const [stepping, setStepping] = useState<"prev" | "next" | null>(null);
+
+  // Prev/Next header buttons — move through the return list WITHOUT a disposition,
+  // so an already-accepted/rejected bid is never a dead end.
+  const navigateStep = async (dir: -1 | 1) => {
+    if (!hasReturnCtx || stepping) return;
+    setStepping(dir === 1 ? "next" : "prev");
+    try {
+      const data = await fetchReturnList();
+      const cur = data.items.findIndex(b => b.bidKey === decodedBidKey);
+      // If the current bid dropped out of the list (disposed under status=new),
+      // the bid now at rIdx is effectively the "next" one.
+      const target = cur >= 0 ? cur + dir : (dir === 1 ? rIdx : rIdx - 1);
+      if (target < 0 || target >= data.items.length) {
+        navigate(listUrl);
+        return;
+      }
+      navigate(detailUrl(data.items[target].bidKey, target));
+    } catch {
+      navigate(listUrl);
+    } finally {
+      setStepping(null);
     }
   };
 
@@ -190,12 +236,37 @@ export function BidDetail() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <button
-          onClick={() => hasReturnCtx ? navigate(`/portal/${portal}?filter=${rFilter}`) : navigate(-1)}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors self-start"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1 self-start">
+          <button
+            onClick={() => hasReturnCtx ? navigate(listUrl) : navigate(-1)}
+            title="Back to list"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          {hasReturnCtx && (
+            <>
+              <button
+                onClick={() => navigateStep(-1)}
+                disabled={!!stepping}
+                title="Previous bid in list"
+                className="flex items-center gap-0.5 px-2 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+              >
+                {stepping === "prev" ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronLeft className="w-4 h-4" />}
+                Prev
+              </button>
+              <button
+                onClick={() => navigateStep(1)}
+                disabled={!!stepping}
+                title="Next bid in list"
+                className="flex items-center gap-0.5 px-2 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40"
+              >
+                Next
+                {stepping === "next" ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChevronRight className="w-4 h-4" />}
+              </button>
+            </>
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-all">{bid.bidId}</h1>
           {bid.overview.buyer && (

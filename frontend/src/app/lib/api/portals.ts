@@ -18,7 +18,7 @@ export const portalApi = {
     params: {
       page?: number;
       pageSize?: number;
-      search?: string;
+      search?: string[];
       filter?: BidFilter;
       status?: string;
     } = {},
@@ -26,12 +26,26 @@ export const portalApi = {
     const qs = new URLSearchParams();
     qs.set("page", String(params.page ?? 1));
     qs.set("pageSize", String(params.pageSize ?? 50));
-    if (params.search) qs.set("search", params.search);
+    for (const term of params.search ?? []) {
+      if (term.trim()) qs.append("search", term.trim());
+    }
     if (params.filter && params.filter !== "all") qs.set("filter", params.filter);
     if (params.status && params.status !== "all") qs.set("status", params.status);
     try {
       const res = await apiClient.get<Paginated<BidListItem>>(
         `/api/portals/${portal}/bids?${qs.toString()}`,
+      );
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
+  bulkDisposition: async (portal: PortalId, bidKeys: string[], action: "accepted" | "rejected") => {
+    try {
+      const res = await apiClient.post<{ updated: number; missing: string[] }>(
+        `/api/portals/${portal}/bids/bulk-disposition`,
+        { bidKeys, action },
       );
       return res.data;
     } catch (e) {

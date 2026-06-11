@@ -26,6 +26,10 @@ const VALID_FILTERS = new Set<string>([
   "all", "new", "filtered", "score1to3", "score4", "score5", "highpriority", "closingsoon", "closingactionable", "singletender",
 ]);
 
+function isSelectable(bid: BidListItem): boolean {
+  return bid.userState === "new" && bid.method === "model";
+}
+
 export function PortalBids() {
   const { user, loading: authLoading } = useAuth();
   const { portalId } = useParams<{ portalId: string }>();
@@ -33,25 +37,39 @@ export function PortalBids() {
   const navigate = useNavigate();
   const portal = portalId as PortalId;
 
+  // The URL is the single source of truth for every list parameter, so both
+  // back buttons (browser + in-app) restore the exact view.
   const urlFilter = searchParams.get("filter") ?? "all";
   const activeFilter: BidFilter = VALID_FILTERS.has(urlFilter)
     ? (urlFilter as BidFilter)
     : "all";
+  const statusFilter = searchParams.get("status") ?? "all";
+  const searchTerms = searchParams.getAll("search");
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
+  const paramsKey = searchParams.toString();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchInput, setSearchInput] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [bids, setBids] = useState<BidListItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [disposingKey, setDisposingKey] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setPage(1);
-  }, [portal, activeFilter, searchQuery, statusFilter]);
+  const updateParams = (mutate: (p: URLSearchParams) => void, resetPage = true) => {
+    const next = new URLSearchParams(searchParams);
+    mutate(next);
+    if (resetPage) next.delete("page");
+    setSearchParams(next);
+  };
+
+  // Effective search = committed chips + the in-progress input (live narrowing)
+  const effectiveSearch = [...searchTerms];
+  if (searchInput.trim()) effectiveSearch.push(searchInput.trim());
 
   useEffect(() => {
     if (!portal || authLoading || !user) return;
@@ -62,13 +80,14 @@ export function PortalBids() {
       try {
         const data = await portalApi.bids(portal, {
           filter: activeFilter,
-          search: searchQuery || undefined,
+          search: effectiveSearch.length ? effectiveSearch : undefined,
           status: statusFilter !== "all" ? statusFilter : undefined,
           page,
           pageSize: PAGE_SIZE,
         });
         setBids(data.items);
         setTotal(data.total);
+        setSelected(new Set());
       } catch (e) {
         if (e instanceof ApiRequestError && isAuthError(e.status, e.code)) return;
         setBids([]);
@@ -78,22 +97,59 @@ export function PortalBids() {
         setLoading(false);
       }
     };
-    debounceRef.current = setTimeout(doFetch, searchQuery ? 300 : 0);
+    debounceRef.current = setTimeout(doFetch, searchInput ? 300 : 0);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [portal, activeFilter, searchQuery, statusFilter, page, user, authLoading]);
+  }, [portal, paramsKey, searchInput, user, authLoading, reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const clearUrlFilter = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("filter");
-    setSearchParams(next);
+  const commitSearchChip = () => {
+    const term = searchInput.trim();
+    if (!term) return;
+    updateParams((p) => p.append("search", term));
+    setSearchInput("");
   };
+
+  const removeSearchChip = (term: string) => {
+    updateParams((p) => {
+      const rest = p.getAll("search").filter((t) => t !== term);
+      p.delete("search");
+      for (const t of rest) p.append("search", t);
+    });
+  };
+
+  const setStatus = (status: string) => {
+    updateParams((p) => {
+      if (status === "all") p.delete("status");
+      else p.set("status", status);
+    });
+  };
+
+  const clearUrlFilter = () => updateParams((p) => p.delete("filter"));
 
   const setQuickFilter = (filter: BidFilter) => {
-    const next = new URLSearchParams(searchParams);
-    if (filter === "all") next.delete("filter");
-    else next.set("filter", filter);
-    setSearchParams(next);
+    updateParams((p) => {
+      if (filter === "all") p.delete("filter");
+      else p.set("filter", filter);
+    });
   };
+
+  const clearAll = () => {
+    setSearchInput("");
+    updateParams((p) => {
+      p.delete("search");
+      p.delete("status");
+    });
+  };
+
+  const setPage = (n: number) => {
+    updateParams((p) => {
+      if (n <= 1) p.delete("page");
+      else p.set("page", String(n));
+    }, false);
+  };
+
+  // Return context for BidDetail: the full list query + the bid's index on this page.
+  const detailLink = (bidKey: string, idx: number) =>
+    `${bidDetailPath(portal, bidKey)}?ret=${encodeURIComponent(paramsKey)}&ridx=${idx}`;
 
   const handleDisposition = async (
     bidKey: string,
@@ -117,6 +173,38 @@ export function PortalBids() {
     }
   };
 
+  const toggleSelect = (bidKey: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(bidKey)) next.delete(bidKey);
+      else next.add(bidKey);
+      return next;
+    });
+  };
+
+  const selectableBids = bids.filter(isSelectable);
+  const allSelected = selectableBids.length > 0 && selectableBids.every((b) => selected.has(b.bidKey));
+
+  const toggleSelectAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(selectableBids.map((b) => b.bidKey)));
+  };
+
+  const handleBulk = async (action: "accepted" | "rejected") => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    setError(null);
+    try {
+      await portalApi.bulkDisposition(portal, [...selected], action);
+      setSelected(new Set());
+      setReloadKey((k) => k + 1);
+    } catch {
+      setError("Bulk action failed. Try again.");
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
   if (!portal || !PORTAL_NAMES[portal]) {
     return <p className="text-gray-600">Unknown portal.</p>;
   }
@@ -126,7 +214,7 @@ export function PortalBids() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">{PORTAL_NAMES[portal]}</h1>
         <p className="text-gray-600 mt-1">
-          {loading ? " " : `${total.toLocaleString()} opportunities found`}
+          {loading ? " " : `${total.toLocaleString()} opportunities found`}
         </p>
       </div>
 
@@ -156,9 +244,17 @@ export function PortalBids() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search bids by description, buyer, ID…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={searchTerms.length
+                ? "Add another keyword (Enter to add)…"
+                : "Search bids by description, buyer, ID… (Enter to add as keyword)"}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitSearchChip();
+                }
+              }}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -168,21 +264,21 @@ export function PortalBids() {
           </Button>
         </div>
 
-        {(statusFilter !== "all" || searchQuery) && (
+        {(statusFilter !== "all" || searchTerms.length > 0) && (
           <div className="flex items-center justify-between gap-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
-              {searchQuery && (
-                <FilterChip label={`Search: "${searchQuery}"`} onRemove={() => setSearchQuery("")} />
-              )}
+              {searchTerms.map((term) => (
+                <FilterChip key={term} label={`Search: "${term}"`} onRemove={() => removeSearchChip(term)} />
+              ))}
               {statusFilter !== "all" && (
                 <FilterChip
                   label={`Status: ${statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}`}
-                  onRemove={() => setStatusFilter("all")}
+                  onRemove={() => setStatus("all")}
                 />
               )}
             </div>
             <button
-              onClick={() => { setSearchQuery(""); setStatusFilter("all"); }}
+              onClick={clearAll}
               className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap"
             >
               Clear All
@@ -196,7 +292,7 @@ export function PortalBids() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => setStatus(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
@@ -227,6 +323,39 @@ export function PortalBids() {
         )}
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex items-center justify-between gap-4 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+          <p className="text-sm font-medium text-indigo-900">
+            {selected.size} bid{selected.size !== 1 ? "s" : ""} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleBulk("accepted")}
+              disabled={bulkBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-green-700 bg-green-100 hover:bg-green-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+              Accept selected
+            </button>
+            <button
+              onClick={() => handleBulk("rejected")}
+              disabled={bulkBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 disabled:opacity-50 rounded-lg transition-colors"
+            >
+              {bulkBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+              Reject selected
+            </button>
+            <button
+              onClick={() => setSelected(new Set())}
+              disabled={bulkBusy}
+              className="text-xs text-indigo-700 hover:text-indigo-900 font-medium px-2"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -238,6 +367,17 @@ export function PortalBids() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
+                    <th className="px-3 py-3 w-10">
+                      {selectableBids.length > 0 && (
+                        <input
+                          type="checkbox"
+                          checked={allSelected}
+                          onChange={toggleSelectAll}
+                          title="Select all new bids on this page"
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      )}
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Bid ID</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Buyer</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase">Description</th>
@@ -254,8 +394,18 @@ export function PortalBids() {
                     <tr
                       key={bid.bidKey}
                       className="hover:bg-gray-50 cursor-pointer"
-                      onClick={() => navigate(`${bidDetailPath(portal, bid.bidKey)}?rfilter=${activeFilter}&rpage=${page}&ridx=${idx}`)}
+                      onClick={() => navigate(detailLink(bid.bidKey, idx))}
                     >
+                      <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
+                        {isSelectable(bid) && (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(bid.bidKey)}
+                            onChange={() => toggleSelect(bid.bidKey)}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                        )}
+                      </td>
                       <td className="px-4 py-4 text-blue-600 font-medium text-sm">{bid.bidId}</td>
                       <td className="px-4 py-4 text-sm text-gray-900">{bid.buyer}</td>
                       <td className="px-4 py-4 text-sm text-gray-900 line-clamp-2 max-w-md">{bid.title}</td>
@@ -282,7 +432,7 @@ export function PortalBids() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {bid.userState === "new" && bid.method === "model" && (
+                        {isSelectable(bid) && (
                           <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
                             <button
                               onClick={(e) => handleDisposition(bid.bidKey, "accepted", e)}
@@ -330,13 +480,25 @@ export function PortalBids() {
                 {bids.map((bid, idx) => (
                   <Link
                     key={bid.bidKey}
-                    to={`${bidDetailPath(portal, bid.bidKey)}?rfilter=${activeFilter}&rpage=${page}&ridx=${idx}`}
+                    to={detailLink(bid.bidKey, idx)}
                     className="block bg-white rounded-xl border border-gray-200 p-4 hover:shadow-lg transition-shadow"
                   >
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <div className="text-blue-600 font-semibold mb-1 text-sm">{bid.bidId}</div>
-                        <div className="text-sm text-gray-900 font-medium">{bid.buyer}</div>
+                      <div className="flex items-start gap-2.5">
+                        {isSelectable(bid) && (
+                          <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                            <input
+                              type="checkbox"
+                              checked={selected.has(bid.bidKey)}
+                              onChange={() => toggleSelect(bid.bidKey)}
+                              className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                            />
+                          </span>
+                        )}
+                        <div>
+                          <div className="text-blue-600 font-semibold mb-1 text-sm">{bid.bidId}</div>
+                          <div className="text-sm text-gray-900 font-medium">{bid.buyer}</div>
+                        </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <StatusBadge status={bid.userState} />
@@ -356,7 +518,7 @@ export function PortalBids() {
                         {formatClosingDate(bid.closingDate, bid.closingDateRaw)}
                       </div>
                     </div>
-                    {bid.userState === "new" && bid.method === "model" && (
+                    {isSelectable(bid) && (
                       <div className="flex gap-2 pt-2 border-t border-gray-100">
                         <button
                           onClick={(e) => handleDisposition(bid.bidKey, "accepted", e)}

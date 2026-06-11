@@ -103,6 +103,11 @@ class DispositionBody(BaseModel):
     action: str
 
 
+class BulkDispositionBody(BaseModel):
+    bidKeys: list[str]
+    action: str
+
+
 class DisputeBody(BaseModel):
     reason: str = ""
 
@@ -219,12 +224,14 @@ _FILTER_WHERE = {
 @app.get("/api/portals/{portal}/bids")
 def list_bids(portal: str,
               page: int = Query(1, ge=1), pageSize: int = Query(50, ge=1, le=200),
-              search: str | None = None, filter: str = "all", status: str | None = None,
+              search: list[str] | None = Query(None), filter: str = "all",
+              status: str | None = None,
               user: dict = Depends(current_user), db: sqlite3.Connection = Depends(get_db)):
     _check_portal(portal)
     table = f"{portal}_bids"
     f = mapping.PORTAL_FIELDS[portal]
     order = "ORDER BY first_seen_date DESC, pass1_score IS NULL, pass1_score DESC"
+    terms = [t.strip() for t in (search or []) if t and t.strip()]  # ANDed search terms
 
     # Date-based filters require per-portal closing-date parsing — handled here, return early.
     if filter in ("closingsoon", "closingactionable", "highpriority"):
@@ -252,10 +259,11 @@ def list_bids(portal: str,
                 # Category 3: accepted
                 if state == "accepted":
                     keep.append(r)
-        if search:
-            s = search.lower()
+        if terms:
             cols_search = [c for c in (f["title"], f["buyer"], *f["pk"]) if c]
-            keep = [r for r in keep if any(s in str(r[c] or "").lower() for c in cols_search)]
+            for term in terms:
+                s = term.lower()
+                keep = [r for r in keep if any(s in str(r[c] or "").lower() for c in cols_search)]
         total = len(keep)
         start = (page - 1) * pageSize
         items = [mapping.list_item(_row_dict(r), portal) for r in keep[start:start + pageSize]]
@@ -268,10 +276,11 @@ def list_bids(portal: str,
         where.append(fw)
     if status:
         where.append("user_state=?"); params.append(status)
-    if search:
+    if terms:
         cols = [c for c in (f["title"], f["buyer"], *f["pk"]) if c]
-        where.append("(" + " OR ".join(f"{c} LIKE ?" for c in cols) + ")")
-        params += [f"%{search}%"] * len(cols)
+        for term in terms:  # each term ANDed; within a term, OR across columns
+            where.append("(" + " OR ".join(f"{c} LIKE ?" for c in cols) + ")")
+            params += [f"%{term}%"] * len(cols)
     where_sql = " AND ".join(where)
 
     total = int(db.execute(f"SELECT COUNT(*) FROM {table} WHERE {where_sql}", params).fetchone()[0])
@@ -442,6 +451,25 @@ def generate_summary(portal: str, bidKey: str, user: dict = Depends(current_user
         raise HTTPException(500, {"code": "summarize_error", "message": str(e)})
     row = _fetch_bid(db, portal, key)
     return mapping.detail(row, portal)["summary"]
+
+
+@app.post("/api/portals/{portal}/bids/bulk-disposition")
+def bulk_disposition(portal: str, body: BulkDispositionBody,
+                     user: dict = Depends(current_user),
+                     db: sqlite3.Connection = Depends(get_db)):
+    """Accept/reject many bids in one call (the list page's bulk action)."""
+    _check_portal(portal)
+    if body.action not in ("accepted", "rejected"):
+        raise HTTPException(422, {"code": "bad_request",
+                                  "message": "action must be 'accepted' or 'rejected'"})
+    updated, missing = 0, []
+    for key in body.bidKeys:
+        try:
+            dispositions.dispose(db, portal, key, body.action, user["id"])
+            updated += 1
+        except LookupError:
+            missing.append(key)
+    return {"updated": updated, "missing": missing}
 
 
 @app.post("/api/portals/{portal}/bids/{bidKey:path}/disposition")
