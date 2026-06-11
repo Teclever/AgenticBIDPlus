@@ -373,7 +373,11 @@ def _st_class(org: str | None) -> str:
 
 def _apply_single_tender_db(parent: sqlite3.Connection, portal: str,
                              source_pk: str, org: str | None, cls: str) -> None:
-    """Persist single tender detection results and apply scoring/rejection overrides."""
+    """Persist single tender detection results and apply scoring/rejection overrides.
+
+    pass1_score / auto_rejected are tool-mirrored columns — the merge copies them
+    from the tool DB whenever values differ, so the override MUST be written to the
+    tool DB as well or the next nightly merge silently reverts it."""
     pk = _ADAPTER_PK[portal]
     vals = source_pk.split("|") if len(pk) > 1 else [source_pk]
     where = " AND ".join(f"{c}=?" for c in pk)
@@ -383,6 +387,7 @@ def _apply_single_tender_db(parent: sqlite3.Connection, portal: str,
             f"auto_rejected=1, user_state='rejected', disposed_at=? WHERE {where}",
             (org, _now(), *vals),
         )
+        tool_sql = "SET auto_rejected=1"
     else:
         # Teclever or masked → score 5 so it runs through Sonnet automatically
         parent.execute(
@@ -390,7 +395,21 @@ def _apply_single_tender_db(parent: sqlite3.Connection, portal: str,
             f"pass1_score=5 WHERE {where}",
             (org or "***", *vals),
         )
+        tool_sql = "SET pass1_score=5"
     parent.commit()
+
+    adapter = _adapter(portal)
+    tool_table = adapter._SCORING["table"]
+    try:
+        tool = sqlite3.connect(adapter.tool_db_path())
+        try:
+            tool.execute(f"UPDATE {tool_table} {tool_sql} WHERE {where}", vals)
+            tool.commit()
+        finally:
+            tool.close()
+    except Exception as e:
+        print(f"[single-tender] WARNING: tool DB update failed for {portal} "
+              f"{source_pk}: {e} — parent override may revert on next merge")
 
 
 def _read_staging_text(portal: str, source_pk: str) -> str:
@@ -444,9 +463,11 @@ def local_extract_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
     """Score-4 path: fetch docs + local extraction. Promotes to Sonnet if single tender
     Teclever/masked is detected. Rejects immediately if single tender non-Teclever."""
     ex = _fetch_and_extract(portal, source_pk, fetch)
-    # Single tender detection (uses raw .txt text, not extraction-cleaned text)
+    # Single tender detection: regex on raw .txt first, extraction detector as fallback
     raw = _read_staging_text(portal, source_pk)
     is_st, st_org = _detect_single_tender(raw)
+    if not is_st and ex.single_vendor:
+        is_st, st_org = True, ex.single_vendor_name
     if is_st:
         cls = _st_class(st_org)
         _apply_single_tender_db(parent, portal, source_pk, st_org, cls)
@@ -472,36 +493,38 @@ def local_extract_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
 
 def summarize_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
                   fetch: bool = True, call_fn=None) -> dict:
-    """Summarize one bid. Includes single tender detection before Sonnet."""
+    """Summarize one bid. Single-tender/single-vendor detection runs first (regex on
+    raw .txt, extraction detector as fallback — ONE set of DB consequences for both):
+    non-Teclever → auto-reject + local stub summary, no Sonnet; Teclever/masked →
+    score 5 + flags set, then the FULL Sonnet summary runs (operator decision)."""
     call_fn = call_fn or _raw_sonnet
     ex = _fetch_and_extract(portal, source_pk, fetch)
-    # Single tender detection — run first so non-Teclever bids skip Sonnet entirely
     raw = _read_staging_text(portal, source_pk)
     is_st, st_org = _detect_single_tender(raw)
+    if not is_st and ex.single_vendor:
+        is_st, st_org = True, ex.single_vendor_name
+    unparsed = [d.doc_name for d in ex.unsupported_docs]
+
     if is_st:
         cls = _st_class(st_org)
         _apply_single_tender_db(parent, portal, source_pk, st_org, cls)
         if cls == "other":
+            # Restricted to another vendor — outcome decided, no Sonnet. Store a local
+            # stub summary so the detail page still shows why.
+            summary = BidSummary(
+                buyer="", project_description=(
+                    f"Single-tender / sole-source bid restricted to "
+                    f"{st_org or 'an unspecified vendor'}."),
+                single_vendor=True, single_vendor_name=st_org or "",
+                single_vendor_favourable=False, has_restrictive_eligibility=True,
+                unparsed_documents=unparsed,
+                emd_value=ex.local_fields.get("emd_value") or "",
+                total_value=ex.local_fields.get("total_value") or "")
+            _persist(parent, portal, source_pk, summary=summary, status="ok",
+                     model="local:single-vendor")
             return {"portal": portal, "bid_id": source_pk, "path": "single_tender_rejected",
                     "org": st_org, "sonnet": False, "single_tender": True}
-    unparsed = [d.doc_name for d in ex.unsupported_docs]
-
-    # (1) Single-vendor — decided locally, NO Sonnet call.
-    if ex.single_vendor:
-        fav = _favourable(ex.single_vendor_name)
-        summary = BidSummary(
-            buyer="", project_description=(
-                f"Single-tender / sole-source bid restricted to "
-                f"{ex.single_vendor_name or 'an unspecified vendor'}."),
-            single_vendor=True, single_vendor_name=ex.single_vendor_name,
-            single_vendor_favourable=fav, has_restrictive_eligibility=True,
-            unparsed_documents=unparsed,
-            emd_value=ex.local_fields.get("emd_value") or "",
-            total_value=ex.local_fields.get("total_value") or "")
-        _persist(parent, portal, source_pk, summary=summary, status="ok",
-                 model="local:single-vendor")
-        return {"portal": portal, "bid_id": source_pk, "path": "single_vendor",
-                "favourable": fav, "vendor": ex.single_vendor_name, "sonnet": False}
+        # Teclever or masked: flags + score 5 set; fall through to the full Sonnet summary.
 
     # (2) Nothing readable to send (e.g. only legacy/binary docs, no LibreOffice; or no docs).
     # Skip Sonnet — there is nothing to summarize — and record WHY so the web app can tell the
@@ -537,6 +560,10 @@ def summarize_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
     summary.coverage = coverage   # Python controls this — never let Sonnet self-assign 'partial'
     if summary.single_vendor:  # Sonnet backstop caught one local detection missed
         summary.single_vendor_favourable = _favourable(summary.single_vendor_name)
+        if not is_st:  # local detectors missed it — apply the same DB consequences
+            _apply_single_tender_db(parent, portal, source_pk,
+                                    summary.single_vendor_name,
+                                    _st_class(summary.single_vendor_name))
     _persist(parent, portal, source_pk, summary=summary, status="ok",
              model=config.SUMMARY_MODEL, coverage=summary.coverage)
     return {"portal": portal, "bid_id": source_pk, "path": "sonnet", "status": "ok",
