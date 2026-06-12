@@ -107,13 +107,15 @@ def fetch_all_orgs(skip_orgs: set[str] | None = None,
             total_updated += org_counts["updated"]
             total_pages   += metrics["pages_scanned"]
             num_found      = metrics.get("num_found", 0)
+            ra_skipped     = metrics.get("ra_skipped", 0)
 
             coverage_warn = ""
-            if num_found and count < num_found:
-                coverage_warn = f"  ⚠ portal reported {num_found}, fetched {count}"
+            if num_found and count + ra_skipped < num_found:
+                coverage_warn = f"  ⚠ portal reported {num_found}, fetched {count + ra_skipped}"
 
+            ra_note = f", {ra_skipped} RA skipped" if ra_skipped else ""
             print(f"    {count} fetched → {org_counts['new']} new, "
-                  f"{org_counts['updated']} updated  "
+                  f"{org_counts['updated']} updated{ra_note}  "
                   f"({metrics['pages_scanned']} pages){coverage_warn}")
             if org_extended:
                 print(f"    {len(org_extended)} extension(s) detected")

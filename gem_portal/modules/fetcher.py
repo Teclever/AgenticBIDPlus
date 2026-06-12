@@ -73,6 +73,7 @@ def fetch_all_bids_for_org(ministry: str, org: str,
     total         = 0
     pages_scanned = 0
     num_found     = 0
+    ra_skipped    = 0
     page          = 1
 
     while True:
@@ -90,7 +91,12 @@ def fetch_all_bids_for_org(ministry: str, org: str,
             num_found = inner.get("numFound", 0)
 
         pages_scanned += 1
-        page_bids = [_parse_doc(d, ministry, org) for d in docs]
+        parsed = [_parse_doc(d, ministry, org) for d in docs]
+        # GEM/yyyy/R/nnnn = Reverse Auction listings. RA participation is restricted
+        # to bidders already qualified on the parent bid, and the showbidDocument
+        # endpoint can't serve their documents — never ingest them.
+        page_bids = [b for b in parsed if "/R/" not in (b["bid_number"] or "")]
+        ra_skipped += len(parsed) - len(page_bids)
 
         if on_page:
             on_page(page_bids)
@@ -99,5 +105,6 @@ def fetch_all_bids_for_org(ministry: str, org: str,
         page += 1
         time.sleep(0.8)   # Polite delay — avoid triggering rate limits
 
-    metrics = {"pages_scanned": pages_scanned, "num_found": num_found}
+    metrics = {"pages_scanned": pages_scanned, "num_found": num_found,
+               "ra_skipped": ra_skipped}
     return total, metrics
