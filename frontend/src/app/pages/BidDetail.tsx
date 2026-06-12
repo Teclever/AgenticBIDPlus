@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Loader2,
   Star,
+  TrendingUp,
   Zap,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -55,6 +56,8 @@ export function BidDetail() {
   const [generateError, setGenerateError] = useState<string | null>(null);  // initialised from generationState in the load effect
   const [otherBidGenerating, setOtherBidGenerating] = useState<string | null>(null);
   const [disposing, setDisposing] = useState(false);
+  const [promoting, setPromoting] = useState(false);
+  const [promoteError, setPromoteError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const downloadGenRef = useRef(0); // incremented on bid change; used to ignore stale callbacks
@@ -71,6 +74,8 @@ export function BidDetail() {
     setLoading(true);
     setBid(null);
     setDisposing(false);
+    setPromoting(false);
+    setPromoteError(null);
     setDownloading(false);
     setDownloadError(null);
     _syncOtherGenerating();
@@ -196,6 +201,23 @@ export function BidDetail() {
     }
   };
 
+  const handlePromote = async () => {
+    if (!portal || !decodedBidKey || promoting) return;
+    setPromoting(true);
+    setPromoteError(null);
+    try {
+      const updated = await portalApi.promote(portal, decodedBidKey);
+      setBid(updated);
+      setSummary(updated.summary);
+    } catch (e) {
+      setPromoteError(e instanceof ApiRequestError
+        ? e.message || "Unable to promote. Try again later."
+        : "Unable to promote. Try again later.");
+    } finally {
+      setPromoting(false);
+    }
+  };
+
   const handleDisposition = async (action: "accepted" | "rejected" | "reset") => {
     if (!portal || !decodedBidKey || !bid) return;
     setDisposing(true);
@@ -230,15 +252,21 @@ export function BidDetail() {
 
   const showDisposition =
     bid.userState === "new" && bid.method === "model";
-  // Boosted bids carry an "[auto-promoted: <term>]" prefix in the rationale
-  // (set by scoring) — the only signal that a 5 came from a keyword match.
-  const boostTerm = bid.rationale?.match(/^\[auto-promoted:\s*([^\]]+)\]/)?.[1] ?? null;
-  const rationaleText = boostTerm
-    ? bid.rationale!.replace(/^\[auto-promoted:[^\]]*\]\s*/, "")
+  // The rationale can carry two machine prefixes (only signals of a forced 5):
+  // "[operator-promoted]" (one-click promote) and "[auto-promoted: <term>]" (keyword boost).
+  const opPromoted = !!bid.rationale?.startsWith("[operator-promoted]");
+  const afterOp = opPromoted
+    ? bid.rationale!.replace(/^\[operator-promoted\]\s*/, "")
     : bid.rationale;
+  const boostTerm = afterOp?.match(/^\[auto-promoted:\s*([^\]]+)\]/)?.[1] ?? null;
+  const rationaleText = boostTerm
+    ? afterOp!.replace(/^\[auto-promoted:[^\]]*\]\s*/, "")
+    : afterOp;
   const summaryAvailable = summary?.available && summary.status === "ok" && summary.markdown;
   const summaryFailed = !!summary?.status && summary.status !== "ok";
   const isClosed = bid.bidStatus === "CLOSED";
+  const canPromote =
+    bid.method === "model" && bid.rating != null && bid.rating < 5 && !isClosed;
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -287,9 +315,32 @@ export function BidDetail() {
                 Keyword boost: {boostTerm}
               </span>
             )}
+            {opPromoted && (
+              <span
+                title="An operator manually promoted this bid to 5/5"
+                className="shrink-0 self-center inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium bg-blue-50 border border-blue-300 text-blue-800 rounded-full"
+              >
+                <TrendingUp className="w-3 h-3" />
+                Operator promoted
+              </span>
+            )}
+            {canPromote && (
+              <button
+                onClick={handlePromote}
+                disabled={promoting}
+                title="Override the AI score and promote this bid to 5/5"
+                className="shrink-0 self-center inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium border border-purple-300 text-purple-700 hover:bg-purple-50 rounded-full transition-colors disabled:opacity-50"
+              >
+                {promoting ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
+                Promote to 5
+              </button>
+            )}
           </div>
           {bid.overview.buyer && (
             <p className="text-gray-600 mt-1">{bid.overview.buyer}</p>
+          )}
+          {promoteError && (
+            <p className="text-sm text-red-600 mt-1">{promoteError}</p>
           )}
         </div>
         {showDisposition && (
@@ -459,6 +510,12 @@ export function BidDetail() {
           <p className="flex items-center gap-1.5 text-sm text-purple-800 mt-2">
             <Zap className="w-3.5 h-3.5 shrink-0" />
             Auto-promoted to 5/5 — the bid text matched the boost keyword “{boostTerm}”.
+          </p>
+        )}
+        {opPromoted && (
+          <p className="flex items-center gap-1.5 text-sm text-blue-800 mt-2">
+            <TrendingUp className="w-3.5 h-3.5 shrink-0" />
+            Promoted to 5/5 by an operator override.
           </p>
         )}
         {bid.method === "model" && rationaleText && (

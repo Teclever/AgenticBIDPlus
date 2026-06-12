@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { CheckCircle, XCircle, RotateCcw, User, FileText, Building, MessageSquare, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw, TrendingUp, User, FileText, Building, MessageSquare, Loader2 } from "lucide-react";
 import { activityApi } from "../lib/api";
 import { bidDetailPath, formatDateTime } from "../lib/format";
 import { getErrorMessage } from "../lib/utils";
@@ -215,6 +215,14 @@ function ActionBadge({ action, detail }: { action: string; detail: string | null
       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800" title={detail ?? undefined}>
         <MessageSquare className="w-3 h-3" />
         Disputed
+      </span>
+    );
+  }
+  if (action === "promoted") {
+    return (
+      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700" title={detail ?? undefined}>
+        <TrendingUp className="w-3 h-3" />
+        Promoted
       </span>
     );
   }

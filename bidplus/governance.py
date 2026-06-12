@@ -135,6 +135,48 @@ def promote(parent: sqlite3.Connection, portal: str, bid_id: str, reason: str,
                 for t in terms}}
 
 
+def promote_to_five(parent: sqlite3.Connection, portal: str, bid_id: str) -> dict:
+    """One-click operator override from the detail page: force Pass-1 score to 5.
+
+    Distinct from promote() (false-elimination governance, which re-queues for
+    re-scoring): this is a direct verdict on a bid the model under-rated. The
+    pass1_* fields are tool-mirrored, so the override is written to BOTH the
+    parent and the tool DB — parent-only would silently revert on the next
+    nightly merge. The '[operator-promoted]' rationale prefix is the durable
+    marker the UI renders a badge from. Score-5 unsummarized bids are picked up
+    by the next nightly Sonnet pass automatically."""
+    table = _table(portal)
+    where, _pk = _pk_where(portal)
+    vals = _split_bid_id(portal, bid_id)
+    row = parent.execute(
+        f"SELECT pass1_score, pass1_rationale FROM {table} WHERE {where}", vals).fetchone()
+    if row is None:
+        raise LookupError(f"{portal}: no bid {bid_id!r} in {table}")
+    old_score, rationale = row
+    rationale = rationale or ""
+    if not rationale.startswith("[operator-promoted]"):
+        rationale = f"[operator-promoted] {rationale}".strip()
+    sets = ("pass1_score=5, pass1_method='model', pass1_rationale=?, "
+            "pass1_eliminated_by=NULL, auto_rejected=0")
+    parent.execute(f"UPDATE {table} SET {sets} WHERE {where}", (rationale, *vals))
+    parent.commit()
+
+    from bidplus.adapters.gem import GeMAdapter
+    from bidplus.adapters.hal import HALAdapter
+    from bidplus.adapters.isro import ISROAdapter
+    adapter = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
+    spec = adapter._SCORING
+    tool_where = " AND ".join(f"{c}=?" for c in spec["pk"])
+    conn = sqlite3.connect(adapter.tool_db_path())
+    try:
+        conn.execute(f"UPDATE {spec['table']} SET {sets} WHERE {tool_where}",
+                     (rationale, *vals))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"portal": portal, "bid_id": bid_id, "old_score": old_score, "new_score": 5}
+
+
 def accept(parent: sqlite3.Connection, portal: str, bid_ids: list[str] | None = None) -> dict:
     """ACCEPT / CLEAR-TABLE: every still-undisposed auto-rejected bid is a confirmed-correct
     rejection (``confirmed_rejections++`` on its matched terms). ``bid_ids=None`` clears the

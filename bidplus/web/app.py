@@ -488,6 +488,26 @@ def disposition(portal: str, bidKey: str, body: DispositionBody,
         raise HTTPException(404, {"code": "not_found", "message": str(e)})
 
 
+@app.post("/api/portals/{portal}/bids/{bidKey:path}/promote")
+def promote_bid(portal: str, bidKey: str, user: dict = Depends(current_user),
+                db: sqlite3.Connection = Depends(get_db)):
+    """One-click operator override: force the bid's score to 5 (detail page button).
+    Writes parent + tool DB via governance.promote_to_five so the merge keeps it."""
+    _check_portal(portal)
+    key = unquote(bidKey)
+    row = _fetch_bid(db, portal, key)
+    if (row.get("bid_status") or "").upper() == "CLOSED":
+        raise HTTPException(422, {"code": "bid_closed",
+                                  "message": "This bid is closed — promotion is not available."})
+    try:
+        governance.promote_to_five(db, portal, key)
+    except LookupError as e:
+        raise HTTPException(404, {"code": "not_found", "message": str(e)})
+    dispositions.log_activity(db, user["id"], portal, key, "promoted",
+                              f"score {row.get('pass1_score')} → 5")
+    return mapping.detail(_fetch_bid(db, portal, key), portal)
+
+
 @app.post("/api/portals/{portal}/bids/{bidKey:path}/documents/fetch")
 def fetch_documents(portal: str, bidKey: str, user: dict = Depends(current_user)):
     """Download (or re-download) bid documents on demand, then return the file list."""

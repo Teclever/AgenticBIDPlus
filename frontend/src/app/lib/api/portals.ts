@@ -100,6 +100,17 @@ export const portalApi = {
   documentDownloadUrl: (portal: PortalId, bidKey: string): string =>
     `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/documents/download`,
 
+  promote: async (portal: PortalId, bidKey: string) => {
+    try {
+      const res = await apiClient.post<BidDetail>(
+        `/api/portals/${portal}/bids/${encodeURIComponent(bidKey)}/promote`,
+      );
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
   disposition: async (portal: PortalId, bidKey: string, action: "accepted" | "rejected" | "reset") => {
     try {
       const res = await apiClient.post<{ userState: string }>(

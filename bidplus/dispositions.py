@@ -13,7 +13,7 @@ import datetime
 import sqlite3
 
 _ADAPTER_PK = {"hal": ("tender_number", "line_number"), "isro": ("tender_id",), "gem": ("bid_number",)}
-_VALID_ACTIONS = {"accepted", "rejected", "disputed", "reset"}
+_VALID_ACTIONS = {"accepted", "rejected", "disputed", "reset", "promoted"}
 
 
 def _now() -> str:
