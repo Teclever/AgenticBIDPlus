@@ -184,16 +184,15 @@ def stats(portal: str, user: dict = Depends(current_user),
     today = datetime.date.today()
     cs1 = cs2 = cs3 = 0
     for r in db.execute(
-        f"SELECT pass1_score, user_state, {closing_col} AS cdate FROM {table} "
+        f"SELECT pass1_score, user_state, auto_rejected, {closing_col} AS cdate FROM {table} "
         "WHERE COALESCE(bid_status,'') <> 'CLOSED'"
     ):
         dt = mapping.lifecycle.parse_closing(r["cdate"])
         if not (dt and today <= dt.date() <= win):
             continue
-        score = r["pass1_score"]
         state = r["user_state"] or "new"
-        # Category 1: score 3–5, not rejected
-        if score is not None and score >= 3 and state != "rejected":
+        # Category 1: anything not rejected (by a user or auto-rejected by the system)
+        if state != "rejected" and not r["auto_rejected"]:
             cs1 += 1
         # Category 2: accepted, closing soon
         if state == "accepted":
@@ -245,11 +244,10 @@ def list_bids(portal: str,
             dt = mapping.lifecycle.parse_closing(r[f["closing"]])
             if not (dt and today <= dt.date() <= win):
                 continue
-            score = r["pass1_score"]
             state = r["user_state"] or "new"
             if filter == "closingsoon":
-                # Category 1: score 3–5, not rejected
-                if score is not None and score >= 3 and state != "rejected":
+                # Category 1: anything not rejected (by a user or auto-rejected by the system)
+                if state != "rejected" and not r["auto_rejected"]:
                     keep.append(r)
             elif filter == "closingactionable":
                 # Category 2: accepted, closing soon

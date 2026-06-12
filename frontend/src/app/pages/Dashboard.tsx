@@ -180,7 +180,7 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
             <span className="text-sm font-bold text-amber-900">{counts.singleTender}</span>
           </Link>
         )}
-        <p className="text-xs text-gray-400 mt-2">Closing Soon = score 3–5, not rejected, within 10 days</p>
+        <p className="text-xs text-gray-400 mt-2">Closing Soon = not rejected, within 10 days · High Priority = accepted, within 10 days</p>
       </div>
     </div>
   );
