@@ -151,8 +151,18 @@ def load_terms(parent: sqlite3.Connection) -> Terms:
 
 # Seed terms for the score-5 boost list. INSERT OR IGNORE so reruns and
 # governance-added rows are never clobbered; independent of the main seed
-# (which no-ops once the table is populated).
-_BOOST_SEED = ["test rig"]
+# (which no-ops once the table is populated). FULLY-UPPERCASE terms are
+# treated as acronyms by boost_match (exact case-sensitive match) — a
+# case-insensitive 'ATE'/'AI' would hit the words 'ate'/'ai' and 'AIS'.
+_BOOST_SEED = [
+    "test rig",
+    "ATE",                       # automated test equipment (acronym)
+    "automated test equipment",
+    "automatic test equipment",
+    "AI",                        # artificial intelligence (acronym)
+    "artificial intelligence",
+    "check out system",          # singular — matcher covers plural + 'checkout'
+]
 
 
 def ensure_boost_seed(parent: sqlite3.Connection) -> None:
@@ -168,12 +178,20 @@ def ensure_boost_seed(parent: sqlite3.Connection) -> None:
 
 
 def boost_match(text: str, boost_phrases: list) -> str | None:
-    """First boost phrase matching ``text`` (case-insensitive, whitespace/hyphen
-    tolerant, word-boundary anchored, optional plural), or None."""
-    low = text or ""
+    """First boost phrase matching ``text``, or None.
+
+    Phrases: case-insensitive, whitespace/hyphen tolerant, word-boundary
+    anchored, optional plural ('test rig' hits testrig / Test-Rigs).
+    Fully-uppercase terms are ACRONYMS: exact case-sensitive word match,
+    no plural ('ATE' hits 'ATE' but never 'ate', 'plate' or 'ATES')."""
+    t = text or ""
     for term in boost_phrases:
+        if term.isupper():
+            if re.search(r"\b" + re.escape(term) + r"\b", t):
+                return term
+            continue
         pat = r"\b" + r"[\s\-]*".join(re.escape(w) for w in term.split()) + r"s?\b"
-        if re.search(pat, low, re.IGNORECASE):
+        if re.search(pat, t, re.IGNORECASE):
             return term
     return None
 
