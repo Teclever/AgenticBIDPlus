@@ -128,12 +128,17 @@ def cmd_run() -> None:
 
 
 def cmd_scrape_score() -> None:
-    """Orchestrator pipeline: scrape -> CLOSED sweep -> detail enrich. NO Pass 1 / Excel.
+    """Orchestrator pipeline: scrape -> CLOSED sweep. SCRAPE-ONLY. NO Pass 1 / Excel.
 
     This is the entry point the bidplus PortalAdapter shells out to. Pass 1 is
     centralized in bidplus.scoring (two-pass eliminator + Haiku, S5), run by the
-    orchestrator after the merge. Detail text is enriched here so summaries/explain
-    have richer context.
+    orchestrator after the merge.
+
+    Detail-text enrichment is DELIBERATELY NOT done here: it fires ~160 per-tender
+    detail POSTs in a tight loop and HAL's WAF 429-throttles the burst, and nothing
+    in the integrated pipeline consumes detail_text — centralized Pass-1 scores
+    tender_description, Pass-2 reads the tender PDFs, and the UI doesn't surface it.
+    (Standalone `run`/`score-pending` still enrich for their own detail_text Pass-1.)
     """
     log_banner("scrape-score (orchestrator)")
     _check_api_key()
@@ -158,13 +163,10 @@ def cmd_scrape_score() -> None:
     closed = sweep_closed_bids()
     log_ok(f"{closed} tender(s) marked CLOSED.")
 
-    log_phase(3, "Enrich detail text (unscored tenders only)")
-    enriched = _enrich_unscored_detail_text()
-
     elapsed = int(time.time() - t0)
     log_done(
-        f"scrape-score (scrape-only): inserted={inserted}, updated={updated}, closed={closed}, "
-        f"detail_enriched={enriched} | elapsed {elapsed}s | Pass-1 centralized in bidplus.scoring"
+        f"scrape-score (scrape-only): inserted={inserted}, updated={updated}, closed={closed} "
+        f"| elapsed {elapsed}s | Pass-1 centralized in bidplus.scoring"
     )
 
 
