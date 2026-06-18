@@ -1,21 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Building, Rocket, Plane } from "lucide-react";
+import { Building, Rocket, Plane, Factory } from "lucide-react";
 import { portalApi, ApiRequestError, isAuthError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { formatWindowDate } from "../lib/format";
 import type { BidFilter, PortalId, PortalStats } from "../lib/types";
 import { Button } from "../components/ui/button";
 
-const PORTALS: { id: PortalId; name: string; fullName: string; icon: React.ReactNode; color: "blue" | "indigo" | "purple" }[] = [
+const PORTALS: { id: PortalId; name: string; fullName: string; icon: React.ReactNode; color: "blue" | "indigo" | "purple" | "teal" }[] = [
   { id: "gem", name: "GEM", fullName: "Government e-Marketplace", icon: <Building className="w-8 h-8" />, color: "blue" },
-  { id: "hal", name: "HAL", fullName: "Hindustan Aeronautics Limited", icon: <Plane className="w-8 h-8" />, color: "indigo" },
+  { id: "hal", name: "HAL", fullName: "HAL e-Procurement", icon: <Plane className="w-8 h-8" />, color: "indigo" },
+  { id: "halc", name: "HAL-C", fullName: "HAL Corporate Tenders", icon: <Factory className="w-8 h-8" />, color: "teal" },
   { id: "isro", name: "ISRO", fullName: "Indian Space Research Organisation", icon: <Rocket className="w-8 h-8" />, color: "purple" },
 ];
 
 const EMPTY_STATS: Record<PortalId, PortalStats | null> = {
   gem: null,
   hal: null,
+  halc: null,
   isro: null,
 };
 
@@ -95,7 +97,7 @@ export function Dashboard() {
         <p className="text-gray-600 mt-1">AI-powered bid intelligence and opportunity tracking</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {PORTALS.map((portal) => (
           <PortalCard
             key={portal.id}
@@ -113,7 +115,7 @@ interface PortalCardProps {
   name: string;
   fullName: string;
   icon: React.ReactNode;
-  color: "blue" | "indigo" | "purple";
+  color: "blue" | "indigo" | "purple" | "teal";
   stats: PortalStats;
 }
 
@@ -122,6 +124,7 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
     blue: { icon: "text-blue-600 bg-blue-100", accent: "text-blue-600" },
     indigo: { icon: "text-indigo-600 bg-indigo-100", accent: "text-indigo-600" },
     purple: { icon: "text-purple-600 bg-purple-100", accent: "text-purple-600" },
+    teal: { icon: "text-teal-600 bg-teal-100", accent: "text-teal-600" },
   };
 
   const counts = stats.counts;

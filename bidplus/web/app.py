@@ -346,6 +346,7 @@ def _make_adapter(portal: str):
     return {
         "gem":  lambda: __import__("bidplus.adapters.gem",  fromlist=["GeMAdapter"]).GeMAdapter(),
         "hal":  lambda: __import__("bidplus.adapters.hal",  fromlist=["HALAdapter"]).HALAdapter(),
+        "halc": lambda: __import__("bidplus.adapters.halc", fromlist=["HALCAdapter"]).HALCAdapter(),
         "isro": lambda: __import__("bidplus.adapters.isro", fromlist=["ISROAdapter"]).ISROAdapter(),
     }[portal]()
 

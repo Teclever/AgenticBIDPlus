@@ -12,7 +12,7 @@ from __future__ import annotations
 import datetime
 import sqlite3
 
-_ADAPTER_PK = {"hal": ("tender_number", "line_number"), "isro": ("tender_id",), "gem": ("bid_number",)}
+_ADAPTER_PK = {"hal": ("tender_number", "line_number"), "halc": ("tender_id",), "isro": ("tender_id",), "gem": ("bid_number",)}
 _VALID_ACTIONS = {"accepted", "rejected", "disputed", "reset", "promoted"}
 
 

@@ -248,9 +248,10 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
     from bidplus import eliminator, governance, runtime
     from bidplus.adapters.gem import GeMAdapter
     from bidplus.adapters.hal import HALAdapter
+    from bidplus.adapters.halc import HALCAdapter
     from bidplus.adapters.isro import ISROAdapter
 
-    adapter = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
+    adapter = {"hal": HALAdapter, "halc": HALCAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
     spec = adapter._SCORING
     table, pk = spec["table"], spec["pk"]
     eliminator.ensure_boost_seed(parent)

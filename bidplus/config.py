@@ -63,8 +63,8 @@ OVERNIGHT_DEADLINE = os.environ.get("BIDPLUS_OVERNIGHT_DEADLINE", "09:00")
 OUR_VENDOR_ALIASES = [a.strip().lower() for a in
                       os.environ.get("OUR_VENDOR_ALIASES", "teclever").split(",") if a.strip()]
 
-# Strict sequential scrape order (HAL -> ISRO -> GeM). One heavy op at a time.
-PORTALS = ("hal", "isro", "gem")
+# Strict sequential scrape order (HAL -> HALC -> ISRO -> GeM). One heavy op at a time.
+PORTALS = ("hal", "halc", "isro", "gem")
 
 
 def portal_dir(portal: str) -> Path:

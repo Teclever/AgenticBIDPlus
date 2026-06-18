@@ -29,9 +29,10 @@ import bidplus.config as config
 from bidplus.adapters.base import RunResult
 from bidplus.adapters.gem import GeMAdapter
 from bidplus.adapters.hal import HALAdapter
+from bidplus.adapters.halc import HALCAdapter
 from bidplus.adapters.isro import ISROAdapter
 
-_ADAPTERS = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
+_ADAPTERS = {"hal": HALAdapter, "halc": HALCAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
 
 
 def _logs_dir():

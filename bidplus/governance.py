@@ -163,8 +163,9 @@ def promote_to_five(parent: sqlite3.Connection, portal: str, bid_id: str) -> dic
 
     from bidplus.adapters.gem import GeMAdapter
     from bidplus.adapters.hal import HALAdapter
+    from bidplus.adapters.halc import HALCAdapter
     from bidplus.adapters.isro import ISROAdapter
-    adapter = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
+    adapter = {"hal": HALAdapter, "halc": HALCAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
     spec = adapter._SCORING
     tool_where = " AND ".join(f"{c}=?" for c in spec["pk"])
     conn = sqlite3.connect(adapter.tool_db_path())
@@ -216,8 +217,9 @@ def _requeue_in_tool_db(portal: str, bid_id: str) -> None:
     re-scores it (the eliminator skips promoted bids → it reaches Haiku)."""
     from bidplus.adapters.gem import GeMAdapter
     from bidplus.adapters.hal import HALAdapter
+    from bidplus.adapters.halc import HALCAdapter
     from bidplus.adapters.isro import ISROAdapter
-    adapter = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
+    adapter = {"hal": HALAdapter, "halc": HALCAdapter, "isro": ISROAdapter, "gem": GeMAdapter}[portal]()
     spec = adapter._SCORING
     where = " AND ".join(f"{c}=?" for c in spec["pk"])
     conn = sqlite3.connect(adapter.tool_db_path())
@@ -298,8 +300,9 @@ def _score_ge3_grams(parent: sqlite3.Connection, terms: eliminator.Terms) -> set
     add hitting any of these could start killing pursuable bids and is blocked."""
     from bidplus.adapters.gem import GeMAdapter
     from bidplus.adapters.hal import HALAdapter
+    from bidplus.adapters.halc import HALCAdapter
     from bidplus.adapters.isro import ISROAdapter
-    specs = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
+    specs = {"hal": HALAdapter, "halc": HALCAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
     grams: set[str] = set()
     for portal, cls in specs.items():
         text_col = cls._SCORING["text"]

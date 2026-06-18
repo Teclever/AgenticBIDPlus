@@ -34,9 +34,10 @@ import bidplus.config as config
 from bidplus import runs as _runs
 from bidplus.adapters.gem import GeMAdapter
 from bidplus.adapters.hal import HALAdapter
+from bidplus.adapters.halc import HALCAdapter
 from bidplus.adapters.isro import ISROAdapter
 
-_ADAPTERS = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
+_ADAPTERS = {"hal": HALAdapter, "halc": HALCAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
 
 # Closing-date string formats seen across portals (parse_closing also handles ISO-8601 first):
 #   HAL  '22-06-2026 17:00'        (%d-%m-%Y %H:%M)

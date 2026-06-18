@@ -33,6 +33,12 @@ PORTAL_FIELDS = {
         "department": None, "location": None, "value": None,
         "opening": "bid_opening_date", "closing": "bid_closing_date",
     },
+    "halc": {
+        "pk": ("tender_id",),
+        "title": "tender_description", "buyer": "center_name", "ministry": None,
+        "department": "category", "location": None, "value": None,
+        "opening": "bid_opening_date", "closing": "bid_closing_date",
+    },
 }
 
 PORTALS = tuple(PORTAL_FIELDS.keys())

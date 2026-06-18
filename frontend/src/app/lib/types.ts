@@ -1,4 +1,4 @@
-export type PortalId = "gem" | "hal" | "isro";
+export type PortalId = "gem" | "hal" | "halc" | "isro";
 
 export interface User {
   id: number;

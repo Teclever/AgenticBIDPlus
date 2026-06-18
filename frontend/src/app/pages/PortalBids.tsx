@@ -18,7 +18,8 @@ const PAGE_SIZE = 50;
 
 const PORTAL_NAMES: Record<PortalId, string> = {
   gem: "GEM - Government e-Marketplace",
-  hal: "HAL - Hindustan Aeronautics Limited",
+  hal: "HAL - e-Procurement",
+  halc: "HAL - Corporate Tenders",
   isro: "ISRO - Indian Space Research Organisation",
 };
 

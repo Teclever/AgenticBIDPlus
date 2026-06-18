@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 import bidplus.config as config
 from bidplus import extraction
 
-_ADAPTER_PK = {"hal": ("tender_number", "line_number"), "isro": ("tender_id",), "gem": ("bid_number",)}
+_ADAPTER_PK = {"hal": ("tender_number", "line_number"), "halc": ("tender_id",), "isro": ("tender_id",), "gem": ("bid_number",)}
 _IMG_MEDIA = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
               ".gif": "image/gif", ".webp": "image/webp"}
 
@@ -431,6 +431,7 @@ def _read_staging_text(portal: str, source_pk: str) -> str:
 
 def _adapter(portal: str):
     return {"hal": __import__("bidplus.adapters.hal", fromlist=["HALAdapter"]).HALAdapter,
+            "halc": __import__("bidplus.adapters.halc", fromlist=["HALCAdapter"]).HALCAdapter,
             "isro": __import__("bidplus.adapters.isro", fromlist=["ISROAdapter"]).ISROAdapter,
             "gem": __import__("bidplus.adapters.gem", fromlist=["GeMAdapter"]).GeMAdapter}[portal]()
 

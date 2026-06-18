@@ -34,10 +34,11 @@ import sqlite3
 import bidplus.config as config
 from bidplus.adapters.gem import GeMAdapter
 from bidplus.adapters.hal import HALAdapter
+from bidplus.adapters.halc import HALCAdapter
 from bidplus.adapters.isro import ISROAdapter
 
-_ADAPTERS = {"hal": HALAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
-_SOURCE_TABLE = {"hal": "tenders", "isro": "bids", "gem": "bids"}
+_ADAPTERS = {"hal": HALAdapter, "halc": HALCAdapter, "isro": ISROAdapter, "gem": GeMAdapter}
+_SOURCE_TABLE = {"hal": "tenders", "halc": "bids", "isro": "bids", "gem": "bids"}
 
 # Legacy tool columns the scoring redesign DROPS — not mirrored into the parent:
 # the second-scoring Pass 2 (deleted), Excel/export flags, the GeM exclusion pre-filter
@@ -184,7 +185,7 @@ def ensure_shared(parent: sqlite3.Connection) -> None:
     )
 
     # Additive migration: single-tender columns on all portal tables (safe on existing DBs).
-    for _portal in ("gem", "hal", "isro"):
+    for _portal in ("gem", "hal", "halc", "isro"):
         _ptable = f"{_portal}_bids"
         _pt_have = {r[1] for r in parent.execute(f"PRAGMA table_info({_ptable})")}
         if not _pt_have:
