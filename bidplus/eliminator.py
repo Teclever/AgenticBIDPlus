@@ -162,6 +162,8 @@ _BOOST_SEED = [
     "AI",                        # artificial intelligence (acronym)
     "artificial intelligence",
     "check out system",          # singular — matcher covers plural + 'checkout'
+    "signal conditioner",        # in-scope instrumentation (matcher covers plural)
+    "signal conditioning",
 ]
 
 
