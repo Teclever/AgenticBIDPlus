@@ -28,6 +28,7 @@ import bidplus.config as config
 # PK columns per portal table (for returning sample work-queue ids).
 _PK = {
     "hal": ("tender_number", "line_number"),
+    "halc": ("tender_id",),
     "isro": ("tender_id",),
     "gem": ("bid_number",),
 }

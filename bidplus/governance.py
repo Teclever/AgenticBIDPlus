@@ -35,6 +35,7 @@ from bidplus import eliminator
 
 _ADAPTER_PK = {
     "hal": ("tender_number", "line_number"),
+    "halc": ("tender_id",),
     "isro": ("tender_id",),
     "gem": ("bid_number",),
 }
@@ -43,6 +44,7 @@ _ADAPTER_PK = {
 # must match the column the miner/eliminator runs grams() over.
 _ADAPTER_TEXT = {
     "hal": "tender_description",
+    "halc": "tender_description",
     "isro": "tender_description",
     "gem": "items",
 }
