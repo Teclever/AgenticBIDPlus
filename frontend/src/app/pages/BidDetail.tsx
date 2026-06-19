@@ -381,7 +381,7 @@ export function BidDetail() {
               : <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />}
             <div>
               <p className={`font-semibold ${isTeclever ? "text-green-900" : "text-amber-900"}`}>
-                {isTeclever ? "Single Tender – Teclever" : "Single Tender bid"}
+                {isTeclever ? "Single/Limited Tender – Teclever" : "Single/Limited Tender bid"}
               </p>
               {bid.singleTenderOrg && (
                 <p className={`text-sm mt-0.5 ${isTeclever ? "text-green-800" : "text-amber-800"}`}>

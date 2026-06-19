@@ -593,13 +593,13 @@ function SingleTenderBadge({ org }: { org: string | null }) {
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">
         <Star className="w-3 h-3 fill-green-600 text-green-600" />
-        Single Tender – Teclever
+        Single/Limited – Teclever
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300">
-      Single Tender
+      Single/Limited Tender
     </span>
   );
 }

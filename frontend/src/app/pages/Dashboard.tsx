@@ -179,7 +179,7 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
             to={`/portal/${id}?filter=singletender`}
             className="mt-2 flex items-center justify-between px-3 py-2 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors"
           >
-            <span className="text-xs font-semibold text-amber-800">Single Tender bids</span>
+            <span className="text-xs font-semibold text-amber-800">Single / Limited Tender bids</span>
             <span className="text-sm font-bold text-amber-900">{counts.singleTender}</span>
           </Link>
         )}

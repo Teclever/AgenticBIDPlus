@@ -342,6 +342,13 @@ _ST_APPLICABLE_RE = re.compile(
     r"single[\s\-–]*tender[\s\-–]*applicable\s*[:\-]?\s*(yes|हाँ|हां|ha\b)",
     re.IGNORECASE,
 )
+# A LIMITED tender restricts bidding to a (named or masked) 'List of Seller Organization
+# for participation' — same eligibility consequence as a single tender, so we route it
+# through the same classifier/handler (other → reject, teclever → score 5, masked → surface).
+_LT_APPLICABLE_RE = re.compile(
+    r"limited[\s\-–]*tender[\s\-–]*applicable\s*[:\-]?\s*(yes|हाँ|हां|ha\b)",
+    re.IGNORECASE,
+)
 _ST_ORG_RE = re.compile(
     r"(?:list\s+of\s+seller\s+org(?:anization)?[^\n]{0,40}?participation"
     r"|seller\s+org(?:anization)?[^\n]{0,40}?participation)"
@@ -353,9 +360,12 @@ _MASKED_RE   = re.compile(r"\*{2,}|x{5,}|\?{3,}", re.IGNORECASE)
 
 
 def _detect_single_tender(text: str) -> tuple[bool, str | None]:
-    """Scan extracted text for 'Single Tender Applicable: Yes'.
-    Returns (is_single_tender, org_name_or_None)."""
-    if not _ST_APPLICABLE_RE.search(text):
+    """Detect a participation-RESTRICTED tender — 'Single Tender Applicable: Yes' OR
+    'Limited Tender Applicable: Yes'. Both restrict bidding to the 'List of Seller
+    Organization for participation' (which may be named or masked as '***'). Returns
+    (is_restricted, org_or_seller_list); the value is then classified by _st_class
+    (teclever / masked / other) and handled identically by _apply_single_tender_db."""
+    if not (_ST_APPLICABLE_RE.search(text) or _LT_APPLICABLE_RE.search(text)):
         return False, None
     m = _ST_ORG_RE.search(text)
     org = m.group(1).strip() if m else None
