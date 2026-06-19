@@ -198,10 +198,13 @@ def _summary_text(raw: str | None) -> str:
 def bid_list(
     conn: sqlite3.Connection,
     portals: tuple[str, ...] | list[str] | None = None,
+    since: str | None = None,
 ) -> list[dict]:
     """Return active (non-CLOSED, non-auto_rejected) bids across all portals.
 
-    Default portals: bidplus.config.PORTALS.
+    Default portals: bidplus.config.PORTALS. When ``since`` (an ISO timestamp) is
+    given, only rows UPSERTED at/after it are returned — i.e. ``last_synced_at >= since``,
+    which the merge stamps only on inserted/changed rows (used for the per-rerun delta tab).
 
     Each dict:
       portal   — portal key (hal / halc / isro / gem)
@@ -225,14 +228,14 @@ def bid_list(
         buyer_col = f["buyer"]
         closing_col = f["closing"]
 
-        # Build SELECT column list; handle None buyer/title gracefully.
-        select_cols = ["*"]  # select everything so bid_id_display() has all PK cols
+        # SELECT everything so bid_id_display() has all PK cols.
+        where = "COALESCE(bid_status,'') <> 'CLOSED' AND COALESCE(auto_rejected,0) = 0"
+        params: list = []
+        if since:
+            where += " AND last_synced_at >= ?"
+            params.append(since)
         try:
-            rows = conn.execute(
-                f"SELECT {', '.join(select_cols)} FROM {table} "
-                "WHERE COALESCE(bid_status,'') <> 'CLOSED' "
-                "AND COALESCE(auto_rejected,0) = 0"
-            ).fetchall()
+            rows = conn.execute(f"SELECT * FROM {table} WHERE {where}", params).fetchall()
         except sqlite3.OperationalError:
             continue  # table absent — skip portal silently
 

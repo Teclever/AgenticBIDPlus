@@ -216,11 +216,17 @@ class Agent:
 
     # ── shared publication: dated bid tab + Runs append ─────────────────────────
     def _publish_cycle(self, conn, cyc, *, trigger: str, tab: str) -> None:
-        bids = report.bid_list(conn, settings.PORTALS)
+        portals = report.cycle_portal_rows(conn, cyc["id"])
+        if trigger == "rerun":
+            # Rerun tab = ONLY what this run upserted (inserted/changed), for the rerun portal(s).
+            in_cycle = [p["tool"] for p in portals] or list(settings.PORTALS)
+            bids = report.bid_list(conn, in_cycle, since=cyc["started_at"])
+        else:
+            bids = report.bid_list(conn, settings.PORTALS)  # nightly / full run = everything
         rows = [[b["portal"], b["bid_id"], b["title"], b["org"], b["score"], b["summary"]]
                 for b in bids]
         self.book.overwrite(tab, BID_HEADER, rows)
-        portals = report.cycle_portal_rows(conn, cyc["id"])
+        self.book.format_bid_tab(tab)
         self.book.append(settings.TAB_RUNS, RUNS_HEADER, [
             cyc["finished_at"], cyc["id"], trigger, cyc["status"] or "",
             _dur(cyc["started_at"], cyc["finished_at"]),

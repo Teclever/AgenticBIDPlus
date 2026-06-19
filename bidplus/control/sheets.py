@@ -115,6 +115,56 @@ class Book:
         _retry(lambda: ws.update(values=[[_cell(v) for v in values]],
                                  range_name=f"A{row_index}", value_input_option="RAW"))
 
+    # ── bid-list formatting (matches the per-portal Excel export) ─────────────
+    # Whole-row fills by Pass-1 score, same hues as excel_export (5 blue / 4 yellow / 3 orange).
+    _SCORE_FILLS = {
+        "5": {"red": 0.302, "green": 0.651, "blue": 1.0},    # 4DA6FF
+        "4": {"red": 1.0, "green": 0.824, "blue": 0.2},      # FFD233
+        "3": {"red": 1.0, "green": 0.6, "blue": 0.4},        # FF9966
+    }
+    # Per-column pixel widths: Portal, Bid ID, Title, Organization, Pass-1 Score, Summary.
+    _COL_WIDTHS = [70, 165, 380, 230, 95, 560]
+
+    def format_bid_tab(self, title) -> None:
+        """Apply the standard bid-tab look: frozen+bold header, a basic filter (so Title etc.
+        are filterable), per-column widths, wrapped multi-line top-aligned cells, and score
+        5/4/3 conditional row fills. One batched API call. Best-effort (never breaks publish)."""
+        ws = self.worksheet(title)
+        if ws is None:
+            return
+        sid = ws.id
+        ncols = len(self._COL_WIDTHS)
+        reqs: list = [
+            {"updateSheetProperties": {
+                "properties": {"sheetId": sid, "gridProperties": {"frozenRowCount": 1}},
+                "fields": "gridProperties.frozenRowCount"}},
+            {"repeatCell": {"range": {"sheetId": sid},
+                "cell": {"userEnteredFormat": {"wrapStrategy": "WRAP", "verticalAlignment": "TOP"}},
+                "fields": "userEnteredFormat.wrapStrategy,userEnteredFormat.verticalAlignment"}},
+            {"repeatCell": {"range": {"sheetId": sid, "startRowIndex": 0, "endRowIndex": 1},
+                "cell": {"userEnteredFormat": {"textFormat": {"bold": True}}},
+                "fields": "userEnteredFormat.textFormat.bold"}},
+            {"setBasicFilter": {"filter": {"range": {
+                "sheetId": sid, "startRowIndex": 0, "startColumnIndex": 0, "endColumnIndex": ncols}}}},
+        ]
+        for c, px in enumerate(self._COL_WIDTHS):
+            reqs.append({"updateDimensionProperties": {
+                "range": {"sheetId": sid, "dimension": "COLUMNS", "startIndex": c, "endIndex": c + 1},
+                "properties": {"pixelSize": px}, "fields": "pixelSize"}})
+        # Score column is E (index 4). Values are stored as text, so compare as text.
+        for score, color in self._SCORE_FILLS.items():
+            reqs.append({"addConditionalFormatRule": {"index": 0, "rule": {
+                "ranges": [{"sheetId": sid, "startRowIndex": 1,
+                            "startColumnIndex": 0, "endColumnIndex": ncols}],
+                "booleanRule": {
+                    "condition": {"type": "CUSTOM_FORMULA",
+                                  "values": [{"userEnteredValue": f'=$E2="{score}"'}]},
+                    "format": {"backgroundColor": color}}}}})
+        try:
+            _retry(lambda: self.ss.batch_update({"requests": reqs}))
+        except Exception as e:  # formatting must never break a publish
+            print(f"[control] format_bid_tab({title!r}) skipped: {e}", flush=True)
+
     # ── dated-tab housekeeping ────────────────────────────────────────────────
     def titles(self) -> list[str]:
         if self._cache is None:
