@@ -4,12 +4,25 @@ import type { AxiosError } from "axios";
 import type { ApiError } from "../types";
 
 export const notificationsApi = {
-  list: async () => {
+  list: async (search?: string) => {
     try {
-      const res = await apiClient.get<{ items: NotificationItem[]; total: number }>(
+      const res = await apiClient.get<{ items: NotificationItem[]; total: number; matched: number }>(
         "/api/notifications/auto-filtered",
+        { params: search && search.trim() ? { search: search.trim() } : {} },
       );
       return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
+  exportCsv: async (search?: string) => {
+    try {
+      const res = await apiClient.get("/api/notifications/auto-filtered/export.csv", {
+        params: search && search.trim() ? { search: search.trim() } : {},
+        responseType: "blob",
+      });
+      return res.data as Blob;
     } catch (e) {
       throw axiosErrorToApiError(e as AxiosError<ApiError>);
     }

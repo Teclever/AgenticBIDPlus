@@ -9,6 +9,7 @@ Run:  uvicorn bidplus.web.app:app --host 0.0.0.0 --port 8000
 
 from __future__ import annotations
 
+import csv
 import datetime
 import io
 import sqlite3
@@ -528,15 +529,51 @@ def _pending_rows(db: sqlite3.Connection, portal: str) -> list[sqlite3.Row]:
         "ORDER BY first_seen_date DESC").fetchall()
 
 
-@app.get("/api/notifications/auto-filtered")
-def notifications(user: dict = Depends(current_user), db: sqlite3.Connection = Depends(get_db)):
-    items, total = [], 0
+def _all_pending_items(db: sqlite3.Connection) -> list[dict]:
+    """Every pending auto-filtered bid across all portals as notification items (uncapped)."""
+    items: list[dict] = []
     for portal in PORTALS:
-        rows = _pending_rows(db, portal)
-        total += len(rows)
-        for r in rows[:200]:
+        for r in _pending_rows(db, portal):
             items.append(mapping.notification_item(_row_dict(r), portal))
-    return {"items": items[:200], "total": total}
+    return items
+
+
+def _matches_term(item: dict, term: str) -> bool:
+    """Case-insensitive substring match over bidId / description / matched keyword."""
+    if not term:
+        return True
+    hay = " ".join(str(item.get(k) or "") for k in ("bidId", "description", "matchedKeyword")).lower()
+    return term in hay
+
+
+@app.get("/api/notifications/auto-filtered")
+def notifications(search: str | None = None, user: dict = Depends(current_user),
+                  db: sqlite3.Connection = Depends(get_db)):
+    """Flagged bids. `total` = full pending count (what Save All accepts); `matched` =
+    count after the optional search; `items` = matched, capped at 200 for the page."""
+    allp = _all_pending_items(db)
+    term = (search or "").strip().lower()
+    matched = [it for it in allp if _matches_term(it, term)]
+    return {"items": matched[:200], "total": len(allp), "matched": len(matched)}
+
+
+@app.get("/api/notifications/auto-filtered/export.csv")
+def export_auto_filtered_csv(search: str | None = None, user: dict = Depends(current_user),
+                             db: sqlite3.Connection = Depends(get_db)):
+    """Download ALL pending auto-filtered bids (optionally search-filtered) as CSV — the
+    full set, uncapped, for offline triage."""
+    allp = _all_pending_items(db)
+    term = (search or "").strip().lower()
+    rows = [it for it in allp if _matches_term(it, term)]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["Portal", "Bid ID", "Bid Key", "Description", "Filtered By", "Closing Date", "First Seen"])
+    for it in rows:
+        w.writerow([it["portal"], it["bidId"], it["bidKey"], it.get("description") or "",
+                    it.get("matchedKeyword") or "", it.get("closingDateRaw") or "", it.get("firstSeen") or ""])
+    fname = f"auto-filtered-bids-{datetime.date.today().isoformat()}.csv"
+    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
+                             headers={"Content-Disposition": f'attachment; filename="{fname}"'})
 
 
 @app.get("/api/notifications/auto-filtered/count")
