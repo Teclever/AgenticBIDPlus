@@ -431,4 +431,63 @@ disposition→activity row, notifications queue/count/viewed. **NOT exercised:**
 `generate-summary` (real Sonnet call — needs API key + network; the lock/409 path is wired) and a
 real browser front-end (built separately from `webapp-design/`).
 
+## 17. Post-deploy changes (2026-06-18 / 2026-06-19) — DEPLOYED & LIVE
+
+System is live in daily use. These changes were committed, deployed to the box, and validated.
+
+### 17.1 Fourth portal — HAL Corporate Tenders (`halc`)
+- New portal key **`halc`** = HAL corporate tenders site `hal-india.co.in/tender` (WordPress REST
+  behind a WAF; browser-header cookies warmed). **Distinct from `hal`** = HAL e-Procurement
+  (`eproc.hal-india.co.in`). Commit `20d93d5` (+`12915ef`, `388fea4`).
+- New tool `halc_portal/` (seeded from the standalone HAL-corporate tool, adapted to the
+  integrated `isro_portal` shape: `scrape-score`/`explain`/`fetch-docs` + standalone run/pass2;
+  PK `tender_id`, text `tender_description`, extra `ref_no`/`category` cols). New adapter
+  `bidplus/adapters/halc.py` (`HALCAdapter`). `halc` wired into every portal registry
+  (`config.PORTALS` = hal,halc,isro,gem; merge `_ADAPTERS`/`_SOURCE_TABLE`/single-tender loop;
+  scoring, governance(×4 dicts: `_ADAPTERS`,`_ADAPTER_PK`,`_ADAPTER_TEXT`), summarize, lifecycle,
+  launcher, web app `_make_adapter`, web/mapping `PORTAL_FIELDS`, dispositions/gate `_PK`).
+  **Lesson: portal-keyed dicts are scattered — grep `"isro"`/`"gem"` (single- AND multi-line).**
+- Frontend: `PortalId` adds `halc`; Dashboard is a **4-card** grid (`md:grid-cols-2 xl:grid-cols-4`),
+  existing HAL relabelled "HAL e-Procurement", new "HAL Corporate Tenders" card.
+- **HALC Bid ID = `ref_no`** (T_REF_NO, e.g. `TENDER NOTICE/NCP/21/26-27`), not the internal
+  numeric `tender_id` (which stays the PK/bidKey). `mapping.bid_id_display`. Commit `4d4736f`.
+- **HALC documents — two sources** (`fetcher.download_documents`): direct `tendorfile*`/`Corrigendum*`
+  PDFs, OR for "Refer NIT … visit eproc" tenders, follow `T_RETURN_URL` → `PublicDocumentDisplay`
+  → download each `DownloadController` file in the SAME (session-scoped) e-proc session, skipping
+  File ID `--` placeholder rows. Fixes "no machine-readable documents". Commit `4d4736f`.
+
+### 17.2 Single → Single/Limited Tender detection
+- Restriction detection now triggers on **`Limited Tender Applicable: Yes`** too (not just Single
+  Tender), reading the same `List of Seller Organization for participation` field and routing
+  through the existing classifier: named-non-Teclever → auto-reject; Teclever → score 5; **masked →
+  score 5 + `is_single_tender=1`, surfaced for human review (never auto-accepted)**. Commits
+  `e6e598c`, `b3c1dfc`. Frontend relabel "Single Tender" → "Single / Limited Tender".
+- **Critical fix:** detection now runs on **RAW pdf text** (`_raw_staging_text`), not the cleaned
+  `.txt` sidecar — `clean_text` strips the boilerplate/Devanagari-heavy GeM table section that holds
+  the tender-type + seller-list fields, so regex on cleaned text silently missed it (single tenders
+  were only caught via the Sonnet `single_vendor` fallback, which never fires for a limited list).
+
+### 17.3 Reset accepted bids (UI)
+- "Reset to New" now shows for **any disposed bid** (accepted *or* rejected) on the detail page, and
+  as a per-row action in the bid list (table + card). Backend `reset` disposition was already
+  state-agnostic. Commit `4d61191`. (No bulk reset — bulk endpoint is accept/reject only.)
+
+### 17.4 Remote control plane (`bidplus-control`) — NEW SUBSYSTEM
+- Box is outbound-only; a Google Sheet is the rendezvous. `bidplus-control.service` (systemd,
+  `User=congo`, auto-restart, reboot-safe) polls a Sheet and writes run status back — all outbound.
+  Reports autonomous nightly runs too. Commits `eff9fe5`,`a5ab925`,`9095cf6`,`53cdd28`.
+- Code in `bidplus/control/`; full operator doc in **`bidplus/control/README.md`**. Two whitelisted
+  commands only: `run` (all portals) and `rerun <portal>` (= `launcher run --only <portal>`, added).
+  Sheet tabs: `Status` (heartbeat + per-portal counts), `Runs` (history), `Commands` (operator
+  queues here), dated `Nightly`/`Run`/`Rerun` bid-list tabs (Portal·BidID·Title·Org·Pass1·Summary,
+  score-desc, score 5/4/3 conditional fills, filter, wrap; rerun tabs = upserted-only delta).
+- SA key `/etc/bidplus/bidplus-control-1b58558711e0.json` (`bidplus:bidplus 600`); congo granted
+  read via `setfacl -m u:congo:r` (needs `apt install acl`).
+
+### 17.5 Ops note
+- A **manual `merge` must be followed by `sweep`** (the nightly does merge→sweep, sweep last): a
+  bare merge mirrors tool `bid_status` and can briefly re-open past-closing bids until the sweep
+  re-closes them. `merge --check` showing `bid_status` mismatches right after a sweep is expected
+  (parent is authoritative for CLOSED via the sweep).
+
 *End of handoff. Update this file when a slice DONE-WHEN passes or when validation state changes.*

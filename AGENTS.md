@@ -1,7 +1,8 @@
 # AGENTS.md — Teclever Bid Portal (backend)
 
 ## What this is
-A parent orchestrator that runs three existing portal scrapers (HAL, ISRO, GeM)
+A parent orchestrator that runs four portal scrapers (HAL e-Procurement, HAL Corporate
+Tenders `halc`, ISRO, GeM)
 sequentially, merges their SQLite data into a parent SQLite (one table per portal),
 Pass-1-scores every bid against a unified rubric, and for every bid scoring >= 4 fetches
 its documents into a per-bid dir and SAVES THEM LOCALLY (every score). A single
@@ -19,7 +20,7 @@ their scrape / download / Pass-1 / DB-write logic. Do NOT rewrite portal transpo
 ## Golden rules (do not break)
 - Touch portals only through `PortalAdapter`. Never re-implement `fetcher.py`,
   HAL `session.py`, or GeM `csrf_handler.py`.
-- Scraping is STRICTLY SEQUENTIAL (HAL -> ISRO -> GeM). One heavy op at a time.
+- Scraping is STRICTLY SEQUENTIAL (HAL -> HALC -> ISRO -> GeM, per `config.PORTALS`). One heavy op at a time.
 - Parent merge is ALWAYS upsert. NEVER overwrite ANY overlay column — AI-derived
   (docs_summarized, summary_json/model/at, summary_coverage, local_extracted,
   local_extract_json, has_restrictive_eligibility) or human (user_state, disposed_by,
@@ -102,7 +103,7 @@ their scrape / download / Pass-1 / DB-write logic. Do NOT rewrite portal transpo
   entry: the bids/<pk>/ staging lives under $BIDPLUS_RUNTIME_DIR, outside the tree.)
 
 ## Unified rubric + summary
-All three portals use the ONE IDENTICAL `capability_reference.md` for Pass 1, kept as a
+All four portals use the ONE IDENTICAL `capability_reference.md` for Pass 1, kept as a
 SINGLE physical file at `bidplus/data/capability_reference.md` and resolved via
 `bidplus.runtime.capability_reference_path()`. The former per-portal copies under each tool's
 `data/` are removed, so there is no drift. ISRO adopts this unified rubric AS-IS and re-scores
