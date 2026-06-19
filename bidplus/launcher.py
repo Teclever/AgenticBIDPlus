@@ -127,7 +127,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     from bidplus import summarize as summarize_mod
 
     mode = "shadow" if args.shadow else "hard"
-    print(f"[launcher] Sequential run order: {' -> '.join(config.PORTALS)}  (eliminator={mode})", flush=True)
+    # --only scopes the cycle to ONE portal (manual rerun); default = all, in PORTALS order.
+    only = getattr(args, "only", None)
+    portals_to_run = [only] if only else list(config.PORTALS)
+    print(f"[launcher] Sequential run order: {' -> '.join(portals_to_run)}  (eliminator={mode})", flush=True)
     parent = merge_mod.connect_parent()
     merge_mod.ensure_shared(parent)
     eliminator.seed_terms(parent)  # idempotent first-deploy seed; no-op once populated
@@ -143,7 +146,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     results: list[RunResult] = []
     timings: dict[str, float] = {}
     pass2_totals = {"local_extracted": 0, "summarized": 0, "summary_failed": 0}
-    for portal in config.PORTALS:
+    for portal in portals_to_run:
         print(f"\n[launcher] Running '{portal}' pipeline…", flush=True)
         adapter = _ADAPTERS[portal]()
         p_start = runs._now()
@@ -653,6 +656,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument(
         "--shadow", action="store_true",
         help="Keep the eliminator non-destructive (log would-eliminate, still Haiku-score).",
+    )
+    p_run.add_argument(
+        "--only", choices=sorted(_ADAPTERS), default=None,
+        help="Scope the cycle to ONE portal (manual rerun); default = all portals.",
     )
     p_run.set_defaults(func=cmd_run)
 

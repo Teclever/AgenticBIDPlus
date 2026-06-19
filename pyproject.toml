@@ -33,6 +33,9 @@ dependencies = [
     # eMudhra->certifi append the GeM TLS fix relies on (DEPLOY_WORKFLOW.md §2). If you
     # ever bump this, re-run the eMudhra append.
     "certifi==2026.4.22",
+    # Control-plane agent: Google Sheets rendezvous (bidplus.control).
+    "gspread>=6.0",
+    "google-auth>=2.0",
 ]
 
 [tool.setuptools]

@@ -1,0 +1,38 @@
+[Unit]
+Description=Teclever Bid Portal — control-plane agent (Sheet rendezvous, scraper orchestration)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=congo
+Group=congo
+WorkingDirectory=/home/congo/BidAnalysisPortal
+EnvironmentFile=/home/congo/bidplus-runtime/control.env
+ExecStart=/home/congo/bidplus-runtime/venv/bin/python -m bidplus.control
+Restart=always
+RestartSec=10
+
+# KillMode is intentionally left at the default (control-group).  When systemd restarts
+# this service it kills the entire cgroup, which includes any in-flight
+# `bidplus.launcher` child process.  The agent's restart-recovery logic detects the
+# interrupted state file on the next start-up and marks that command "interrupted"
+# (status = "interrupted", no result written), so the same command is never
+# double-executed.
+
+# SA key + file permissions — OPERATOR ACTION REQUIRED before first start:
+#
+#   The service account key is expected at the path set by BIDPLUS_CONTROL_SA_KEY
+#   (default: /etc/bidplus/bidplus-control-1b58558711e0.json).
+#   That file should be owned bidplus:bidplus with mode 600.
+#   Because this service runs as the 'congo' user (not 'bidplus'), congo must be
+#   granted explicit read access to the key.  Use a POSIX ACL so the restrictive
+#   mode-600 is preserved:
+#
+#       sudo setfacl -m u:congo:r /etc/bidplus/bidplus-control-1b58558711e0.json
+#
+#   Verify with:  getfacl /etc/bidplus/bidplus-control-1b58558711e0.json
+#
+#   *** Flagged for operator confirmation — do NOT assume this ACL is in place. ***
+
+[Install]
+WantedBy=multi-user.target
