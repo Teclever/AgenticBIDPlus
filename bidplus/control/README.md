@@ -128,8 +128,11 @@ sudo -u congo /home/congo/bidplus-runtime/venv/bin/pip install "gspread>=6.0" "g
 sudo -u congo install -m 600 /dev/null /home/congo/bidplus-runtime/control.env
 sudo -u congo nano /home/congo/bidplus-runtime/control.env   # paste your SHEET_ID
 
-# 3. Grant congo read access to the SA key (key must already be mode 600, owned bidplus:bidplus)
+# 3. Grant congo read access to the SA key (key must already be mode 600, owned bidplus:bidplus).
+#    setfacl needs the `acl` package (not installed by default on this box):
+sudo apt-get install -y acl
 sudo setfacl -m u:congo:r /etc/bidplus/bidplus-control-1b58558711e0.json
+#    (Alternative if you cannot install acl: sudo chgrp congo <key> && sudo chmod 640 <key>)
 
 # 4. Copy the unit file and enable the service
 sudo cp /home/congo/BidAnalysisPortal/deploy/bidplus-control.service /etc/systemd/system/
