@@ -437,6 +437,27 @@ def _read_staging_text(portal: str, source_pk: str) -> str:
     return "\n".join(parts)
 
 
+def _raw_staging_text(portal: str, source_pk: str) -> str:
+    """UNCLEANED text from staged PDFs — for restriction detection only.
+
+    ``clean_text`` (which produces the .txt sidecars ``_read_staging_text`` reads) strips
+    boilerplate/Devanagari-heavy table sections — exactly where GeM puts 'Single/Limited
+    Tender Applicable' and the (often masked) 'List of Seller Organization'. Detection must
+    see the raw text or it silently misses these restrictions."""
+    from bidplus import extraction
+    staging = config.bid_staging_dir(portal, source_pk)
+    if not staging.is_dir():
+        return ""
+    parts: list[str] = []
+    for p in sorted(staging.iterdir()):
+        if p.is_file() and p.suffix.lower() == ".pdf":
+            try:
+                parts.append(extraction._pdf_text(p))
+            except Exception:
+                pass
+    return "\n".join(parts)
+
+
 # ── shared fetch + extract ─────────────────────────────────────────────────────────
 
 def _adapter(portal: str):
@@ -476,7 +497,9 @@ def local_extract_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
     ex = _fetch_and_extract(portal, source_pk, fetch)
     # Single tender detection: regex on raw .txt first, extraction detector as fallback
     raw = _read_staging_text(portal, source_pk)
-    is_st, st_org = _detect_single_tender(raw)
+    # Detect on RAW pdf text + cleaned text: clean_text drops the table section that holds
+    # the Single/Limited-Tender + (masked) seller-list fields.
+    is_st, st_org = _detect_single_tender(_raw_staging_text(portal, source_pk) + "\n" + raw)
     if not is_st and ex.single_vendor:
         is_st, st_org = True, ex.single_vendor_name
     if is_st:
@@ -511,7 +534,9 @@ def summarize_bid(portal: str, source_pk: str, parent: sqlite3.Connection,
     call_fn = call_fn or _raw_sonnet
     ex = _fetch_and_extract(portal, source_pk, fetch)
     raw = _read_staging_text(portal, source_pk)
-    is_st, st_org = _detect_single_tender(raw)
+    # Detect on RAW pdf text + cleaned text: clean_text drops the table section that holds
+    # the Single/Limited-Tender + (masked) seller-list fields.
+    is_st, st_org = _detect_single_tender(_raw_staging_text(portal, source_pk) + "\n" + raw)
     if not is_st and ex.single_vendor:
         is_st, st_org = True, ex.single_vendor_name
     unparsed = [d.doc_name for d in ex.unsupported_docs]
