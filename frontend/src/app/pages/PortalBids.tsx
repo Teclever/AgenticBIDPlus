@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useSearchParams, useNavigate } from "react-router";
-import { Search, Filter, Calendar, ChevronRight, X, Loader2, Sparkles, CheckCircle, XCircle, Star } from "lucide-react";
+import { Search, Filter, Calendar, ChevronRight, X, Loader2, Sparkles, CheckCircle, XCircle, Star, RotateCcw } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { portalApi } from "../lib/api";
 import {
@@ -154,7 +154,7 @@ export function PortalBids() {
 
   const handleDisposition = async (
     bidKey: string,
-    action: "accepted" | "rejected",
+    action: "accepted" | "rejected" | "reset",
     e: React.MouseEvent,
   ) => {
     e.stopPropagation();
@@ -455,6 +455,20 @@ export function PortalBids() {
                             </button>
                           </div>
                         )}
+                        {!isSelectable(bid) && bid.userState !== "new" && (
+                          <div className="flex gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => handleDisposition(bid.bidKey, "reset", e)}
+                              disabled={disposingKey === bid.bidKey}
+                              title="Reset to New"
+                              className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                            >
+                              {disposingKey === bid.bidKey
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <RotateCcw className="w-4 h-4" />}
+                            </button>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-4"><ChevronRight className="w-5 h-5 text-gray-400" /></td>
                     </tr>
@@ -538,6 +552,20 @@ export function PortalBids() {
                         >
                           <XCircle className="w-4 h-4" />
                           Reject
+                        </button>
+                      </div>
+                    )}
+                    {!isSelectable(bid) && bid.userState !== "new" && (
+                      <div className="flex pt-2 border-t border-gray-100">
+                        <button
+                          onClick={(e) => handleDisposition(bid.bidKey, "reset", e)}
+                          disabled={disposingKey === bid.bidKey}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 disabled:opacity-40 transition-colors"
+                        >
+                          {disposingKey === bid.bidKey
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <RotateCcw className="w-4 h-4" />}
+                          Reset to New
                         </button>
                       </div>
                     )}

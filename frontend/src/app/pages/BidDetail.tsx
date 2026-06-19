@@ -355,7 +355,7 @@ export function BidDetail() {
             </Button>
           </div>
         )}
-        {bid.userState === "rejected" && (
+        {bid.userState !== "new" && (
           <Button
             variant="secondary"
             onClick={() => handleDisposition("reset")}
