@@ -154,7 +154,7 @@ function PortalCard({ id, name, fullName, icon, color, stats }: PortalCardProps)
 
       <div className="grid grid-cols-2 gap-3 mb-4">
         <StatLink to={`/portal/${id}?filter=new`} label="New" value={counts.new} />
-        <StatLink to={`/portal/${id}?filter=all`} label="Accepted" value={counts.accepted} accent />
+        <StatLink to={`/portal/${id}?status=accepted`} label="Accepted" value={counts.accepted} accent />
       </div>
 
       <Link to={`/portal/${id}`}>
@@ -208,9 +208,10 @@ function StatLink({ to, label, value, accent }: { to: string; label: string; val
 }
 
 function FilterChipLink({
-  portalId, filter, label, newCount, acceptedCount, colorClass,
+  portalId, filter, label, newCount, acceptedCount, value, colorClass,
 }: {
-  portalId: string; filter: BidFilter; label: string; newCount: number; acceptedCount: number; colorClass: string;
+  portalId: string; filter: BidFilter; label: string;
+  newCount?: number; acceptedCount?: number; value?: number; colorClass: string;
 }) {
   return (
     <Link
@@ -218,8 +219,14 @@ function FilterChipLink({
       className={`rounded-lg px-2 py-2 transition-colors text-center border border-transparent hover:border-current ${colorClass}`}
     >
       <div className="text-xs font-semibold opacity-80 mb-1">{label}</div>
-      <div className="text-sm font-bold leading-tight">{(newCount ?? 0).toLocaleString()} <span className="text-xs font-normal opacity-70">new</span></div>
-      <div className="text-xs leading-tight mt-0.5 opacity-80">{(acceptedCount ?? 0).toLocaleString()} acc</div>
+      {value !== undefined ? (
+        <div className="text-base font-bold leading-tight py-0.5">{(value ?? 0).toLocaleString()}</div>
+      ) : (
+        <>
+          <div className="text-sm font-bold leading-tight">{(newCount ?? 0).toLocaleString()} <span className="text-xs font-normal opacity-70">new</span></div>
+          <div className="text-xs leading-tight mt-0.5 opacity-80">{(acceptedCount ?? 0).toLocaleString()} acc</div>
+        </>
+      )}
     </Link>
   );
 }
