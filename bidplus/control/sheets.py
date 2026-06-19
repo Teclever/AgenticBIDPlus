@@ -48,15 +48,30 @@ class Book:
 
     def __init__(self, spreadsheet=None) -> None:
         self.ss = spreadsheet or open_spreadsheet()
+        self._cache: dict | None = None  # lower(title) -> worksheet
 
     # ── worksheet access ──────────────────────────────────────────────────────
+    def refresh(self) -> None:
+        """Re-read the worksheet list (one API call). Call once per tick so all
+        lookups within the tick are cache hits (keeps us well under quota)."""
+        self._cache = {w.title.strip().lower(): w
+                       for w in _retry(lambda: self.ss.worksheets())}
+
     def worksheet(self, title, *, create=False, rows=200, cols=26):
-        try:
-            return self.ss.worksheet(title)
-        except gspread.WorksheetNotFound:
-            if not create:
-                return None
-            return _retry(lambda: self.ss.add_worksheet(title=title, rows=rows, cols=cols))
+        """Find a worksheet by title CASE-INSENSITIVELY (Google enforces case-insensitive
+        name uniqueness, so a pre-existing 'commands' tab must satisfy a 'Commands' lookup
+        and never trigger a duplicate-name create). Creates with the given title on miss."""
+        if self._cache is None:
+            self.refresh()
+        key = title.strip().lower()
+        ws = self._cache.get(key)
+        if ws is not None:
+            return ws
+        if not create:
+            return None
+        ws = _retry(lambda: self.ss.add_worksheet(title=title, rows=rows, cols=cols))
+        self._cache[key] = ws
+        return ws
 
     # ── whole-tab writes ──────────────────────────────────────────────────────
     def put(self, title, matrix) -> None:
@@ -102,13 +117,19 @@ class Book:
 
     # ── dated-tab housekeeping ────────────────────────────────────────────────
     def titles(self) -> list[str]:
-        return [w.title for w in _retry(lambda: self.ss.worksheets())]
+        if self._cache is None:
+            self.refresh()
+        return [w.title for w in self._cache.values()]
 
     def prune_prefix(self, prefix, keep) -> list[str]:
         """Delete oldest tabs whose title starts with ``prefix``, keeping the newest ``keep``.
         Titles embed a sortable timestamp, so lexical sort = chronological."""
-        matching = sorted(w for w in _retry(lambda: self.ss.worksheets()) if w.title.startswith(prefix))
+        if self._cache is None:
+            self.refresh()
+        matching = sorted((w for w in self._cache.values() if w.title.startswith(prefix)),
+                          key=lambda w: w.title)
         drop = matching[:-keep] if keep and len(matching) > keep else []
         for w in drop:
             _retry(lambda w=w: self.ss.del_worksheet(w))
+            self._cache.pop(w.title.strip().lower(), None)
         return [w.title for w in drop]

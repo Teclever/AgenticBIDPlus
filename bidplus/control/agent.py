@@ -79,6 +79,7 @@ class Agent:
 
     # ── the loop ───────────────────────────────────────────────────────────────
     def run_forever(self) -> None:
+        self.book.refresh()
         self._ensure_tabs()
         self.recover()
         print(f"[control] agent up (worker={settings.WORKER} poll={settings.POLL_SECS}s)", flush=True)
@@ -90,6 +91,7 @@ class Agent:
             time.sleep(settings.POLL_SECS)
 
     def tick(self) -> None:
+        self.book.refresh()  # one worksheet-list read per tick; all lookups below are cache hits
         conn = report.connect()
         try:
             activity = "idle"
