@@ -11,6 +11,7 @@ replace this module; everything else is portal-agnostic.
 from __future__ import annotations
 
 import re
+from urllib.parse import urljoin
 
 import requests
 
@@ -232,3 +233,139 @@ def collect_doc_links(session: requests.Session, bid: dict) -> list[str]:
             seen.add(url)
             links.append(url)
     return links
+
+
+# ── document download (direct corporate PDFs OR the e-proc portal fallback) ──────────
+
+def download_documents(tender_id: str, session: requests.Session | None = None) -> list[tuple[str, bytes]]:
+    """Resolve + download a tender's documents as ``(filename, bytes)`` pairs.
+
+    Two sources, in order:
+      1. **Direct** — non-placeholder ``tendorfile*`` / ``Corrigendum*`` PDFs hosted on the
+         corporate site.
+      2. **E-proc fallback** — for "Refer NIT" tenders that carry no direct files, the real
+         documents live on ``eproc.hal-india.co.in``. The corporate detail's ``T_RETURN_URL``
+         is the public document-list link; we follow it and download each file there. The
+         e-proc ``enc`` tokens are session-scoped, so the list fetch and the per-file
+         downloads MUST share one session (handled inside ``_fetch_eproc_documents``).
+
+    Returns ``[]`` only when the tender genuinely exposes no machine-readable files.
+    """
+    owns = session is None
+    session = session or make_session()
+    try:
+        rec = _post_results(session, HAL_DETAIL_ENDPOINT, {"id": (None, str(tender_id))})
+        if not rec:
+            return []
+        direct = _direct_doc_urls(rec)
+        if direct:
+            out: list[tuple[str, bytes]] = []
+            for i, url in enumerate(direct, start=1):
+                content = _download_bytes(session, url)
+                if content:
+                    out.append((_unique_name(i, _name_from_url(url, f"doc_{i}.bin")), content))
+            return out
+        return_url = str(rec.get("T_RETURN_URL") or "").strip()
+        if return_url:
+            return _fetch_eproc_documents(return_url)
+        return []
+    finally:
+        if owns:
+            session.close()
+
+
+def _direct_doc_urls(rec: dict) -> list[str]:
+    keys = [f"tendorfile{n}" for n in range(1, 6)] + [f"Corrigendum{n}" for n in range(1, 6)]
+    out, seen = [], set()
+    for k in keys:
+        u = str(rec.get(k) or "").strip()
+        if u and not u.endswith(_PLACEHOLDER_SUFFIX) and u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+
+def _fetch_eproc_documents(return_url: str) -> list[tuple[str, bytes]]:
+    """Follow the e-proc PublicDocDisplay link and download each real document.
+
+    Parses the document table, skips placeholder rows (File ID empty/'--'), and downloads
+    each ``DownloadController`` link with the SAME session (enc tokens are session-scoped).
+    Filenames come from the File ID column, falling back to Content-Disposition.
+    """
+    from bs4 import BeautifulSoup  # lazy: the scrape path doesn't need bs4
+
+    docs: list[tuple[str, bytes]] = []
+    sess = requests.Session()
+    sess.headers.update({
+        "User-Agent": USER_AGENT,
+        "Referer": f"{HAL_SITE_URL}/",
+        "Accept": "text/html,application/xhtml+xml,*/*",
+    })
+    try:
+        resp = sess.get(return_url, timeout=REQUEST_TIMEOUT_SECONDS, allow_redirects=True)
+        resp.raise_for_status()
+    except Exception as exc:  # noqa: BLE001
+        log_warn(f"e-proc document page failed: {exc}")
+        return docs
+
+    soup = BeautifulSoup(resp.text, "lxml")
+    seen: set[str] = set()
+    idx = 0
+    for tr in soup.find_all("tr"):
+        a = tr.find("a", href=lambda h: h and "DownloadController" in h)
+        if not a:
+            continue
+        tds = tr.find_all("td")
+        file_id = tds[2].get_text(strip=True) if len(tds) > 2 else ""
+        if file_id in ("", "--"):
+            continue  # placeholder row — no actual file uploaded
+        url = urljoin(resp.url, a["href"])
+        if url in seen:
+            continue
+        seen.add(url)
+        try:
+            d = sess.get(url, timeout=REQUEST_TIMEOUT_SECONDS * 2)
+            d.raise_for_status()
+            content = d.content
+        except Exception as exc:  # noqa: BLE001
+            log_warn(f"e-proc download failed ({file_id}): {exc}")
+            continue
+        if not content:
+            continue
+        head = content[:64].lstrip().lower()
+        if (head.startswith(b"<!doctype") or head.startswith(b"<html")
+                or "text/html" in d.headers.get("Content-Type", "").lower()):
+            continue  # an error/HTML page, not a document
+        idx += 1
+        name = file_id or _filename_from_cd(d.headers.get("Content-Disposition")) or f"eproc_{idx}.bin"
+        docs.append((_unique_name(idx, name), content))
+    log_info(f"e-proc: downloaded {len(docs)} document(s)")
+    return docs
+
+
+def _download_bytes(session: requests.Session, url: str) -> bytes | None:
+    try:
+        resp = session.get(url, timeout=REQUEST_TIMEOUT_SECONDS * 2)
+        resp.raise_for_status()
+        return resp.content or None
+    except Exception as exc:  # noqa: BLE001
+        log_warn(f"download failed {url[:80]}: {exc}")
+        return None
+
+
+def _name_from_url(url: str, default: str) -> str:
+    tail = url.rstrip("/").split("/")[-1]
+    return tail or default
+
+
+def _filename_from_cd(cd: str | None) -> str:
+    if not cd:
+        return ""
+    m = re.search(r'filename="?([^"\\;]+)"?', cd)
+    return m.group(1).strip() if m else ""
+
+
+def _unique_name(idx: int, name: str) -> str:
+    """Index-prefixed, filesystem-safe name so multiple files never collide on disk."""
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", name).strip("_") or "doc"
+    return f"{idx:02d}_{safe}"

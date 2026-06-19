@@ -54,9 +54,13 @@ def bid_key(row: dict, portal: str) -> str:
 
 
 def bid_id_display(row: dict, portal: str) -> str:
-    """Human-facing id. HAL is composite (tender + line); others are the single PK."""
+    """Human-facing id. HAL is composite (tender + line). HALC shows the tender reference
+    (T_REF_NO, e.g. 'TENDER NOTICE/NCP/21/26-27') — the site's real identifier — not the
+    internal numeric PK; the PK/bidKey stays tender_id for routing. Others use the single PK."""
     if portal == "hal":
         return f"{row['tender_number']} (line {row['line_number']})"
+    if portal == "halc":
+        return str(row.get("ref_no") or row.get("tender_id") or "")
     return str(row[pk_cols(portal)[0]])
 
 

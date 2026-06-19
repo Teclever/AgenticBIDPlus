@@ -54,10 +54,10 @@ from modules.db import (
 )
 from modules.excel_export import export_pass1_delta, export_pass2_delta, export_to_excel
 from modules.excel_ingest import ingest_all_pending, ingest_excel
-from modules.fetcher import collect_doc_links, fetch_detail_text, fetch_listing, make_session
+from modules.fetcher import download_documents, fetch_detail_text, fetch_listing, make_session
 from modules.logutil import log_banner, log_done, log_info, log_ok, log_phase, log_step, log_warn
 from modules.scorer_pass1 import build_pass1_prompt, score_bids_pass1_bulk
-from modules.scorer_pass2 import _safe_name, _suffix, score_bid_pass2
+from modules.scorer_pass2 import score_bid_pass2
 
 
 def _today_path(prefix: str) -> str:
@@ -222,39 +222,20 @@ def cmd_explain(tender_id: str | None) -> None:
 
 
 def cmd_fetch_docs(tender_id: str | None, out_dir: str | None) -> None:
-    """Orchestrator doc-fetch (S6 Channel 1): download the tender's tendorfile*/Corrigendum*
-    PDFs into <out_dir>. Raw files only; extraction is the §8b module's job."""
+    """Orchestrator doc-fetch (S6 Channel 1): download the tender's documents into <out_dir>.
+
+    Direct corporate tendorfile*/Corrigendum* PDFs when the tender hosts them; otherwise the
+    e-procurement portal documents reached via T_RETURN_URL (the 'Refer NIT … visit eproc'
+    tenders). Raw files only; text extraction is the §8b summarization module's job."""
     if not tender_id or not out_dir:
         print("Error: fetch-docs requires <tender_id> --out <dir>.", file=sys.stderr)
         sys.exit(1)
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-
-    session = make_session()
-    try:
-        links = collect_doc_links(session, {"tender_id": tender_id})
-        saved = 0
-        for i, url in enumerate(links, start=1):
-            try:
-                resp = session.get(url, timeout=60)
-                resp.raise_for_status()
-                content = resp.content
-            except Exception as e:
-                print(f"[fetch-docs] halc link {i} failed: {e}")
-                continue
-            head = content[:64].lstrip().lower()
-            if content[:4] == b"%PDF":
-                ext = ".pdf"
-            elif head.startswith(b"<!doctype") or head.startswith(b"<html"):
-                print(f"[fetch-docs] halc link {i} is HTML (not a document) — skipped")
-                continue
-            else:
-                ext = _suffix(url)
-            (out / f"{_safe_name(tender_id)}_{i}{ext}").write_bytes(content)
-            saved += 1
-        print(f"[fetch-docs] halc {tender_id}: saved {saved} doc(s) from {len(links)} link(s) → {out}")
-    finally:
-        session.close()
+    docs = download_documents(tender_id)
+    for name, content in docs:
+        (out / name).write_bytes(content)
+    print(f"[fetch-docs] halc {tender_id}: saved {len(docs)} doc(s) → {out}")
 
 
 def cmd_run_pass2(arg: str | None) -> None:
