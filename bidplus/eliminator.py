@@ -179,6 +179,43 @@ def ensure_boost_seed(parent: sqlite3.Connection) -> None:
     parent.commit()
 
 
+# Curated POSITIVE (in-scope) supplement, added post-seed so it survives the idempotent
+# JSON seed (which no-ops once the table is populated). INSERT OR IGNORE so reruns and
+# governance edits are never clobbered — same governance model as _BOOST_SEED. These are
+# high-precision test/optical-metrology signals that RESCUE an AMC/CMC bid which tripped the
+# negative gate (e.g. ISRO integrating-sphere AMC, the 'UDAT' hardware AMC). Phrases are
+# substring-matched; tokens are word-boundary [a-z0-9-]{2,} (see pos_hit / inscope_signals
+# _meta.matching). Each was blast-radius-checked against the live GeM corpus for zero junk.
+_INSCOPE_SUPPLEMENT_PHRASES = [
+    "integrating sphere",
+    "uniform light source",
+    "labsphere",
+    "spectroradiometer",
+    "optical calibration",
+    "collimator",
+]
+_INSCOPE_SUPPLEMENT_TOKENS = ["udat"]
+
+
+def ensure_inscope_seed(parent: sqlite3.Connection) -> None:
+    now = _now()
+    for term in _INSCOPE_SUPPLEMENT_PHRASES:
+        parent.execute(
+            "INSERT OR IGNORE INTO eliminator_terms "
+            "(list_type, kind, term, is_guarded, active, source, created_at) "
+            "VALUES ('pos','phrase',?,0,1,'curated',?)",
+            (term, now),
+        )
+    for term in _INSCOPE_SUPPLEMENT_TOKENS:
+        parent.execute(
+            "INSERT OR IGNORE INTO eliminator_terms "
+            "(list_type, kind, term, is_guarded, active, source, created_at) "
+            "VALUES ('pos','token',?,0,1,'curated',?)",
+            (term, now),
+        )
+    parent.commit()
+
+
 def boost_match(text: str, boost_phrases: list) -> str | None:
     """First boost phrase matching ``text``, or None.
 

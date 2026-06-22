@@ -255,6 +255,7 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
     spec = adapter._SCORING
     table, pk = spec["table"], spec["pk"]
     eliminator.ensure_boost_seed(parent)
+    eliminator.ensure_inscope_seed(parent)
     terms = eliminator.load_terms(parent)
     promoted = governance.promoted_bid_ids(parent, portal)
     cap_ref = runtime.capability_reference_path().read_text()
