@@ -490,4 +490,37 @@ System is live in daily use. These changes were committed, deployed to the box, 
   re-closes them. `merge --check` showing `bid_status` mismatches right after a sweep is expected
   (parent is authoritative for CLOSED via the sweep).
 
+## 18. AMC/CMC org-gated rescue + score-4 floor (2026-06-23) — DEPLOYED & LIVE
+
+Goal: stop auto-dropping AMC/CMC maintenance-contract bids that are either from a Level-1 org
+or genuinely technical; route them to Pass-1 with a floor so they always reach human review.
+
+Commits: `32b1008` (rule + REVERT of the 2026-06-22 POS-keyword rescue) · `f971765`
+(infra-regex fix: plural `servers` + `storage`/`photocopier`/`it peripheral`/`ASRS`).
+
+Rule — one predicate `eliminator.amc_floor_qualifies` (`bidplus/eliminator.py` +
+`scoring.score_portal`), in precedence order:
+- **BOOST/auto-promote list unchanged** — bypass → score 5 + Sonnet (highest precedence).
+- AMC/CMC bid (`is_amc_cmc_text`) tripping the gate is **rescued to Haiku** when **3a** the
+  buyer is Level-1 (HAL, ADA, ADE incl. "Office of DG (Aero)", ISRO + centres, BEL, CVRDE,
+  CMTI, IIAP, wider DRDO; `hal`/`halc`/`isro` portals wholly Level-1) — any item; or **3b** any
+  other buyer AND the item is not infrastructure (`INFRA_RE`).
+- **Floor:** any qualifying AMC/CMC bid reaching Haiku → `score 4` unless Haiku rates it `5`
+  (applies to gate-rescued AND naturally-surviving bids). Buyer = scoring record
+  `buyer`/`description` fields.
+- **Superseded:** the 2026-06-22 high-precision POS-keyword rescue (`ensure_inscope_seed`:
+  `integrating sphere`/`collimator`/`udat`…) — reverted in code AND its 7 `curated` rows
+  DELETED from the live `eliminator_terms` table; the org rule covers those bids.
+
+Box reconciliation (2026-06-23, deploy window respected): reset + re-scored the mis-stated
+non-closed AMC bids across portals (two passes, ~170 bids; bounded Haiku spend). Result — all
+qualifying non-closed AMC bids now sit at **score 4 (122) or 5 (4)**, **0 still auto-rejected**;
+the seed bid `GEM/2026/B/7511266` (UDAT, DG-Aero) → **score 4**, `pass1_method='model'`,
+rationale tagged `[AMC/CMC rescue → floor 4]`. `bidplus-web` restarted (the on-demand scoring
+path); the nightly timer spawns fresh code automatically.
+
+Residual / known: ~13 non-Level-1 **infrastructure** AMCs that the negative gate doesn't
+independently trip keep their honest low Haiku scores (not force-eliminated — that would need a
+NEGATIVE-list add). `INFRA_RE` and the Level-1 buyer regex are plain keyword regexes, extensible.
+
 *End of handoff. Update this file when a slice DONE-WHEN passes or when validation state changes.*

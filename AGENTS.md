@@ -66,6 +66,25 @@ their scrape / download / Pass-1 / DB-write logic. Do NOT rewrite portal transpo
   the deploy box -> transactional apply at run start), never a live edit. Roll out in SHADOW
   MODE first (log would-eliminate, still send to Haiku), flip hard only after the score-2
   review. See `WEBAPP_HANDOFF.md` + `ELIMINATOR_DESIGN.md`.
+- AUTO-PROMOTE (BOOST) + AMC/CMC RESCUE — two refinements on top of the eliminator, applied in
+  PRECEDENCE ORDER (both in `bidplus/eliminator.py` + `scoring.score_portal`).
+  (1) BOOST/auto-promote list (`eliminator_terms` `list_type='boost'`, seeded by
+  `ensure_boost_seed`: `test rig`, `ATE`, `automated test equipment`, `AI`, `signal
+  conditioner`…): a match BYPASSES the gate and is FORCE-SET to `pass1_score=5` after Haiku (+
+  overnight Sonnet). Highest precedence — covers everything below.
+  (2) AMC/CMC ORG-GATED RESCUE (`amc_floor_qualifies`, AMC/CMC bids only — `is_amc_cmc_text`):
+  a maintenance contract that would trip the negative gate is RESCUED to Haiku instead of
+  eliminated when **(3a)** the buyer is a LEVEL-1 org (HAL, ADA, ADE incl. "Office of DG
+  (Aero)", ISRO + centres, BEL, CVRDE, CMTI, IIAP, wider DRDO — the `hal`/`halc`/`isro` portals
+  are WHOLLY Level-1) regardless of item; or **(3b)** any other buyer AND the item is NOT
+  facilities/IT infrastructure (`INFRA_RE`: CCTV, fire, chillers, UPS, DG sets, EPABX,
+  biometric, lifts, servers, storage, photocopier…). **(4) FLOOR:** any AMC/CMC bid that
+  reaches Haiku via this rule is set to `score 4` UNLESS Haiku independently rates it `5`, so it
+  always lands in the human-reviewed score-4 queue (applies to gate-rescued AND
+  naturally-surviving qualifying bids). Non-Level-1 infrastructure AMCs the gate catches stay
+  eliminated; ones the gate does NOT trip keep their honest low Haiku score (not force-eliminated
+  — that would need a NEGATIVE-list add). The buyer comes from the scoring record's `buyer`/
+  `description` fields. Buyer-org and infra lists are plain regexes — extend as needed.
 - Documents are STAGED, NOT HOARDED. Files (any format: PDF, scanned/image, Word, Excel)
   download into $BIDPLUS_RUNTIME_DIR/<portal>/bids/<source_pk>/. Native-text files: extract
   text, store it, DISCARD the source file. Scanned/image files: KEEP them for Sonnet. A

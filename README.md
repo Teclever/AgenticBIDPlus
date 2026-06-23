@@ -104,8 +104,17 @@ npm run dev          # proxies /api → localhost:8000
 
 - **Score 0** — eliminated by keyword filter before Haiku (`pass1_method='keyword'`)
 - **Score 1–3** — below threshold; shown but not auto-summarised. Single Tender detected on manual "Generate Summary".
-- **Score 4** — local document extraction (no Sonnet). Single Tender detected; Teclever/masked upgraded to score 5.
-- **Score 5** — full Sonnet summary generated overnight. Single Tender detected during Pass 2.
+- **Score 4** — local document extraction (no Sonnet). Single Tender detected; Teclever/masked upgraded to score 5. Also the **floor** for rescued AMC/CMC bids (see below).
+- **Score 5** — full Sonnet summary generated overnight. Single Tender detected during Pass 2. **Auto-promote (boost) keywords** (`test rig`, `ATE`, `AI`, `signal conditioner`…) bypass the eliminator and force score 5.
+
+### AMC/CMC maintenance contracts
+
+Annual/Comprehensive Maintenance Contracts (AMC/CMC) normally trip the keyword eliminator. They are **rescued to Haiku Pass-1** instead of being auto-dropped when:
+
+- the buyer is a **Level-1 organization** — HAL, ADA, ADE (incl. "Office of DG (Aero)"), ISRO + centres, BEL, CVRDE, CMTI, IIAP, wider DRDO (the HAL / HAL-C / ISRO portals are wholly Level-1) — **regardless of item**; **or**
+- the buyer is any other org **and** the item is **not** facilities/IT infrastructure (CCTV, fire, chillers, UPS, EPABX, biometric, lifts, servers, storage, photocopier…).
+
+Any rescued AMC/CMC bid is **floored to score 4 unless Haiku rates it 5**, so it always reaches human review (the score-4 queue). Infrastructure AMCs from non-Level-1 orgs stay filtered. The boost list takes precedence (forces score 5). Implemented in `bidplus/eliminator.py` (`amc_floor_qualifies`) + `scoring.score_portal`.
 
 ### Single / Limited Tender rules
 
