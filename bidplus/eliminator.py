@@ -179,41 +179,91 @@ def ensure_boost_seed(parent: sqlite3.Connection) -> None:
     parent.commit()
 
 
-# Curated POSITIVE (in-scope) supplement, added post-seed so it survives the idempotent
-# JSON seed (which no-ops once the table is populated). INSERT OR IGNORE so reruns and
-# governance edits are never clobbered — same governance model as _BOOST_SEED. These are
-# high-precision test/optical-metrology signals that RESCUE an AMC/CMC bid which tripped the
-# negative gate (e.g. ISRO integrating-sphere AMC, the 'UDAT' hardware AMC). Phrases are
-# substring-matched; tokens are word-boundary [a-z0-9-]{2,} (see pos_hit / inscope_signals
-# _meta.matching). Each was blast-radius-checked against the live GeM corpus for zero junk.
-_INSCOPE_SUPPLEMENT_PHRASES = [
-    "integrating sphere",
-    "uniform light source",
-    "labsphere",
-    "spectroradiometer",
-    "optical calibration",
-    "collimator",
-]
-_INSCOPE_SUPPLEMENT_TOKENS = ["udat"]
+# ── AMC/CMC org-gated rescue (AMC/CMC handling spec) ───────────────────────────────
+# An AMC/CMC maintenance contract normally trips the negative gate. We RESCUE it to Pass-1
+# Haiku scoring (instead of auto-eliminating) when:
+#   3a  the buyer is a Level-1 organization        -> rescue regardless of item, OR
+#   3b  the buyer is any other org AND the item is NOT facilities/IT infrastructure.
+# Rescued bids are floored to score 4 unless Haiku independently rates them 5
+# (applied in scoring.score_portal). The BOOST list still takes precedence (those bypass
+# the gate entirely to score 5). Non-AMC/CMC eliminations are unaffected.
+
+# Portals that are wholly a Level-1 org by definition (the tool itself is the buyer).
+LEVEL1_PORTALS = frozenset({"hal", "halc", "isro"})
+
+# Level-1 buyer match (case-insensitive) over the bid's buyer/org text. Acronyms are
+# word-boundary anchored; full names are substring. "Office of DG (Aero)" is the DRDO aero
+# cluster HQ that procures for ADA/ADE, so it counts as Level-1.
+LEVEL1_ORG_RE = re.compile(
+    r"hindustan aeronautics|\bHAL\b|"
+    r"aeronautical development agenc|\bADA\b|"
+    r"aeronautical development establishment|\bADE\b|dg\s*\(?\s*aero\)?|"
+    r"indian space research|department of space|\bISRO\b|\bVSSC\b|\bLPSC\b|"
+    r"\bSDSC\b|\bSHAR\b|\bIPRC\b|space applications|"
+    r"bharat electronics|\bBEL\b|"
+    r"combat vehicles|\bCVRDE\b|"
+    r"central manufacturing technology|\bCMTI\b|"
+    r"indian institute of astrophysics|\bIIAP\b|"
+    r"defence research|\bDRDO\b|gas turbine research|\bGTRE\b",
+    re.IGNORECASE,
+)
+
+# Facilities / IT-infrastructure markers. Used ONLY for non-Level-1 buyers (3b): an AMC/CMC
+# bid from a non-Level-1 org that matches any of these stays eliminated. Bare ambiguous
+# acronyms (AC, RO) are anchored to their facilities sense to avoid clobbering technical
+# bids (e.g. "AC servo drive", an "RO" inside another token).
+INFRA_RE = re.compile(
+    r"cctv|surveillance|"
+    r"fire extinguisher|fire alarm|fire[ -]?fighting|"
+    r"air[ -]?condition|chiller|\bHVAC\b|cooling tower|"
+    r"\bUPS\b|inverter|battery bank|"
+    r"\bDG set\b|diesel generator|"
+    r"\bEPABX\b|telephone|intercom|"
+    r"biometric|access control|attendance|"
+    r"\blift\b|elevator|escalator|"
+    r"\bserver\b|desktop|laptop|printer|network switch|\brouter\b|firewall|"
+    r"water cooler|reverse osmosis|\bRO\s+(?:plant|system|unit|water|purif)|"
+    r"plumbing|housekeeping|\bcivil\b|building|furniture",
+    re.IGNORECASE,
+)
 
 
-def ensure_inscope_seed(parent: sqlite3.Connection) -> None:
-    now = _now()
-    for term in _INSCOPE_SUPPLEMENT_PHRASES:
-        parent.execute(
-            "INSERT OR IGNORE INTO eliminator_terms "
-            "(list_type, kind, term, is_guarded, active, source, created_at) "
-            "VALUES ('pos','phrase',?,0,1,'curated',?)",
-            (term, now),
-        )
-    for term in _INSCOPE_SUPPLEMENT_TOKENS:
-        parent.execute(
-            "INSERT OR IGNORE INTO eliminator_terms "
-            "(list_type, kind, term, is_guarded, active, source, created_at) "
-            "VALUES ('pos','token',?,0,1,'curated',?)",
-            (term, now),
-        )
-    parent.commit()
+# An AMC/CMC maintenance contract, detected from the item text itself (not the matched
+# negative terms) so it applies both to gate-tripped bids (rescue) and to bids that survive
+# the gate naturally via a positive signal (still floor to 4). 'AMC'/'CMC'/'CAMC' as words
+# plus the spelled-out maintenance-contract phrasings.
+_AMC_CMC_TEXT_RE = re.compile(
+    r"\b(?:c?amc|cmc)\b|annual maintenance|comprehensive maintenance|maintenance contract",
+    re.IGNORECASE,
+)
+
+
+def is_amc_cmc_text(text: str | None) -> bool:
+    """True if the item text is an AMC/CMC maintenance-contract bid."""
+    return bool(_AMC_CMC_TEXT_RE.search(text or ""))
+
+
+def is_level1(portal: str, buyer: str | None) -> bool:
+    """True if the bid's portal is wholly Level-1 or its buyer/org matches a Level-1 org."""
+    if portal in LEVEL1_PORTALS:
+        return True
+    return bool(LEVEL1_ORG_RE.search(buyer or ""))
+
+
+def is_infrastructure(text: str | None) -> bool:
+    """True if the item text is facilities/IT infrastructure (CCTV, chillers, UPS, …)."""
+    return bool(INFRA_RE.search(text or ""))
+
+
+def amc_floor_qualifies(portal: str, buyer: str | None, text: str) -> bool:
+    """The single predicate behind both the AMC/CMC gate-rescue and the score-4 floor:
+    the bid is an AMC/CMC contract AND (3a) its buyer is Level-1, OR (3b) the item is not
+    facilities/IT infrastructure. Used to (1) rescue a gate-tripped AMC/CMC bid to Haiku
+    rather than eliminate it, and (2) floor any qualifying AMC/CMC bid that reaches Haiku
+    to score 4 unless Haiku rates it 5. Non-AMC/CMC bids return False (unaffected)."""
+    if not is_amc_cmc_text(text):
+        return False
+    return is_level1(portal, buyer) or not is_infrastructure(text)
 
 
 def boost_match(text: str, boost_phrases: list) -> str | None:

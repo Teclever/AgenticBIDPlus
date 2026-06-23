@@ -255,7 +255,6 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
     spec = adapter._SCORING
     table, pk = spec["table"], spec["pk"]
     eliminator.ensure_boost_seed(parent)
-    eliminator.ensure_inscope_seed(parent)
     terms = eliminator.load_terms(parent)
     promoted = governance.promoted_bid_ids(parent, portal)
     cap_ref = runtime.capability_reference_path().read_text()
@@ -273,16 +272,22 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
             boosted[r.bid_id] = term
 
     survivors, eliminated, would = [], [], 0
+    amc_floor: set[str] = set()   # qualifying AMC/CMC bids → floor to 4 on write-back (5 if Haiku=5)
     for r in records:
         if r.bid_id in promoted or r.bid_id in boosted:   # confirmed in-scope → always Haiku
             survivors.append(r)
             continue
+        buyer = " ".join(str(r.fields.get(k) or "") for k in ("buyer", "description"))
+        amc_ok = mode == "hard" and eliminator.amc_floor_qualifies(portal, buyer, r.text)
         matched = eliminator.eliminate(r.text, terms)
         if matched is not None:
             would += 1
-            if mode == "hard":
+            if mode == "hard" and not amc_ok:     # tripped, not an AMC/CMC rescue → eliminate
                 eliminated.append((r, matched))
                 continue
+        # survives — naturally, or as an AMC/CMC rescue; floor it if it qualifies
+        if amc_ok:
+            amc_floor.add(r.bid_id)
         survivors.append(r)
 
     scored = score_records(survivors, cap_ref, call_fn=call_fn)
@@ -302,6 +307,11 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
             if r.bid_id in boosted:
                 score = 5
                 rationale = f"[auto-promoted: {boosted[r.bid_id]}] {rationale or ''}".strip()
+            elif r.bid_id in amc_floor and score != 5:
+                # AMC/CMC rescue (Level-1 org, or non-Level-1 non-infrastructure): never bury
+                # below the human-review line — floor to 4 unless Haiku independently rates 5.
+                rationale = f"[AMC/CMC rescue → floor 4] {rationale or ''}".strip()
+                score = 4
             conn.execute(
                 f"UPDATE {table} SET pass1_score=?, pass1_confidence=?, pass1_domain=?, "
                 f"pass1_rationale=?, pass1_method='model', pass1_eliminated_by=NULL, "
@@ -324,5 +334,6 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
     return {"portal": portal, "mode": mode, "candidates": len(records),
             "would_eliminate": would, "model_scored": model_n,
             "keyword_eliminated": len(eliminated), "boosted": len(boosted),
+            "amc_rescued": len(amc_floor),
             "unscored_left": len(survivors) - model_n,
             "unscored_ids": unscored_ids}
