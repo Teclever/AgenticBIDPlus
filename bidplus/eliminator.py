@@ -221,7 +221,8 @@ INFRA_RE = re.compile(
     r"\bEPABX\b|telephone|intercom|"
     r"biometric|access control|attendance|"
     r"\blift\b|elevator|escalator|"
-    r"\bserver\b|desktop|laptop|printer|network switch|\brouter\b|firewall|"
+    r"\bservers?\b|desktop|laptop|printer|photocopier|network switch|\brouter\b|firewall|"
+    r"\bstorage\b|it peripheral|\bASRS\b|material handling|"
     r"water cooler|reverse osmosis|\bRO\s+(?:plant|system|unit|water|purif)|"
     r"plumbing|housekeeping|\bcivil\b|building|furniture",
     re.IGNORECASE,
