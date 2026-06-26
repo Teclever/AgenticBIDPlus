@@ -1,4 +1,4 @@
-import type { BidDetail, BidFilter, BidListItem, BidSummary, DocumentItem, Paginated, PortalId, PortalStats } from "../types";
+import type { BidDetail, BidFilter, BidListItem, BidSummary, DocumentItem, KeywordWatchStats, Paginated, PortalId, PortalStats } from "../types";
 import { apiClient, axiosErrorToApiError } from "./client";
 import type { AxiosError } from "axios";
 import type { ApiError } from "../types";
@@ -13,6 +13,15 @@ export const portalApi = {
     }
   },
 
+  keywordWatchStats: async () => {
+    try {
+      const res = await apiClient.get<KeywordWatchStats>(`/api/keyword-watch/stats`);
+      return res.data;
+    } catch (e) {
+      throw axiosErrorToApiError(e as AxiosError<ApiError>);
+    }
+  },
+
   bids: async (
     portal: PortalId,
     params: {
@@ -21,6 +30,8 @@ export const portalApi = {
       search?: string[];
       filter?: BidFilter;
       status?: string;
+      discoverySource?: string;
+      discoveryCategory?: string;
     } = {},
   ) => {
     const qs = new URLSearchParams();
@@ -31,6 +42,8 @@ export const portalApi = {
     }
     if (params.filter && params.filter !== "all") qs.set("filter", params.filter);
     if (params.status && params.status !== "all") qs.set("status", params.status);
+    if (params.discoverySource) qs.set("discoverySource", params.discoverySource);
+    if (params.discoveryCategory) qs.set("discoveryCategory", params.discoveryCategory);
     try {
       const res = await apiClient.get<Paginated<BidListItem>>(
         `/api/portals/${portal}/bids?${qs.toString()}`,

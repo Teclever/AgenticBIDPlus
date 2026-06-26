@@ -4,8 +4,9 @@ import { Building, Rocket, Plane, Factory } from "lucide-react";
 import { portalApi, ApiRequestError, isAuthError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { formatWindowDate } from "../lib/format";
-import type { BidFilter, PortalId, PortalStats } from "../lib/types";
+import type { BidFilter, PortalId, PortalStats, KeywordWatchStats } from "../lib/types";
 import { Button } from "../components/ui/button";
+import { KeywordWatchCard } from "../components/KeywordWatchCard";
 
 const PORTALS: { id: PortalId; name: string; fullName: string; icon: React.ReactNode; color: "blue" | "indigo" | "purple" | "teal" }[] = [
   { id: "gem", name: "GEM", fullName: "Government e-Marketplace", icon: <Building className="w-8 h-8" />, color: "blue" },
@@ -25,6 +26,7 @@ export function Dashboard() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [statsMap, setStatsMap] = useState(EMPTY_STATS);
+  const [keywordWatch, setKeywordWatch] = useState<KeywordWatchStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,6 +45,12 @@ export function Dashboard() {
         map[id] = stats;
       }
       setStatsMap(map);
+      // Non-fatal: the Keyword Watch card is supplementary — never block the dashboard on it.
+      try {
+        setKeywordWatch(await portalApi.keywordWatchStats());
+      } catch {
+        setKeywordWatch(null);
+      }
     } catch (e) {
       if (e instanceof ApiRequestError && isAuthError(e.status, e.code)) {
         navigate("/login", { replace: true });
@@ -106,6 +114,18 @@ export function Dashboard() {
           />
         ))}
       </div>
+
+      {keywordWatch && (keywordWatch.counts.total > 0 || keywordWatch.categories.length > 0) && (
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 mb-1">Keyword Watch</h2>
+          <p className="text-gray-600 text-sm mb-4">
+            In-scope bids surfaced by watch keywords from organisations outside our monitored list
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <KeywordWatchCard stats={keywordWatch} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -207,6 +207,79 @@ def stats(portal: str, user: dict = Depends(current_user),
     return {"portal": portal, "windowDate": win.isoformat(), "counts": counts}
 
 
+# Watch families surfaced on the Keyword Watch card, in display order.
+_KEYWORD_WATCH_CATEGORIES = ["das", "test_rig", "checkout"]
+_KEYWORD_WATCH_LABELS = {"das": "DAS / data acquisition",
+                         "test_rig": "Test rig", "checkout": "Checkout systems"}
+
+
+@app.get("/api/keyword-watch/stats")
+def keyword_watch_stats(user: dict = Depends(current_user),
+                        db: sqlite3.Connection = Depends(get_db)):
+    """Stats for the dashboard Keyword Watch card: GeM bids discovered via the keyword channel
+    (`discovery_source='keyword'`), grouped by watch family. Score-4 floor guarantees nothing
+    below 4, so only Score 5 / Score 4 buckets are reported per family."""
+    table = "gem_bids"
+    closing_col = mapping.PORTAL_FIELDS["gem"]["closing"]
+    base = "discovery_source='keyword'"
+
+    # Defensive: the discovery_* columns are added to parent.db by the first merge after deploy.
+    # If the endpoint is hit before that, return an empty (but well-formed) payload, not a 500.
+    cols = {r[1] for r in db.execute(f"PRAGMA table_info({table})")}
+    if "discovery_source" not in cols or "discovery_category" not in cols:
+        return {"windowDate": _window_date().isoformat(),
+                "categories": [{"id": cat, "label": _KEYWORD_WATCH_LABELS[cat],
+                                "score5New": 0, "score5Accepted": 0,
+                                "score4New": 0, "score4Accepted": 0}
+                               for cat in _KEYWORD_WATCH_CATEGORIES],
+                "counts": {"total": 0, "accepted": 0, "closingSoon": 0, "closingSoonActionable": 0}}
+
+    def c(extra: str, p: tuple = ()) -> int:
+        return int(db.execute(
+            f"SELECT COUNT(*) FROM {table} WHERE {base} AND {extra}", p).fetchone()[0])
+
+    categories = []
+    for cat in _KEYWORD_WATCH_CATEGORIES:
+        row = db.execute(f"""
+            SELECT
+              SUM(CASE WHEN pass1_score=5 AND COALESCE(user_state,'new')='new' THEN 1 ELSE 0 END),
+              SUM(CASE WHEN pass1_score=5 AND user_state='accepted'            THEN 1 ELSE 0 END),
+              SUM(CASE WHEN pass1_score=4 AND COALESCE(user_state,'new')='new' THEN 1 ELSE 0 END),
+              SUM(CASE WHEN pass1_score=4 AND user_state='accepted'            THEN 1 ELSE 0 END)
+            FROM {table} WHERE {base} AND discovery_category=?
+        """, (cat,)).fetchone()
+        categories.append({
+            "id": cat, "label": _KEYWORD_WATCH_LABELS[cat],
+            "score5New": row[0] or 0, "score5Accepted": row[1] or 0,
+            "score4New": row[2] or 0, "score4Accepted": row[3] or 0,
+        })
+
+    # Date-based closing-soon / actionable, scoped to keyword finds.
+    win = _window_date()
+    today = datetime.date.today()
+    cs = csa = 0
+    for r in db.execute(
+        f"SELECT user_state, auto_rejected, {closing_col} AS cdate FROM {table} "
+        f"WHERE {base} AND COALESCE(bid_status,'') <> 'CLOSED'"
+    ):
+        dt = mapping.lifecycle.parse_closing(r["cdate"])
+        if not (dt and today <= dt.date() <= win):
+            continue
+        state = r["user_state"] or "new"
+        if state != "rejected" and not r["auto_rejected"]:
+            cs += 1
+        if state == "accepted":
+            csa += 1
+
+    counts = {
+        "total": c("1=1"),
+        "accepted": c("user_state='accepted'"),
+        "closingSoon": cs,
+        "closingSoonActionable": csa,
+    }
+    return {"windowDate": win.isoformat(), "categories": categories, "counts": counts}
+
+
 # ── bid listing ──────────────────────────────────────────────────────────────────────
 
 _FILTER_WHERE = {
@@ -226,6 +299,7 @@ def list_bids(portal: str,
               page: int = Query(1, ge=1), pageSize: int = Query(50, ge=1, le=200),
               search: list[str] | None = Query(None), filter: str = "all",
               status: str | None = None,
+              discoverySource: str | None = None, discoveryCategory: str | None = None,
               user: dict = Depends(current_user), db: sqlite3.Connection = Depends(get_db)):
     _check_portal(portal)
     table = f"{portal}_bids"
@@ -233,12 +307,25 @@ def list_bids(portal: str,
     order = "ORDER BY first_seen_date DESC, pass1_score IS NULL, pass1_score DESC"
     terms = [t.strip() for t in (search or []) if t and t.strip()]  # ANDed search terms
 
+    # Keyword Watch drill-down (GeM only): scope to keyword-discovered bids and/or a watch family.
+    # Guard against the columns not existing yet (pre-first-merge after deploy) — ignore the
+    # filter rather than 500 on a hand-crafted URL.
+    disc_sql, disc_params = [], []
+    if discoverySource or discoveryCategory:
+        _cols = {r[1] for r in db.execute(f"PRAGMA table_info({table})")}
+        if discoverySource and "discovery_source" in _cols:
+            disc_sql.append("discovery_source=?"); disc_params.append(discoverySource)
+        if discoveryCategory and "discovery_category" in _cols:
+            disc_sql.append("discovery_category=?"); disc_params.append(discoveryCategory)
+
     # Date-based filters require per-portal closing-date parsing — handled here, return early.
     if filter in ("closingsoon", "closingactionable", "highpriority"):
         win = _window_date()
         today = datetime.date.today()
+        extra = (" AND " + " AND ".join(disc_sql)) if disc_sql else ""
         rows = db.execute(
-            f"SELECT * FROM {table} WHERE COALESCE(bid_status,'') <> 'CLOSED' " + order
+            f"SELECT * FROM {table} WHERE COALESCE(bid_status,'') <> 'CLOSED'{extra} " + order,
+            disc_params,
         ).fetchall()
         keep = []
         for r in rows:
@@ -273,6 +360,8 @@ def list_bids(portal: str,
     fw = _FILTER_WHERE.get(filter)
     if fw:
         where.append(fw)
+    if disc_sql:
+        where += disc_sql; params += disc_params
     if status:
         where.append("user_state=?"); params.append(status)
     if terms:

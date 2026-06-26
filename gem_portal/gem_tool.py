@@ -13,13 +13,14 @@ Usage:
 
 import sys, json, datetime
 from pathlib import Path
-from modules.fetcher import fetch_all_bids_for_org
+from modules.fetcher import fetch_all_bids_for_org, fetch_bids_for_keyword
 from modules.scorer_pass1 import build_pass1_prompt, score_bid_pass1, score_bids_pass1_bulk
 from modules.scorer_pass2 import score_bid_pass2
 from modules.db import (_get_conn, upsert_bid, upsert_raw_bid, get_unscored_bids,
                          update_pass1_score, query_pass2_candidates, init_db,
                          sweep_closed_bids, count_rejected_unscored,
-                         get_unexported_pass1_bid_numbers, mark_pass1_exported)
+                         get_unexported_pass1_bid_numbers, mark_pass1_exported,
+                         tag_keyword_discovery)
 
 # The Excel ingest/export helpers are NOT bundled with this GeM sample
 # (gem_portal/modules has no excel_ingest.py / excel_export.py). The orchestrator
@@ -42,7 +43,8 @@ except ModuleNotFoundError as _excel_import_error:
     ingest_all_pending = ingest_excel = _excel_missing
     export_to_excel = export_pass1_delta = export_pass2_delta = _excel_missing
 from modules.feedback import seed_exclusion_rules
-from config import TARGET_ORGS, DB_PATH, STATE_PATH, EXPORTS_DIR, CAPABILITY_REF_PATH
+from config import (TARGET_ORGS, WATCH_KEYWORDS, DB_PATH, STATE_PATH, EXPORTS_DIR,
+                    CAPABILITY_REF_PATH)
 
 
 def load_state() -> dict:
@@ -131,6 +133,54 @@ def fetch_all_orgs(skip_orgs: set[str] | None = None,
 
 
 
+def fetch_watch_keywords(max_pages: int = 5) -> tuple[int, int]:
+    """
+    Org-agnostic keyword discovery: for each watch family, run each standalone query against the
+    all-bids search and upsert the (page-capped, relevance-ranked) hits. Bids the org loop never
+    saw (i.e. from unmonitored ministries/orgs) are NEWLY inserted; we tag those with
+    discovery_source='keyword' and the family that found them. Bids already present (org-found, or
+    found by an earlier family) keep their existing provenance. Returns (total_fetched, new_tagged).
+    """
+    total_fetched = 0
+    new_tagged    = 0
+
+    for family, queries in WATCH_KEYWORDS.items():
+        for keyword in queries:
+            print(f"  Keyword: {keyword!r}  (family={family})")
+
+            kw_counts = {"new": 0}
+
+            def handle_page(bids, _fam=family, _c=kw_counts):
+                for b in bids:
+                    result = upsert_raw_bid(b)
+                    if result.get("is_new"):
+                        # Only newly-inserted rows are attributed to the keyword channel;
+                        # tag_keyword_discovery won't downgrade an org row or re-tag an
+                        # already-categorised one.
+                        tag_keyword_discovery(b["bid_number"], _fam)
+                        _c["new"] += 1
+
+            try:
+                count, metrics = fetch_bids_for_keyword(keyword, max_pages=max_pages,
+                                                        on_page=handle_page)
+            except Exception as e:
+                print(f"  [error] keyword {keyword!r}: {e}")
+                continue
+
+            total_fetched += count
+            new_tagged    += kw_counts["new"]
+            trunc = ""
+            if metrics.get("truncated"):
+                trunc = (f"  ⚠ portal reported {metrics.get('num_found')}, "
+                         f"fetched {count} (page cap {max_pages})")
+            print(f"    {count} fetched → {kw_counts['new']} new keyword-tagged "
+                  f"({metrics['pages_scanned']} pages){trunc}")
+
+    print(f"\nKeyword discovery complete: {total_fetched} fetched → "
+          f"{new_tagged} new bids tagged discovery_source='keyword'.")
+    return total_fetched, new_tagged
+
+
 def score_pending_bids() -> tuple[list[str], int]:
     """
     Score eligible unscored bids (excludes rejected, declined, and CLOSED).
@@ -191,11 +241,15 @@ def cmd_scrape_score() -> None:
     print("=== Phase 1: Full fetch — all active bids ===")
     total_fetched, extended_bid_numbers = fetch_all_orgs()
 
+    print("\n=== Phase 1b: Keyword discovery (org-agnostic) ===")
+    kw_fetched, kw_tagged = fetch_watch_keywords()
+
     print("\n=== Phase 2: CLOSED sweep ===")
     closed_count = sweep_closed_bids()
     print(f"  {closed_count} bid(s) transitioned to CLOSED.")
 
     print(f"\nDone (scrape-only). fetched={total_fetched}, "
+          f"keyword_fetched={kw_fetched}, keyword_tagged={kw_tagged}, "
           f"extended={len(extended_bid_numbers)}, closed={closed_count} "
           f"| Pass-1 centralized in bidplus.scoring")
 

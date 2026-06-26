@@ -54,7 +54,9 @@ def init_db():
                 first_seen_date         TEXT,
                 last_seen_at            TEXT,
                 last_updated_date       TEXT,
-                pass1_exported          INTEGER DEFAULT 0
+                pass1_exported          INTEGER DEFAULT 0,
+                discovery_source        TEXT DEFAULT 'org',
+                discovery_category      TEXT
             );
 
             CREATE TABLE IF NOT EXISTS feedback (
@@ -102,6 +104,10 @@ def _migrate():
         "ALTER TABLE bids ADD COLUMN last_seen_at     TEXT",
         "ALTER TABLE bids ADD COLUMN emd_amount       TEXT",
         "ALTER TABLE bids ADD COLUMN pass1_exported   INTEGER DEFAULT 0",
+        # Keyword-discovery channel: how the bid was found, and which watch family
+        # surfaced it. Existing rows backfill to 'org' (the only prior discovery path).
+        "ALTER TABLE bids ADD COLUMN discovery_source   TEXT DEFAULT 'org'",
+        "ALTER TABLE bids ADD COLUMN discovery_category TEXT",
     ]
     with _get_conn() as conn:
         for sql in migrations:
@@ -210,6 +216,20 @@ def upsert_raw_bid(bid: dict) -> dict:
             ))
 
         return {"is_new": False, "is_extended": is_extended}
+
+
+def tag_keyword_discovery(bid_number: str, category: str) -> None:
+    """Tag a bid as discovered via the keyword-search channel for the given watch family.
+
+    Called by the keyword pass ONLY for rows it newly inserted (upsert_raw_bid is_new=True),
+    so an org-discovered bid keeps discovery_source='org'. Guarded with a WHERE so we never
+    downgrade a row already attributed to a family (first family to find it wins)."""
+    with _get_conn() as conn:
+        conn.execute(
+            "UPDATE bids SET discovery_source='keyword', discovery_category=? "
+            "WHERE bid_number=? AND COALESCE(discovery_category,'')=''",
+            (category, bid_number),
+        )
 
 
 def upsert_bid(bid: dict):

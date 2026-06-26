@@ -290,6 +290,13 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
             amc_floor.add(r.bid_id)
         survivors.append(r)
 
+    # Keyword-discovery survivors (recall-first): never bury below the human-review line — floor
+    # to 4 on write-back unless Haiku independently rates 5. Only GeM rows carry discovery_source;
+    # other portals return None here (no-op). Eliminated junk is unaffected (already dropped above).
+    keyword_watch: set[str] = {
+        r.bid_id for r in survivors if r.fields.get("discovery_source") == "keyword"
+    }
+
     scored = score_records(survivors, cap_ref, call_fn=call_fn)
 
     conn = sqlite3.connect(adapter.tool_db_path())
@@ -311,6 +318,11 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
                 # AMC/CMC rescue (Level-1 org, or non-Level-1 non-infrastructure): never bury
                 # below the human-review line — floor to 4 unless Haiku independently rates 5.
                 rationale = f"[AMC/CMC rescue → floor 4] {rationale or ''}".strip()
+                score = 4
+            elif r.bid_id in keyword_watch and score != 5:
+                # Keyword-discovery find (recall-first): floor to 4 for human review unless
+                # Haiku independently rates 5. Junk was already dropped by the eliminator.
+                rationale = f"[keyword-watch → floor 4] {rationale or ''}".strip()
                 score = 4
             conn.execute(
                 f"UPDATE {table} SET pass1_score=?, pass1_confidence=?, pass1_domain=?, "

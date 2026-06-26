@@ -32,6 +32,26 @@ export interface PortalStats {
   };
 }
 
+export interface KeywordWatchCategory {
+  id: string;
+  label: string;
+  score5New: number;
+  score5Accepted: number;
+  score4New: number;
+  score4Accepted: number;
+}
+
+export interface KeywordWatchStats {
+  windowDate: string;
+  categories: KeywordWatchCategory[];
+  counts: {
+    total: number;
+    accepted: number;
+    closingSoon: number;
+    closingSoonActionable: number;
+  };
+}
+
 export interface BidListItem {
   portal: PortalId;
   bidKey: string;

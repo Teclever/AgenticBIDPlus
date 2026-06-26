@@ -45,6 +45,8 @@ export function PortalBids() {
     ? (urlFilter as BidFilter)
     : "all";
   const statusFilter = searchParams.get("status") ?? "all";
+  const discoverySource = searchParams.get("discoverySource") ?? undefined;
+  const discoveryCategory = searchParams.get("discoveryCategory") ?? undefined;
   const searchTerms = searchParams.getAll("search");
   const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10) || 1);
   const paramsKey = searchParams.toString();
@@ -83,6 +85,8 @@ export function PortalBids() {
           filter: activeFilter,
           search: effectiveSearch.length ? effectiveSearch : undefined,
           status: statusFilter !== "all" ? statusFilter : undefined,
+          discoverySource,
+          discoveryCategory,
           page,
           pageSize: PAGE_SIZE,
         });

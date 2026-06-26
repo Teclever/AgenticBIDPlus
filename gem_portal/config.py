@@ -9,6 +9,11 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 with open(BASE_DIR / "data" / "organizations.json") as f:
     TARGET_ORGS = {k: v for k, v in json.load(f).items() if not k.startswith("_")}
 
+# Keyword-discovery watch list (family -> [standalone search queries]). Drives the org-agnostic
+# keyword pass that surfaces in-scope bids from ministries/orgs the org loop doesn't cover.
+with open(BASE_DIR / "data" / "watch_keywords.json") as f:
+    WATCH_KEYWORDS = json.load(f).get("families", {})
+
 # Writable state relocates under $BIDPLUS_RUNTIME_DIR/gem/ (outside iCloud) when the
 # orchestrator sets the env var; falls back to the in-tree default for standalone runs.
 _RT = resolve_portal_dir("gem")

@@ -164,6 +164,14 @@ _BOOST_SEED = [
     "check out system",          # singular — matcher covers plural + 'checkout'
     "signal conditioner",        # in-scope instrumentation (matcher covers plural)
     "signal conditioning",
+    # Data-acquisition family (operator-requested, recall-first: every score-5 promotion is
+    # human-validated, so over-promotion is acceptable; missing in-scope gold is not).
+    "DAQ",                       # data acquisition (acronym)
+    "DAS",                       # data acquisition system (acronym; overloaded, recall-first)
+    "DACS",                      # data acquisition & control system (acronym)
+    "DAU",                       # data acquisition unit (acronym; overloaded, recall-first)
+    "data acquisition",          # phrase rule covers '…system', '…and control', '…card', '…unit'
+    "data logger",
 ]
 
 

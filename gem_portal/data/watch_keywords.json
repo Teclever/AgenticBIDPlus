@@ -1,0 +1,8 @@
+{
+  "_comment": "Keyword-discovery watch list. Family-keyed: each find is tagged with its family for the dashboard Keyword Watch card. GeM's fullText search is first-token-dominant + full-text over the item/BOQ spec, so each entry is a STANDALONE query (issued in its own call); the rarest informative token per concept is preferred. Recall-first: all result-yielding variants are included and tightened downstream by the eliminator + Haiku + score-4 floor. Avoid common tokens (test, data, signal, rig, ACE) and the literal DAS/DAU (314/151 junk) — 'acquisition' recalls the real DAS bids far better.",
+  "families": {
+    "das": ["acquisition", "DAQ", "SCADA", "DACS"],
+    "test_rig": ["test rig"],
+    "checkout": ["checkout", "check out"]
+  }
+}

@@ -50,7 +50,7 @@ class GeMAdapter:
         "pk": ("bid_number",),
         "text": "items",  # same column the miner used
         "fields": {"buyer": "organization", "closing_date": "end_date",
-                   "description": "department"},
+                   "description": "department", "discovery_source": "discovery_source"},
     }
 
     def scoring_records(self, where: str = "1=1"):
