@@ -27,7 +27,7 @@ import traceback
 from bidplus.control import commands, report, settings
 from bidplus.control.sheets import Book
 
-BID_HEADER = ["Portal", "Bid ID", "Title", "Organization", "Pass-1 Score", "Summary"]
+BID_HEADER = ["Portal", "Bid ID", "Title", "Organization", "Pass-1 Score", "Source", "Summary"]
 RUNS_HEADER = ["Finished", "Cycle ID", "Trigger", "Status", "Duration(s)", "Portals",
                "New", "Scored", "Keyword-Elim", "Model-Scored", "Summarized",
                "Summary-Failed", "Closed", "Errors"]
@@ -209,24 +209,37 @@ class Agent:
         except Exception:
             pass
         tab = f"{settings.PREFIX_NIGHTLY}{day}"
-        self._publish_cycle(conn, cyc, trigger="nightly", tab=tab)
+        delta_tab = f"{settings.PREFIX_NIGHTLY_DELTA}{day}"
+        self._publish_cycle(conn, cyc, trigger="nightly", tab=tab, delta_tab=delta_tab)
         self.state["last_published_run_id"] = cyc["id"]
         self._save_state()
-        print(f"[control] published autonomous cycle id={cyc['id']} -> '{tab}'", flush=True)
+        print(f"[control] published autonomous cycle id={cyc['id']} -> '{tab}' (+ '{delta_tab}')",
+              flush=True)
 
     # ── shared publication: dated bid tab + Runs append ─────────────────────────
-    def _publish_cycle(self, conn, cyc, *, trigger: str, tab: str) -> None:
+    def _bid_rows(self, bids) -> list[list]:
+        return [[b["portal"], b["bid_id"], b["title"], b["org"], b["score"],
+                 b["source"], b["summary"]] for b in bids]
+
+    def _publish_bid_tab(self, tab: str, bids) -> None:
+        self.book.overwrite(tab, BID_HEADER, self._bid_rows(bids))
+        self.book.format_bid_tab(tab)
+
+    def _publish_cycle(self, conn, cyc, *, trigger: str, tab: str,
+                       delta_tab: str | None = None) -> None:
         portals = report.cycle_portal_rows(conn, cyc["id"])
         if trigger == "rerun":
             # Rerun tab = ONLY what this run upserted (inserted/changed), for the rerun portal(s).
             in_cycle = [p["tool"] for p in portals] or list(settings.PORTALS)
-            bids = report.bid_list(conn, in_cycle, since=cyc["started_at"])
+            self._publish_bid_tab(tab, report.bid_list(conn, in_cycle, since=cyc["started_at"]))
         else:
-            bids = report.bid_list(conn, settings.PORTALS)  # nightly / full run = everything
-        rows = [[b["portal"], b["bid_id"], b["title"], b["org"], b["score"], b["summary"]]
-                for b in bids]
-        self.book.overwrite(tab, BID_HEADER, rows)
-        self.book.format_bid_tab(tab)
+            # nightly / full run: the full open bid list, plus an optional new+upserted-only
+            # companion tab (since the cycle start; merge stamps last_synced_at only on
+            # inserted/changed rows, so this is exactly what moved this cycle).
+            self._publish_bid_tab(tab, report.bid_list(conn, settings.PORTALS))
+            if delta_tab is not None:
+                self._publish_bid_tab(
+                    delta_tab, report.bid_list(conn, settings.PORTALS, since=cyc["started_at"]))
         self.book.append(settings.TAB_RUNS, RUNS_HEADER, [
             cyc["finished_at"], cyc["id"], trigger, cyc["status"] or "",
             _dur(cyc["started_at"], cyc["finished_at"]),
@@ -287,7 +300,8 @@ class Agent:
         self.book.worksheet(settings.TAB_STATUS, create=True)
 
     def _prune(self) -> None:
-        for prefix in (settings.PREFIX_NIGHTLY, settings.PREFIX_RUN, settings.PREFIX_RERUN):
+        for prefix in (settings.PREFIX_NIGHTLY, settings.PREFIX_NIGHTLY_DELTA,
+                       settings.PREFIX_RUN, settings.PREFIX_RERUN):
             try:
                 self.book.prune_prefix(prefix, settings.BID_TABS_KEEP)
             except Exception:

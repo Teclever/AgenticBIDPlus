@@ -122,8 +122,10 @@ class Book:
         "4": {"red": 1.0, "green": 0.824, "blue": 0.2},      # FFD233
         "3": {"red": 1.0, "green": 0.6, "blue": 0.4},        # FF9966
     }
-    # Per-column pixel widths: Portal, Bid ID, Title, Organization, Pass-1 Score, Summary.
-    _COL_WIDTHS = [70, 165, 380, 230, 95, 560]
+    # Per-column pixel widths: Portal, Bid ID, Title, Organization, Pass-1 Score, Source, Summary.
+    _COL_WIDTHS = [70, 165, 380, 230, 95, 150, 560]
+    # Light teal fill marking discovery-source (keyword) finds in the Source column.
+    _SOURCE_FILL = {"red": 0.69, "green": 0.88, "blue": 0.82}  # B0E0D1
 
     def format_bid_tab(self, title) -> None:
         """Apply the standard bid-tab look: frozen+bold header, a basic filter (so Title etc.
@@ -160,6 +162,16 @@ class Book:
                     "condition": {"type": "CUSTOM_FORMULA",
                                   "values": [{"userEnteredValue": f'=$E2="{score}"'}]},
                     "format": {"backgroundColor": color}}}}})
+        # Source column is F (index 5): tint non-empty cells (keyword-discovery finds). Added
+        # last at index 0 so it sits above the whole-row score fills and wins on column F.
+        reqs.append({"addConditionalFormatRule": {"index": 0, "rule": {
+            "ranges": [{"sheetId": sid, "startRowIndex": 1,
+                        "startColumnIndex": 5, "endColumnIndex": 6}],
+            "booleanRule": {
+                "condition": {"type": "CUSTOM_FORMULA",
+                              "values": [{"userEnteredValue": '=LEN($F2)>0'}]},
+                "format": {"backgroundColor": self._SOURCE_FILL,
+                           "textFormat": {"bold": True}}}}}})
         try:
             _retry(lambda: self.ss.batch_update({"requests": reqs}))
         except Exception as e:  # formatting must never break a publish

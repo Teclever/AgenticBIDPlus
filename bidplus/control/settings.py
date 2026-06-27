@@ -40,6 +40,7 @@ TAB_COMMANDS = "Commands"
 
 # Dated-tab prefixes (used for routing + pruning).
 PREFIX_NIGHTLY = "Nightly "
+PREFIX_NIGHTLY_DELTA = "Nightly-Delta "  # new+upserted-only companion to the full nightly tab
 PREFIX_RUN = "Run "
 PREFIX_RERUN = "Rerun "
 

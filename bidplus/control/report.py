@@ -195,6 +195,27 @@ def _summary_text(raw: str | None) -> str:
 
 # ── cross-portal bid list ─────────────────────────────────────────────────────
 
+# Friendly labels for the keyword-discovery families (mirrors the web Keyword-Watch card).
+# Only GeM rows carry discovery_source/discovery_category; everything else has no source.
+_KEYWORD_FAMILY_LABELS = {
+    "das": "DAS / data acquisition",
+    "test_rig": "Test rig",
+    "checkout": "Checkout systems",
+}
+
+
+def _source_label(row_dict: dict) -> str:
+    """Human-facing discovery-source label for a row, or '' for normal (portal-scrape) bids.
+
+    Keyword finds (``discovery_source='keyword'``) render as their family label
+    (e.g. 'DAS / data acquisition'); an unmapped family falls back to its raw category.
+    """
+    if row_dict.get("discovery_source") != "keyword":
+        return ""
+    cat = row_dict.get("discovery_category") or ""
+    return _KEYWORD_FAMILY_LABELS.get(cat, cat or "keyword")
+
+
 def bid_list(
     conn: sqlite3.Connection,
     portals: tuple[str, ...] | list[str] | None = None,
@@ -212,6 +233,8 @@ def bid_list(
       title    — from PORTAL_FIELDS[portal]["title"] column
       org      — from PORTAL_FIELDS[portal]["buyer"] column
       score    — pass1_score (int or None)
+      source   — discovery-source label (_source_label); '' for normal scrape bids,
+                 a keyword family label (e.g. 'DAS / data acquisition') for keyword finds
       summary  — plain-text facts from _summary_text(summary_json)
       closing  — raw closing-date string from the portal's closing column
 
@@ -247,6 +270,7 @@ def bid_list(
                 "title": row_dict.get(title_col) if title_col else None,
                 "org": row_dict.get(buyer_col) if buyer_col else None,
                 "score": row_dict.get("pass1_score"),
+                "source": _source_label(row_dict),
                 "summary": _summary_text(row_dict.get("summary_json")),
                 "closing": row_dict.get(closing_col) if closing_col else None,
             })
