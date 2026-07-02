@@ -16,7 +16,10 @@ Invariants (AGENTS.md / plan §4):
   ``extension_count`` / the closing-date column); it is **not** re-summarized.
 - The per-row UPDATE is **conditional on a real value difference**, so re-running the
   merge with no tool changes is a true no-op (idempotent) — even ``last_synced_at`` is
-  left untouched on unchanged rows.
+  left untouched on unchanged rows. The difference test **ignores** the pure
+  scrape-bookkeeping columns (``_VOLATILE_COLS``: ``last_seen_at`` / ``last_updated_date``,
+  re-stamped on every observation) so a bid that was merely re-seen — nothing meaningful
+  changed — does not bump ``last_synced_at`` and thus does not pollute the ``since`` delta.
 
 The parent table shape is derived from the tool schema (so per-portal column-name
 differences — HAL ``closing_date`` vs ISRO ``bid_closing_date`` vs GeM ``end_date`` —
@@ -80,6 +83,14 @@ _OVERLAY = [
     ("disposed_at", "TEXT", None),
 ]
 _OVERLAY_COLS = {name for name, _, _ in _OVERLAY}
+
+# Pure scrape-bookkeeping columns: every scraper re-stamps these on every observation of a
+# bid, even when nothing else changed. They are still MIRRORED (kept in ``write_cols`` and
+# written on insert / on any genuine update), but a diff in ONLY these must NOT mark a row
+# "updated" or bump ``last_synced_at`` — otherwise the nightly ``since`` delta would list
+# every re-seen bid instead of just the new + genuinely-changed ones. (See merge_portal's
+# ``compare_idx``.) Nothing on the parent side reads these columns.
+_VOLATILE_COLS = {"last_seen_at", "last_updated_date"}
 
 
 # ── schema introspection ─────────────────────────────────────────────────────────
@@ -236,6 +247,10 @@ def merge_portal(portal: str, parent: sqlite3.Connection | None = None) -> dict:
         ptable = _ensure_table(parent, portal, tool_cols, pk)
 
         write_cols = [n for n, _ in _mirror_specs(tool_cols)]
+        # Columns whose value, changing on its own, counts as a genuine change. Pure
+        # scrape-bookkeeping columns (_VOLATILE_COLS) are excluded so a merely re-seen bid
+        # is treated as unchanged (no last_synced_at bump → not in the "since" delta).
+        compare_idx = [i for i, c in enumerate(write_cols) if c not in _VOLATILE_COLS]
         pk_where = " AND ".join(f"{c}=?" for c in pk)
         now = datetime.datetime.now().isoformat(timespec="seconds")
 
@@ -255,7 +270,7 @@ def merge_portal(portal: str, parent: sqlite3.Connection | None = None) -> dict:
                     vals,
                 )
                 inserted += 1
-            elif any(existing[i] != r[write_cols[i]] for i in range(len(write_cols))):
+            elif any(existing[i] != r[write_cols[i]] for i in compare_idx):
                 set_clause = ", ".join(f"{c}=?" for c in write_cols) + ", last_synced_at=?"
                 cur.execute(
                     f"UPDATE {ptable} SET {set_clause} WHERE {pk_where}",
