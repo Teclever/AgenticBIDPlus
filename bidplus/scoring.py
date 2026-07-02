@@ -234,6 +234,34 @@ def ensure_scoring_columns(conn: sqlite3.Connection, table: str) -> None:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
 
+# Discovery-channel veto (medical / IVD cluster). The broad keyword-discovery queries — above
+# all the first-token-dominant `test rig` search, which pulls the entire GeM "test" pool — drag
+# in diagnostic test kits, reagents and lab consumables that are wholly out of scope. A keyword
+# find whose spec text matches one of these is DROPPED like eliminator junk (score 0,
+# auto_rejected) BEFORE Haiku, so it never reaches the Keyword-Watch card and costs no tokens.
+# Scoped to discovery_source='keyword' rows only (see score_portal) → org-monitored bids and
+# boost/promoted bids are never affected. Operator-tunable; deliberately EXCLUDES the bare phrase
+# "test kit" (too broad — a legit avionics/calibration test kit could exist) — the specific
+# markers below already catch every real IVD find in the data.
+_KEYWORD_VETO = [
+    "reagent", "test strip", "diagnostic", "elisa", "antigen", "antibody", "urine",
+    "hiv", "hepatitis", "biochemistry", "cardiology", "glucose", "pregnancy", "serum",
+    "pathology", "covid", "rt-pcr", "syphilis", "immunoassay", "haematology", "hematology",
+]
+
+
+def keyword_veto_match(text: str) -> str | None:
+    """First `_KEYWORD_VETO` term matching ``text``, or None. Case-insensitive, word-boundary
+    anchored, whitespace/hyphen tolerant, optional trailing plural — mirrors the phrase rule in
+    ``eliminator.boost_match`` so the veto and the boost/keyword lists match text identically."""
+    t = text or ""
+    for term in _KEYWORD_VETO:
+        pat = r"\b" + r"[\s\-]*".join(re.escape(w) for w in term.split()) + r"s?\b"
+        if re.search(pat, t, re.IGNORECASE):
+            return term
+    return None
+
+
 def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
                  limit: int | None = None, rescore: bool = False,
                  call_fn=None) -> dict:
@@ -277,6 +305,15 @@ def score_portal(portal: str, parent: sqlite3.Connection, mode: str = "hard",
         if r.bid_id in promoted or r.bid_id in boosted:   # confirmed in-scope → always Haiku
             survivors.append(r)
             continue
+        # Discovery-channel veto: a keyword-search find matching an out-of-scope medical/IVD term
+        # is dropped exactly like eliminator junk (no Haiku, auto_rejected). Only keyword finds are
+        # checked; org-monitored bids and the boosted/promoted rows above are never vetoed.
+        if r.fields.get("discovery_source") == "keyword":
+            vterm = keyword_veto_match(r.text)
+            if vterm:
+                would += 1
+                eliminated.append((r, [f"discovery-veto: {vterm}"]))
+                continue
         buyer = " ".join(str(r.fields.get(k) or "") for k in ("buyer", "description"))
         amc_ok = mode == "hard" and eliminator.amc_floor_qualifies(portal, buyer, r.text)
         matched = eliminator.eliminate(r.text, terms)
